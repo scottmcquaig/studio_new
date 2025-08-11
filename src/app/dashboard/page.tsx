@@ -75,11 +75,13 @@ export default function DashboardPage() {
                     <p className="mt-1 text-sm text-muted-foreground text-center">Set up a new fantasy league for a new season.</p>
                  </Card>
                 </Link>
-                <Card className="flex h-full flex-col items-center justify-center p-6 hover:bg-accent cursor-pointer">
-                    <Users className="h-12 w-12 text-primary" />
-                    <h3 className="mt-4 text-lg font-semibold">Manage Users</h3>
-                    <p className="mt-1 text-sm text-muted-foreground text-center">Create, edit, and invite users to the platform.</p>
-                 </Card>
+                <Link href="/users">
+                  <Card className="flex h-full flex-col items-center justify-center p-6 hover:bg-accent cursor-pointer">
+                      <Users className="h-12 w-12 text-primary" />
+                      <h3 className="mt-4 text-lg font-semibold">Manage Users</h3>
+                      <p className="mt-1 text-sm text-muted-foreground text-center">Create, edit, and invite users to the platform.</p>
+                   </Card>
+                </Link>
                 <Card className="flex h-full flex-col items-center justify-center p-6 hover:bg-accent cursor-pointer">
                     <Edit className="h-12 w-12 text-primary" />
                     <h3 className="mt-4 text-lg font-semibold">Edit Scoring Rules</h3>
