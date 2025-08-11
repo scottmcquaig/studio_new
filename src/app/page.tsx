@@ -21,14 +21,18 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    // Hardcoded admin credentials for now
-    if (username === 'admin' && password === 'admin') {
+    // Hardcoded credentials for now
+    if ((username === 'admin' && password === 'admin') || (username === 'scott' && password === 'scott')) {
       toast({
         title: "Login Successful",
-        description: "Welcome, Admin!",
+        description: `Welcome, ${username}!`,
       });
       // In a real app, you'd set a session/token here
-      router.push('/dashboard');
+      if (username === 'admin') {
+         router.push('/dashboard');
+      } else {
+         router.push('/leagues');
+      }
     } else {
       setError('Invalid username or password.');
       toast({
