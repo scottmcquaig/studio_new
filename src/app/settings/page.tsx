@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,7 +22,6 @@ import { useToast } from '@/hooks/use-toast';
 // For this prototype, we'll assume the logged-in user is the first site admin found.
 const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
 const activeSeason = MOCK_SEASONS[0];
-const specialEventRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
 
 
 export default function SettingsPage() {
@@ -35,6 +34,9 @@ export default function SettingsPage() {
   const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
   const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
+  const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
+
+  const specialEventRules = scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
   
   const contestantTerm = league.contestantTerm;
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
@@ -42,6 +44,7 @@ export default function SettingsPage() {
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
 
   const [newUserData, setNewUserData] = useState({
     displayName: '',
@@ -50,6 +53,8 @@ export default function SettingsPage() {
     teamId: 'unassigned'
   });
   
+  const [newRuleData, setNewRuleData] = useState({ code: '', label: '', points: 0 });
+
   const [specialEventData, setSpecialEventData] = useState({
       contestantId: '',
       ruleCode: '',
@@ -219,6 +224,39 @@ export default function SettingsPage() {
         return updatedTeams;
     });
   }
+
+  const handleUpdateRule = (code: string, field: 'label' | 'points', value: string) => {
+    setScoringRules(currentRules =>
+      currentRules.map(rule =>
+        rule.code === code ? { ...rule, [field]: field === 'points' ? Number(value) : value } : rule
+      )
+    );
+  };
+
+  const handleAddRule = () => {
+    if (!newRuleData.code.trim() || !newRuleData.label.trim()) {
+      toast({ title: "Error", description: "Please provide a unique code and a label for the new rule.", variant: "destructive" });
+      return;
+    }
+    if (scoringRules.some(rule => rule.code === newRuleData.code)) {
+      toast({ title: "Error", description: `The event code "${newRuleData.code}" already exists. Please use a unique code.`, variant: "destructive" });
+      return;
+    }
+    const newRule: ScoringRule = {
+      code: newRuleData.code,
+      label: newRuleData.label,
+      points: newRuleData.points
+    };
+    setScoringRules([...scoringRules, newRule]);
+    setNewRuleData({ code: '', label: '', points: 0 });
+    setIsAddRuleDialogOpen(false);
+    toast({ title: "Rule Added", description: `The rule "${newRule.label}" has been added.` });
+  };
+
+  const handleRemoveRule = (codeToRemove: string) => {
+    setScoringRules(currentRules => currentRules.filter(rule => rule.code !== codeToRemove));
+  };
+
 
   const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
 
@@ -448,61 +486,127 @@ export default function SettingsPage() {
                       </AccordionContent>
                     </Card>
                  </AccordionItem>
-                 <AccordionItem value="terminology" asChild>
-                    <Card>
-                      <AccordionTrigger className="p-6">
-                        <CardHeader className="p-0 text-left">
-                           <CardTitle className="flex items-center gap-2"><MessageSquareQuote/> Terminology Management</CardTitle>
-                           <CardDescription>Customize labels for contestants, competitions, etc.</CardDescription>
-                        </CardHeader>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-6 pb-6 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                    <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, singular: e.target.value }})} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                    <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, plural: e.target.value }})} />
-                                </div>
-                            </div>
-                           <CardFooter className="justify-end p-0 pt-6">
-                                <Button onClick={() => handleSaveChanges('Terminology')}><Save className="mr-2"/>Save Terminology</Button>
-                            </CardFooter>
-                      </AccordionContent>
-                    </Card>
-                 </AccordionItem>
                 <AccordionItem value="league" asChild>
                     <Card>
                         <AccordionTrigger className="p-6">
                             <CardHeader className="p-0 text-left">
                                 <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
-                                <CardDescription>Manage core settings for the league.</CardDescription>
+                                <CardDescription>Manage core settings, terminology, and scoring rules for the league.</CardDescription>
                             </CardHeader>
                         </AccordionTrigger>
-                        <AccordionContent className="px-6 pb-6 space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="leagueName">League Name</Label>
-                                <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="maxTeams">Number of Teams</Label>
-                                <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
-                            </div>
-                            <Separator />
-                            <Label>Team Names</Label>
-                            <div className="space-y-2">
-                            {Array.from({ length: league.maxTeams }).map((_, index) => (
-                                <div key={teams[index]?.id || `new_team_${index}`} className="flex items-center gap-2">
-                                    <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
-                                    <Input 
-                                        value={teams[index]?.name || ''} 
-                                        placeholder={`Team ${index + 1} Name`}
-                                        onChange={(e) => handleTeamNameChange(index, e.target.value)} 
-                                    />
+                        <AccordionContent className="px-6 pb-6 space-y-6">
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-medium">General</h3>
+                                <div className="space-y-2">
+                                    <Label htmlFor="leagueName">League Name</Label>
+                                    <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
                                 </div>
-                            ))}
+                                <div className="space-y-2">
+                                    <Label htmlFor="maxTeams">Number of Teams</Label>
+                                    <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
+                                </div>
+                                <Label>Team Names</Label>
+                                <div className="space-y-2">
+                                {Array.from({ length: league.maxTeams }).map((_, index) => (
+                                    <div key={teams[index]?.id || `new_team_${index}`} className="flex items-center gap-2">
+                                        <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
+                                        <Input 
+                                            value={teams[index]?.name || ''} 
+                                            placeholder={`Team ${index + 1} Name`}
+                                            onChange={(e) => handleTeamNameChange(index, e.target.value)} 
+                                        />
+                                    </div>
+                                ))}
+                                </div>
+                            </div>
+                            <Separator/>
+                             <div className="space-y-4">
+                                <h3 className="text-lg font-medium flex items-center gap-2"><MessageSquareQuote/> Terminology</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="termSingular">Contestant (Singular)</Label>
+                                        <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, singular: e.target.value }})} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="termPlural">Contestant (Plural)</Label>
+                                        <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, plural: e.target.value }})} />
+                                    </div>
+                                </div>
+                             </div>
+                            <Separator/>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-medium flex items-center gap-2"><ListChecks/> Scoring Rules</h3>
+                                     <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="sm"><PlusCircle className="mr-2"/>Add Rule</Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Add New Scoring Rule</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <Label>Event Code</Label>
+                                                    <Input 
+                                                        value={newRuleData.code}
+                                                        onChange={(e) => setNewRuleData({...newRuleData, code: e.target.value.toUpperCase().replace(/\s/g, '_')})}
+                                                        placeholder="e.g., CUSTOM_EVENT"
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">A unique, uppercase identifier for the rule.</p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Label</Label>
+                                                    <Input
+                                                        value={newRuleData.label}
+                                                        onChange={(e) => setNewRuleData({...newRuleData, label: e.target.value})}
+                                                        placeholder="e.g., Wins a secret power"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Points</Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={newRuleData.points}
+                                                        onChange={(e) => setNewRuleData({...newRuleData, points: Number(e.target.value)})}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
+                                                <Button onClick={handleAddRule}>Add Rule</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                                <div className="space-y-2">
+                                    {scoringRules.map(rule => (
+                                        <div key={rule.code} className="grid grid-cols-12 gap-2 items-center">
+                                            <div className="col-span-8 space-y-1">
+                                                <Label htmlFor={`rule-label-${rule.code}`}>Label</Label>
+                                                <Input
+                                                    id={`rule-label-${rule.code}`}
+                                                    value={rule.label}
+                                                    onChange={(e) => handleUpdateRule(rule.code, 'label', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="col-span-3 space-y-1">
+                                                <Label htmlFor={`rule-points-${rule.code}`}>Points</Label>
+                                                <Input
+                                                    id={`rule-points-${rule.code}`}
+                                                    type="number"
+                                                    value={rule.points}
+                                                    onChange={(e) => handleUpdateRule(rule.code, 'points', e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="col-span-1 self-end">
+                                                 <Button variant="ghost" size="icon" onClick={() => handleRemoveRule(rule.code)} className="h-9 w-9">
+                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                             <CardFooter className="justify-end p-0 pt-6">
                                 <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save League Settings</Button>
