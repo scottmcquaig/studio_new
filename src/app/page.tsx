@@ -265,7 +265,7 @@ export default function DashboardPage() {
                                     team.weekly_score >= 0 ? "text-green-600" : "text-red-600"
                                 )}>
                                     {team.weekly_score >= 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
-                                    <span>({team.weekly_score > 0 ? '+': ''}{team.weekly_score})</span>
+                                    <span>{team.weekly_score > 0 ? '+': ''}{team.weekly_score}</span>
                                 </div>
                             </div>
                         ))}
@@ -296,11 +296,12 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <Badge 
-                                    variant={player.points >= 0 ? "default" : "destructive"} 
-                                    className={cn("text-sm font-bold", player.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                                <div className={cn(
+                                    "text-sm font-bold",
+                                    player.points >= 0 ? "text-green-600" : "text-red-600"
+                                )}>
                                     {player.points > 0 ? '+': ''}{player.points}
-                                </Badge>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -335,11 +336,12 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge 
-                    variant={activity.points >= 0 ? "default" : "destructive"} 
-                    className={cn("text-sm font-bold", activity.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
-                    {activity.points > 0 ? '+': ''}{activity.points}
-                  </Badge>
+                   <div className={cn(
+                        "text-sm font-bold",
+                        activity.points >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                        {activity.points > 0 ? '+': ''}{activity.points}
+                    </div>
                 </div>
               )) : (
                 <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>

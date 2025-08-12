@@ -3,7 +3,8 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,13 +95,10 @@ export default function SettingsPage() {
     toast({ title: "Success!", description: `User ${newUser.displayName} created and invite sent!` });
   };
 
-  const handleSaveChanges = () => {
-    console.log("Saving changes for users:", users);
-    console.log("Saving changes for teams:", teams);
-    console.log("Saving changes for competitions:", competitions);
-    console.log("Saving changes for league:", league);
-    console.log("Saving changes for houseguests:", houseguests);
-    toast({ title: "Changes Saved", description: "All updates have been logged to the console." });
+  const handleSaveChanges = (section?: string) => {
+    const message = section ? `${section} changes saved.` : "All updates have been saved.";
+    console.log("Saving changes for:", section || "All sections");
+    toast({ title: "Changes Saved", description: message });
   };
 
   const handleAssignTeam = (userId: string, teamId: string) => {
@@ -203,367 +201,397 @@ export default function SettingsPage() {
           // Admin View
           <div className="space-y-6">
               <div className="flex justify-end">
-                <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4"/>Save All Admin Changes</Button>
+                <Button onClick={() => handleSaveChanges()}><Save className="mr-2 h-4 w-4"/>Save All Admin Changes</Button>
               </div>
-              <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
-                            <CardDescription>Update results for the selected week.</CardDescription>
-                        </div>
-                         <div className="w-40">
-                             <Label>Select Week</Label>
-                             <Select value={String(selectedWeek)} onValueChange={(val) => setSelectedWeek(Number(val))}>
-                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent>
-                                    {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <Label className="flex items-center gap-1 mb-1"><Crown className="text-primary"/>HOH Winner</Label>
-                            <Select value={hoh?.winnerId || ''} onValueChange={(val) => handleEventUpdate('HOH', val)}>
-                                <SelectTrigger><SelectValue placeholder="Select HOH..."/></SelectTrigger>
-                                <SelectContent>
-                                    {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div>
-                            <Label className="flex items-center gap-1 mb-1"><Shield className="text-accent"/>Veto Winner</Label>
-                            <Select value={pov?.winnerId || ''} onValueChange={(val) => handleEventUpdate('VETO', val)}>
-                                <SelectTrigger><SelectValue placeholder="Select Veto Winner..."/></SelectTrigger>
-                                <SelectContent>
-                                   {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 1</Label>
-                            <Select value={noms?.nominees?.[0] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [val, noms?.nominees?.[1] || '', noms?.nominees?.[2] || ''])}>
-                                <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
-                                <SelectContent>
-                                   {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 2</Label>
-                            <Select value={noms?.nominees?.[1] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', val, noms?.nominees?.[2] || ''])}>
-                                <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
-                                <SelectContent>
-                                    {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div>
-                            <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 3 (optional)</Label>
-                            <Select value={noms?.nominees?.[2] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', noms?.nominees?.[1] || '', val])}>
-                                <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
-                                <SelectContent>
-                                    {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                         <div>
-                            <Label className="flex items-center gap-1 mb-1"><UserX className="text-muted-foreground"/>Evicted Houseguest</Label>
-                            <Select value={eviction?.evictedId || ''} onValueChange={(val) => handleEventUpdate('EVICTION', val)}>
-                                <SelectTrigger><SelectValue placeholder="Select Evicted..."/></SelectTrigger>
-                                <SelectContent>
-                                    {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    <Separator/>
-                    <div className="flex justify-between items-center gap-2">
-                         <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline"><PlusCircle className="mr-2"/>Log Special Event</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Log a Special Scoring Event</DialogTitle>
-                                    <CardDescription>Use for non-standard events like winning a power or penalties.</CardDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                   <div className="space-y-2">
-                                        <Label>Houseguest</Label>
-                                        <Select value={specialEventData.houseguestId} onValueChange={(val) => setSpecialEventData({...specialEventData, houseguestId: val})}>
-                                            <SelectTrigger><SelectValue placeholder="Select a houseguest..."/></SelectTrigger>
-                                            <SelectContent>
-                                                {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                   </div>
-                                   <div className="space-y-2">
-                                        <Label>Event Type</Label>
-                                        <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
-                                            <SelectTrigger><SelectValue placeholder="Select event type..."/></SelectTrigger>
-                                            <SelectContent>
-                                                {specialEventRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label} ({rule.points > 0 ? '+':''}{rule.points} pts)</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                   </div>
-                                   <div className="space-y-2">
-                                        <Label>Notes / Description</Label>
-                                        <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} placeholder="e.g., Won the 'Secret Power of Invisibility'"/>
-                                   </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddSpecialEvent}>Add Event</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={handleSaveChanges}>Apply & Lock Events</Button>
-                            <Button variant="outline" disabled={selectedWeek !== activeSeason.currentWeek}>Start Next Week</Button>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><UserSquare/> Houseguest Management</CardTitle>
-                    <CardDescription>Edit houseguest information and photos.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {houseguests.map(hg => (
-                            <div key={hg.id} className="flex items-center justify-between p-2 rounded-lg border">
-                                <div className="flex items-center gap-3">
-                                    <Image
-                                        src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                                        alt={hg.fullName}
-                                        width={40}
-                                        height={40}
-                                        className="rounded-full"
-                                        data-ai-hint="portrait person"
-                                    />
-                                    <div>
-                                        <p className="font-medium">{hg.fullName}</p>
-                                        <Badge 
-                                          variant={hg.status === 'active' ? 'default' : 'destructive'} 
-                                          className={cn('h-fit text-xs mt-1', hg.status === 'active' && 'bg-green-600 text-white')}>
-                                            {hg.status.charAt(0).toUpperCase() + hg.status.slice(1)}
-                                        </Badge>
-                                    </div>
-                                </div>
-                                <Dialog onOpenChange={(open) => !open && setEditingHouseguest(null)}>
-                                    <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHouseguest({...hg})}>
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    </DialogTrigger>
-                                    {editingHouseguest && editingHouseguest.id === hg.id && (
-                                    <DialogContent>
-                                        <DialogHeader>
-                                        <DialogTitle>Edit Houseguest: {editingHouseguest.fullName}</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="hgName">Full Name</Label>
-                                            <Input id="hgName" value={editingHouseguest.fullName} onChange={(e) => setEditingHouseguest({...editingHouseguest, fullName: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="hgOccupation">Occupation</Label>
-                                            <Input id="hgOccupation" value={editingHouseguest.occupation} onChange={(e) => setEditingHouseguest({...editingHouseguest, occupation: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="hgPhotoUrl">Photo URL</Label>
-                                            <div className="flex items-center gap-2">
-                                            <Input id="hgPhotoUrl" value={editingHouseguest.photoUrl || ''} onChange={(e) => setEditingHouseguest({...editingHouseguest, photoUrl: e.target.value})} />
-                                            <Button variant="outline" size="icon"><Upload className="h-4 w-4"/></Button>
+              <Accordion type="multiple" className="w-full space-y-6">
+                <AccordionItem value="events" asChild>
+                    <Card>
+                      <AccordionTrigger className="p-6">
+                        <CardHeader className="p-0 text-left">
+                           <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
+                           <CardDescription>Update results for the selected week.</CardDescription>
+                        </CardHeader>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6">
+                          <div className="w-40 mb-4">
+                              <Label>Select Week</Label>
+                              <Select value={String(selectedWeek)} onValueChange={(val) => setSelectedWeek(Number(val))}>
+                                  <SelectTrigger><SelectValue/></SelectTrigger>
+                                  <SelectContent>
+                                      {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                          </div>
+                          <div className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><Crown className="text-primary"/>HOH Winner</Label>
+                                      <Select value={hoh?.winnerId || ''} onValueChange={(val) => handleEventUpdate('HOH', val)}>
+                                          <SelectTrigger><SelectValue placeholder="Select HOH..."/></SelectTrigger>
+                                          <SelectContent>
+                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><Shield className="text-accent"/>Veto Winner</Label>
+                                      <Select value={pov?.winnerId || ''} onValueChange={(val) => handleEventUpdate('VETO', val)}>
+                                          <SelectTrigger><SelectValue placeholder="Select Veto Winner..."/></SelectTrigger>
+                                          <SelectContent>
+                                            {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 1</Label>
+                                      <Select value={noms?.nominees?.[0] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [val, noms?.nominees?.[1] || '', noms?.nominees?.[2] || ''])}>
+                                          <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
+                                          <SelectContent>
+                                            {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 2</Label>
+                                      <Select value={noms?.nominees?.[1] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', val, noms?.nominees?.[2] || ''])}>
+                                          <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
+                                          <SelectContent>
+                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 3 (optional)</Label>
+                                      <Select value={noms?.nominees?.[2] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', noms?.nominees?.[1] || '', val])}>
+                                          <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
+                                          <SelectContent>
+                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><UserX className="text-muted-foreground"/>Evicted Houseguest</Label>
+                                      <Select value={eviction?.evictedId || ''} onValueChange={(val) => handleEventUpdate('EVICTION', val)}>
+                                          <SelectTrigger><SelectValue placeholder="Select Evicted..."/></SelectTrigger>
+                                          <SelectContent>
+                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                              </div>
+                              <Separator/>
+                              <div className="flex justify-between items-center gap-2">
+                                  <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+                                      <DialogTrigger asChild>
+                                          <Button variant="outline"><PlusCircle className="mr-2"/>Log Special Event</Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                          <DialogHeader>
+                                              <DialogTitle>Log a Special Scoring Event</DialogTitle>
+                                              <CardDescription>Use for non-standard events like winning a power or penalties.</CardDescription>
+                                          </DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                  <Label>Houseguest</Label>
+                                                  <Select value={specialEventData.houseguestId} onValueChange={(val) => setSpecialEventData({...specialEventData, houseguestId: val})}>
+                                                      <SelectTrigger><SelectValue placeholder="Select a houseguest..."/></SelectTrigger>
+                                                      <SelectContent>
+                                                          {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                      </SelectContent>
+                                                  </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                  <Label>Event Type</Label>
+                                                  <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
+                                                      <SelectTrigger><SelectValue placeholder="Select event type..."/></SelectTrigger>
+                                                      <SelectContent>
+                                                          {specialEventRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label} ({rule.points > 0 ? '+':''}{rule.points} pts)</SelectItem>)}
+                                                      </SelectContent>
+                                                  </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                  <Label>Notes / Description</Label>
+                                                  <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} placeholder="e.g., Won the 'Secret Power of Invisibility'"/>
+                                            </div>
+                                          </div>
+                                          <DialogFooter>
+                                              <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+                                              <Button onClick={handleAddSpecialEvent}>Add Event</Button>
+                                          </DialogFooter>
+                                      </DialogContent>
+                                  </Dialog>
+                                  <div className="flex gap-2">
+                                      <Button variant="outline" disabled={selectedWeek !== activeSeason.currentWeek}>Start Next Week</Button>
+                                  </div>
+                              </div>
+                          </div>
+                          <CardFooter className="justify-end p-0 pt-6">
+                            <Button onClick={() => handleSaveChanges('Weekly Events')}><Save className="mr-2"/>Save Event Changes</Button>
+                          </CardFooter>
+                      </AccordionContent>
+                    </Card>
+                </AccordionItem>
+                 <AccordionItem value="houseguests" asChild>
+                    <Card>
+                      <AccordionTrigger className="p-6">
+                        <CardHeader className="p-0 text-left">
+                           <CardTitle className="flex items-center gap-2"><UserSquare/> Houseguest Management</CardTitle>
+                           <CardDescription>Edit houseguest information and photos.</CardDescription>
+                        </CardHeader>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {houseguests.map(hg => (
+                                    <div key={hg.id} className="flex items-center justify-between p-2 rounded-lg border">
+                                        <div className="flex items-center gap-3">
+                                            <Image
+                                                src={hg.photoUrl || "https://placehold.co/100x100.png"}
+                                                alt={hg.fullName}
+                                                width={40}
+                                                height={40}
+                                                className="rounded-full"
+                                                data-ai-hint="portrait person"
+                                            />
+                                            <div>
+                                                <p className="font-medium">{hg.fullName}</p>
+                                                <Badge 
+                                                  variant={hg.status === 'active' ? 'default' : 'destructive'} 
+                                                  className={cn('h-fit text-xs mt-1', hg.status === 'active' && 'bg-green-600 text-white')}>
+                                                    {hg.status.charAt(0).toUpperCase() + hg.status.slice(1)}
+                                                </Badge>
                                             </div>
                                         </div>
-                                        </div>
-                                        <DialogFooter>
-                                        <Button variant="outline" onClick={() => setEditingHouseguest(null)}>Cancel</Button>
-                                        <Button onClick={handleUpdateHouseguest}>Save Changes</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                    )}
-                                </Dialog>
+                                        <Dialog onOpenChange={(open) => !open && setEditingHouseguest(null)}>
+                                            <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHouseguest({...hg})}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            </DialogTrigger>
+                                            {editingHouseguest && editingHouseguest.id === hg.id && (
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                <DialogTitle>Edit Houseguest: {editingHouseguest.fullName}</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hgName">Full Name</Label>
+                                                    <Input id="hgName" value={editingHouseguest.fullName} onChange={(e) => setEditingHouseguest({...editingHouseguest, fullName: e.target.value})} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hgOccupation">Occupation</Label>
+                                                    <Input id="hgOccupation" value={editingHouseguest.occupation} onChange={(e) => setEditingHouseguest({...editingHouseguest, occupation: e.target.value})} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hgPhotoUrl">Photo URL</Label>
+                                                    <div className="flex items-center gap-2">
+                                                    <Input id="hgPhotoUrl" value={editingHouseguest.photoUrl || ''} onChange={(e) => setEditingHouseguest({...editingHouseguest, photoUrl: e.target.value})} />
+                                                    <Button variant="outline" size="icon"><Upload className="h-4 w-4"/></Button>
+                                                    </div>
+                                                </div>
+                                                </div>
+                                                <DialogFooter>
+                                                <Button variant="outline" onClick={() => setEditingHouseguest(null)}>Cancel</Button>
+                                                <Button onClick={handleUpdateHouseguest}>Save Changes</Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                            )}
+                                        </Dialog>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-             <div className="grid lg:grid-cols-2 gap-6">
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
-                        <CardDescription>Manage core settings for the league.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="leagueName">League Name</Label>
-                            <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="maxTeams">Number of Teams</Label>
-                            <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
-                        </div>
-                        <Separator />
-                        <Label>Team Names</Label>
-                        <div className="space-y-2">
-                        {Array.from({ length: league.maxTeams }).map((_, index) => (
-                            <div key={teams[index]?.id || `new_team_${index}`} className="flex items-center gap-2">
-                                <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
-                                <Input 
-                                    value={teams[index]?.name || ''} 
-                                    placeholder={`Team ${index + 1} Name`}
-                                    onChange={(e) => handleTeamNameChange(index, e.target.value)} 
-                                />
+                            <CardFooter className="justify-end p-0 pt-6">
+                                <Button onClick={() => handleSaveChanges('Houseguests')}><Save className="mr-2"/>Save Houseguest Changes</Button>
+                            </CardFooter>
+                      </AccordionContent>
+                    </Card>
+                 </AccordionItem>
+                <AccordionItem value="league" asChild>
+                    <Card>
+                        <AccordionTrigger className="p-6">
+                            <CardHeader className="p-0 text-left">
+                                <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
+                                <CardDescription>Manage core settings for the league.</CardDescription>
+                            </CardHeader>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-6 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="leagueName">League Name</Label>
+                                <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
                             </div>
-                        ))}
-                        </div>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2"><UserCog /> League Members & Teams</CardTitle>
-                            <CardDescription>Manage user roles, assignments, and invitations.</CardDescription>
-                        </div>
-                        <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Add New League Member</DialogTitle>
-                                    <CardDescription>Invite a new user and assign them to a team.</CardDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Display Name</Label>
-                                        <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe"/>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="new.user@example.com"/>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Role</Label>
-                                        <Select value={newUserData.role} onValueChange={(role: UserRole) => setNewUserData({...newUserData, role })}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="player">Player</SelectItem>
-                                                <SelectItem value="league_admin">League Admin</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Team</Label>
-                                        <Select value={newUserData.teamId} onValueChange={(teamId) => setNewUserData({...newUserData, teamId})}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="unassigned">Unassigned</SelectItem>
-                                                {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="maxTeams">Number of Teams</Label>
+                                <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
+                            </div>
+                            <Separator />
+                            <Label>Team Names</Label>
+                            <div className="space-y-2">
+                            {Array.from({ length: league.maxTeams }).map((_, index) => (
+                                <div key={teams[index]?.id || `new_team_${index}`} className="flex items-center gap-2">
+                                    <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
+                                    <Input 
+                                        value={teams[index]?.name || ''} 
+                                        placeholder={`Team ${index + 1} Name`}
+                                        onChange={(e) => handleTeamNameChange(index, e.target.value)} 
+                                    />
                                 </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddUser}>Send Invite</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                         {users.map(user => (
-                          <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
-                            <div className="flex-1 min-w-[150px] flex items-center gap-2">
-                              <div>
-                                <p className="font-medium">{user.displayName}</p>
-                                <p className="text-xs text-muted-foreground">{user.email}</p>
-                              </div>
-                               <Badge variant={user.status === 'active' ? 'default' : 'secondary'} className={cn(user.status === 'active' && 'bg-green-600 text-white')}>{user.status === 'active' ? 'Active' : 'Pending'}</Badge>
+                            ))}
                             </div>
-                            <div className="flex items-center gap-2">
-                               <Select
-                                value={user.role}
-                                onValueChange={(role: UserRole) => handleRoleChange(user.id, role)}
-                              >
-                                <SelectTrigger className="w-full sm:w-[130px] h-9">
-                                  <SelectValue placeholder="Select role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="site_admin">Site Admin</SelectItem>
-                                  <SelectItem value="league_admin">League Admin</SelectItem>
-                                  <SelectItem value="player">Player</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              
-                              {user.role !== 'site_admin' && (
-                                <Select
-                                  value={teams.find(t => t.ownerUserIds.includes(user.id))?.id || 'unassigned'}
-                                  onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}
-                                >
-                                  <SelectTrigger className="w-full sm:w-[150px] h-9">
-                                    <SelectValue placeholder="Assign team" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                                    {teams.map(team => (
-                                      <SelectItem key={team.id} value={team.id}>
-                                        {team.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                               <Dialog onOpenChange={(open) => !open && setEditingUser(null)}>
+                            <CardFooter className="justify-end p-0 pt-6">
+                                <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save League Settings</Button>
+                            </CardFooter>
+                        </AccordionContent>
+                    </Card>
+                </AccordionItem>
+                <AccordionItem value="members" asChild>
+                    <Card>
+                        <AccordionTrigger className="p-6">
+                            <CardHeader className="p-0 text-left">
+                                <CardTitle className="flex items-center gap-2"><UserCog /> League Members & Teams</CardTitle>
+                                <CardDescription>Manage user roles, assignments, and invitations.</CardDescription>
+                            </CardHeader>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-6 pb-6">
+                             <div className="flex justify-end mb-4">
+                                <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
                                     <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <Pencil className="h-4 w-4" onClick={() => setEditingUser({...user})}/>
-                                    </Button>
+                                        <Button size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
                                     </DialogTrigger>
-                                    {editingUser && editingUser.id === user.id && (
                                     <DialogContent>
                                         <DialogHeader>
-                                        <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
+                                            <DialogTitle>Add New League Member</DialogTitle>
+                                            <CardDescription>Invite a new user and assign them to a team.</CardDescription>
                                         </DialogHeader>
                                         <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="displayName">Display Name</Label>
-                                            <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="userEmail">Email</Label>
-                                            <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
-                                        </div>
+                                            <div className="space-y-2">
+                                                <Label>Display Name</Label>
+                                                <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe"/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Email</Label>
+                                                <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="new.user@example.com"/>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Role</Label>
+                                                <Select value={newUserData.role} onValueChange={(role: UserRole) => setNewUserData({...newUserData, role })}>
+                                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="player">Player</SelectItem>
+                                                        <SelectItem value="league_admin">League Admin</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Team</Label>
+                                                <Select value={newUserData.teamId} onValueChange={(teamId) => setNewUserData({...newUserData, teamId})}>
+                                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                                                        {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
                                         <DialogFooter>
-                                        <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-                                        <Button onClick={handleUpdateUser}>Save Changes</Button>
+                                            <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleAddUser}>Send Invite</Button>
                                         </DialogFooter>
                                     </DialogContent>
-                                    )}
                                 </Dialog>
-                                 {user.status === 'pending' ? (
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({description: `Resending invite to ${user.email}`})}>
-                                        <Mail className="h-4 w-4" />
-                                    </Button>
-                                ) : (
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({description: `Password reset sent to ${user.email}`})}>
-                                        <KeyRound className="h-4 w-4" />
-                                    </Button>
-                                )}
                             </div>
-                          </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            </div>
+                            <div className="space-y-3">
+                                {users.map(user => (
+                                <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
+                                    <div className="flex-1 min-w-[150px] flex items-center gap-2">
+                                    <div>
+                                        <p className="font-medium">{user.displayName}</p>
+                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                                    </div>
+                                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'} className={cn(user.status === 'active' && 'bg-green-600 text-white')}>{user.status === 'active' ? 'Active' : 'Pending'}</Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                    <Select
+                                        value={user.role}
+                                        onValueChange={(role: UserRole) => handleRoleChange(user.id, role)}
+                                    >
+                                        <SelectTrigger className="w-full sm:w-[130px] h-9">
+                                        <SelectValue placeholder="Select role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                        <SelectItem value="site_admin">Site Admin</SelectItem>
+                                        <SelectItem value="league_admin">League Admin</SelectItem>
+                                        <SelectItem value="player">Player</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    {user.role !== 'site_admin' && (
+                                        <Select
+                                        value={teams.find(t => t.ownerUserIds.includes(user.id))?.id || 'unassigned'}
+                                        onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}
+                                        >
+                                        <SelectTrigger className="w-full sm:w-[150px] h-9">
+                                            <SelectValue placeholder="Assign team" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                            {teams.map(team => (
+                                            <SelectItem key={team.id} value={team.id}>
+                                                {team.name}
+                                            </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                        </Select>
+                                    )}
+                                    <Dialog onOpenChange={(open) => !open && setEditingUser(null)}>
+                                            <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Pencil className="h-4 w-4" onClick={() => setEditingUser({...user})}/>
+                                            </Button>
+                                            </DialogTrigger>
+                                            {editingUser && editingUser.id === user.id && (
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="displayName">Display Name</Label>
+                                                    <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="userEmail">Email</Label>
+                                                    <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
+                                                </div>
+                                                </div>
+                                                <DialogFooter>
+                                                <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                                                <Button onClick={handleUpdateUser}>Save Changes</Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                            )}
+                                        </Dialog>
+                                        {user.status === 'pending' ? (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({description: `Resending invite to ${user.email}`})}>
+                                                <Mail className="h-4 w-4" />
+                                            </Button>
+                                        ) : (
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({description: `Password reset sent to ${user.email}`})}>
+                                                <KeyRound className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                ))}
+                            </div>
+                            <CardFooter className="justify-end p-0 pt-6">
+                                <Button onClick={() => handleSaveChanges('League Members')}><Save className="mr-2"/>Save Member Changes</Button>
+                            </CardFooter>
+                        </AccordionContent>
+                    </Card>
+                </AccordionItem>
+              </Accordion>
+             <div className="flex justify-end">
+                <Button onClick={() => handleSaveChanges()}><Save className="mr-2 h-4 w-4"/>Save All Admin Changes</Button>
+              </div>
           </div>
         ) : (
           // Default User View
