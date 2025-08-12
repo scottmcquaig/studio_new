@@ -314,7 +314,7 @@ export default function SettingsPage() {
                         <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="maxTeams">Max Teams</Label>
+                        <Label htmlFor="maxTeams">Number of Teams</Label>
                         <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
                     </div>
                     <Separator />
