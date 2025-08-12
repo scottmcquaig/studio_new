@@ -12,15 +12,13 @@ export const Logo = ({ className }: { className?: string }) => (
     className={cn("text-primary", className)}
     aria-label="YAC Fantasy League Logo"
   >
-    {/* TV body */}
-    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
-    {/* Trash can part */}
-    <line x1="12" y1="2" x2="12" y2="7"></line>
-    <line x1="8" y1="2" x2="16" y2="2"></line>
-    <line x1="10" y1="11" x2="10" y2="17"></line>
-    <line x1="14" y1="11" x2="14" y2="17"></line>
-    {/* Antennae */}
-    <line x1="17" y1="2" x2="19" y2="4"></line>
-    <line x1="7" y1="2" x2="5" y2="4"></line>
+    <path d="M20 7H4c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2z" />
+    <path d="M12 11v6" />
+    <path d="M16 11v6" />
+    <path d="M8 11v6" />
+    <path d="M12 2v5" />
+    <path d="M9 2h6" />
+    <path d="M17 2l2 2" />
+    <path d="M7 2L5 4" />
   </svg>
 );
