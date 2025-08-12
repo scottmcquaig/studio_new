@@ -1,6 +1,8 @@
 
 // All data is for a fictional Big Brother 27 season for mocking purposes.
 
+import { BB_RULES, SURVIVOR_RULES } from "@/lib/constants";
+
 export interface Season {
   id: string;
   franchise: string;
@@ -215,7 +217,7 @@ export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
         {"code":"VETO_USED","label":"Uses Veto (any target)","points":3},
         {"code":"NOMINATED","label":"Is nominated at any point","points":-3},
         {"code":"FINAL_NOM","label":"Sits on eviction night","points":-2},
-        {"code":"SURVIVES_EVICTION","label":"Survives eviction vote","points":5},
+        {"code":"SURVIVES_EVICTION","label":"Survives an eviction vote","points":5},
         {"code":"BLOCK_BUSTER_SAFE","label":"Wins Block Buster safety","points":4},
         {"code":"HAVE_NOT","label":"Becomes a Have-Not","points":-1},
         {"code":"PENALTY_RULE","label":"Rule violation penalty","points":-5},
@@ -243,31 +245,3 @@ export const MOCK_PICKS: Pick[] = [
   {"id":"pick_15","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"amy_bingham","round":4,"pick":15,"createdAt":"2025-08-01T12:24:00Z"},
   {"id":"pick_16","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"mickey_lee","round":4,"pick":16,"createdAt":"2025-08-01T12:25:00Z"}
 ];
-
-export const BB_RULES = [
-    { id: 'HOH_WIN', name: 'Head of Household Win', points: 10 },
-    { id: 'POV_WIN', name: 'Power of Veto Win', points: 8 },
-    { id: 'POWER_WIN', name: 'Other Power/Comp Win', points: 5 },
-    { id: 'SURVIVE', name: 'Survives a Week', points: 3 },
-    { id: 'NOMINATED', name: 'Nominated for Eviction', points: -2 },
-    { id: 'EVICTED', name: 'Evicted from the House', points: -5 },
-    { id: 'FINAL3', name: 'Makes Final 3', points: 15 },
-    { id: 'RUNNER_UP', name: 'Runner-Up', points: 20 },
-    { id: 'WINNER', name: 'Winner', points: 30 },
-    { id: 'AFP', name: 'America\'s Favorite Player', points: 10 },
-  ];
-  
-  export const SURVIVOR_RULES = [
-    { id: 'IMMUNITY_WIN', name: 'Immunity Challenge Win (Individual)', points: 10 },
-    { id: 'REWARD_WIN', name: 'Reward Challenge Win (Individual)', points: 5 },
-    { id: 'IDOL_FOUND', name: 'Finds Hidden Immunity Idol', points: 8 },
-    { id: 'IDOL_PLAYED', name: 'Plays Idol Correctly', points: 6 },
-    { id: 'ADVANTAGE_FOUND', name: 'Finds an Advantage', points: 4 },
-    { id: 'FIRE_MAKING_WIN', name: 'Wins Fire-Making Challenge', points: 7 },
-    { id: 'SAFE_AT_TRIBAL', name: 'Safe at Tribal Council', points: 2 },
-    { id: 'VOTED_OUT', name: 'Voted Out', points: -5 },
-    { id: 'JURY', name: 'Makes the Jury', points: 10 },
-    { id: 'FINAL_TRIBAL', name: 'Makes Final Tribal Council', points: 15 },
-    { id: 'SOLE_SURVIVOR', name: 'Sole Survivor (Winner)', points: 30 },
-    { id: 'FAN_FAVORITE', name: 'Sia Award / Fan Favorite', points: 10 },
-  ];
