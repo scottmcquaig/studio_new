@@ -119,7 +119,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
-              <h3 className="font-semibold flex items-center gap-1 text-primary">
+              <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                 <Crown className="h-4 w-4" /> HOH
               </h3>
               {hohWinner ? (
@@ -129,7 +129,7 @@ export default function DashboardPage() {
                     alt={hohWinner.fullName}
                     width={64}
                     height={64}
-                    className="rounded-full border-2 border-primary"
+                    className="rounded-full border-2 border-purple-600"
                     data-ai-hint="portrait person"
                   />
                   <span className="text-sm">{hohWinner.fullName.split(' ')[0]}</span>
@@ -182,7 +182,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
-              <h3 className="font-semibold flex items-center gap-1 text-accent">
+              <h3 className="font-semibold flex items-center gap-1 text-amber-500">
                 <Shield className="h-4 w-4" /> POV
               </h3>
               {povWinner ? (
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                     alt={povWinner.fullName}
                     width={64}
                     height={64}
-                    className="rounded-full border-2 border-accent"
+                    className="rounded-full border-2 border-amber-500"
                     data-ai-hint="portrait person"
                   />
                   <span className="text-sm">{povWinner.fullName.split(' ')[0]}</span>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
                                 </div>
                                 <Badge 
                                     variant={player.points >= 0 ? "default" : "destructive"} 
-                                    className={cn("text-sm font-bold", player.points >= 0 && "bg-green-600 text-white")}>
+                                    className={cn("text-sm font-bold", player.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
                                     {player.points > 0 ? '+': ''}{player.points}
                                 </Badge>
                             </div>
@@ -333,7 +333,7 @@ export default function DashboardPage() {
                   </div>
                   <Badge 
                     variant={activity.points >= 0 ? "default" : "destructive"} 
-                    className={cn("text-sm font-bold", activity.points >= 0 && "bg-green-600 text-white")}>
+                    className={cn("text-sm font-bold", activity.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
                     {activity.points > 0 ? '+': ''}{activity.points}
                   </Badge>
                 </div>
