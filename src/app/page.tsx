@@ -21,6 +21,9 @@ import {
   ListOrdered,
   ShieldCheck,
   Minus,
+  RotateCcw,
+  UserCheck,
+  ShieldOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +66,9 @@ export default function DashboardPage() {
 
   const pov = currentWeekEvents.find((c) => c.type === "VETO");
   const povWinner = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId);
+  const savedPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.usedOnId);
+  const renomPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.replacementNomId);
+
 
   const blockBuster = currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER");
   const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
@@ -213,6 +219,39 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
+            
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+               <h3 className="font-semibold flex items-center gap-1 text-gray-500">
+                Veto Usage
+              </h3>
+               <div className="flex flex-col items-center justify-center h-full">
+                {pov?.used === false && (
+                    <div className="flex flex-col items-center gap-1">
+                      <ShieldOff className="h-8 w-8 text-muted-foreground"/>
+                      <span className="text-sm text-muted-foreground">Not Used</span>
+                    </div>
+                  )}
+                  {pov?.used === true && savedPlayer && (
+                     <div className="flex flex-col items-center gap-2">
+                       <div className="flex flex-col items-center">
+                          <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
+                          <span className="text-xs">{savedPlayer.fullName.split(' ')[0]}</span>
+                       </div>
+                       <div className="flex flex-col items-center">
+                           <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
+                           <span className="text-xs">{renomPlayer ? renomPlayer.fullName.split(' ')[0] : 'TBD'}</span>
+                       </div>
+                     </div>
+                  )}
+                  {pov?.used === undefined && !povWinner && (
+                     <div className="flex flex-col items-center gap-1">
+                      <HelpCircle className="h-8 w-8 text-muted-foreground"/>
+                      <span className="text-sm text-muted-foreground">TBD</span>
+                    </div>
+                  )}
+              </div>
+            </div>
+
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
               <h3 className="font-semibold flex items-center gap-1 text-sky-500">
@@ -392,3 +431,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

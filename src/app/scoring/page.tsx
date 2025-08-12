@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_COMPETITIONS, MOCK_CONTESTANTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS, MOCK_LEAGUES } from "@/lib/data";
-import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck } from "lucide-react";
+import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 type ScoringEvent = {
@@ -43,6 +43,9 @@ export default function ScoringPage() {
   const nomWinners = MOCK_CONTESTANTS.filter((hg) => noms?.nominees?.includes(hg.id));
   const pov = weeklyEvents.find((c) => c.type === "VETO");
   const povWinner = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId);
+  const savedPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.usedOnId);
+  const renomPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.replacementNomId);
+
   const blockBuster = weeklyEvents.find((c) => c.type === "BLOCK_BUSTER");
   const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
   const eviction = weeklyEvents.find((c) => c.type === "EVICTION");
@@ -141,8 +144,8 @@ export default function ScoringPage() {
               <span>Week {displayWeek} Status</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
+           <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
+             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                 <Crown className="h-4 w-4" /> HOH
               </h3>
@@ -168,7 +171,7 @@ export default function ScoringPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
               <h3 className="font-semibold flex items-center gap-1 text-red-400">
                 <Users className="h-4 w-4" /> Noms
               </h3>
@@ -229,6 +232,38 @@ export default function ScoringPage() {
                   <span className="text-sm text-muted-foreground">TBD</span>
                 </>
               )}
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+               <h3 className="font-semibold flex items-center gap-1 text-gray-500">
+                Veto Usage
+              </h3>
+               <div className="flex flex-col items-center justify-center h-full">
+                {pov?.used === false && (
+                    <div className="flex flex-col items-center gap-1">
+                      <ShieldOff className="h-8 w-8 text-muted-foreground"/>
+                      <span className="text-sm text-muted-foreground">Not Used</span>
+                    </div>
+                  )}
+                  {pov?.used === true && savedPlayer && (
+                     <div className="flex flex-col items-center gap-2">
+                       <div className="flex flex-col items-center">
+                          <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
+                          <span className="text-xs">{savedPlayer.fullName.split(' ')[0]}</span>
+                       </div>
+                       <div className="flex flex-col items-center">
+                           <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
+                           <span className="text-xs">{renomPlayer ? renomPlayer.fullName.split(' ')[0] : 'TBD'}</span>
+                       </div>
+                     </div>
+                  )}
+                  {pov?.used === undefined && !povWinner && (
+                     <div className="flex flex-col items-center gap-1">
+                      <HelpCircle className="h-8 w-8 text-muted-foreground"/>
+                      <span className="text-sm text-muted-foreground">TBD</span>
+                    </div>
+                  )}
+              </div>
             </div>
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
@@ -384,3 +419,5 @@ export default function ScoringPage() {
     </div>
   );
 }
+
+    
