@@ -25,7 +25,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Your Rank</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center justify-center rounded-full bg-accent/20 h-8 w-8">
+                <Award className="h-4 w-4 text-accent-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{userRank}th</div>
@@ -35,7 +37,9 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Points</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center justify-center rounded-full bg-primary/20 h-8 w-8">
+                <TrendingUp className="h-4 w-4 text-primary" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -49,7 +53,9 @@ export default function DashboardPage() {
         <Card className="sm:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Next Event</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+             <div className="flex items-center justify-center rounded-full bg-secondary h-8 w-8">
+                <Calendar className="h-4 w-4 text-secondary-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Week 5 Veto</div>
@@ -85,6 +91,16 @@ export default function DashboardPage() {
               </TableBody>
             </Table>
         </CardContent>
+      </Card>
+
+      <Card>
+          <CardHeader>
+            <CardTitle>AI-Powered Predictions</CardTitle>
+            <CardDescription>Get an edge on the competition.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Predictions coming soon.</p>
+          </CardContent>
       </Card>
     </div>
   );
