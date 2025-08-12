@@ -26,7 +26,7 @@ export default function DashboardPage() {
         case 'HOH': return { label: 'HOH', variant: 'primary' as const };
         case 'VETO': return { label: 'Veto', variant: 'secondary' as const };
         case 'EVICTION': return { label: 'Eviction', variant: 'destructive' as const };
-        default: return { label: 'Event', variant: 'default' as const };
+        default: return { label: 'Event', variant: 'outline' as const };
     }
   }
 
@@ -107,7 +107,7 @@ export default function DashboardPage() {
             {upcomingEvents.map(event => {
                 const eventType = getEventType(event.type);
                 return (
-                    <Badge key={event.id} variant={eventType.variant}>{eventType.label}</Badge>
+                    <Badge key={event.id} variant={eventType.variant} className={eventType.variant === 'primary' ? 'bg-primary/20 text-primary-foreground border-primary/50' : ''}>{eventType.label}</Badge>
                 )
             })}
           </CardContent>

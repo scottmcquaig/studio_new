@@ -17,7 +17,7 @@ export function BottomNavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm md:hidden">
       <div className="mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -26,8 +26,8 @@ export function BottomNavBar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50",
-                isActive ? "text-primary" : "text-muted-foreground"
+                "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-sm font-medium transition-colors hover:bg-accent/10",
+                isActive ? "text-accent" : "text-muted-foreground"
               )}
             >
               <item.icon className="h-5 w-5" />
