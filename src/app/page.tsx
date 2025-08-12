@@ -1,7 +1,46 @@
+
 import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_SEASONS } from "@/lib/data";
-import { Home, Crown, Shield, Users, UserX, HelpCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_TEAMS } from "@/lib/data";
+import {
+  Home,
+  Crown,
+  Shield,
+  Users,
+  UserX,
+  HelpCircle,
+  ArrowUp,
+  ArrowDown,
+  TrendingUp,
+  Medal,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+
+// Helper to get top players
+const getTopPlayers = () => {
+  const allPlayers = MOCK_TEAMS.flatMap(team => 
+    team.weekly_score_breakdown.week4.map(playerScore => {
+      const player = MOCK_HOUSEGUESTS.find(hg => hg.id === playerScore.houseguestId);
+      return {
+        ...player,
+        points: playerScore.points,
+        absPoints: Math.abs(playerScore.points),
+      };
+    })
+  );
+
+  return allPlayers
+    .sort((a, b) => b.absPoints - a.absPoints)
+    .slice(0, 4);
+};
+
 
 export default function DashboardPage() {
   const activeSeason = MOCK_SEASONS[0];
@@ -24,8 +63,9 @@ export default function DashboardPage() {
   const evictedPlayer = MOCK_HOUSEGUESTS.find(
     (hg) => hg.id === eviction?.evictedId
   );
-
-  const placeholderImage = "/question-mark.svg";
+  
+  const sortedTeams = [...MOCK_TEAMS].sort((a, b) => b.total_score - a.total_score);
+  const topPlayers = getTopPlayers();
 
   return (
     <div className="flex flex-col">
@@ -65,7 +105,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                     <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <span className="text-sm text-muted-foreground">TBD</span>
                 </>
@@ -77,29 +117,36 @@ export default function DashboardPage() {
                 <Users className="h-4 w-4" /> Noms
               </h3>
               <div className="flex items-center justify-center gap-2">
-              {nomWinners.length > 0 ? (
-                nomWinners.map(nom => (
-                  <div key={nom.id} className="flex flex-col items-center gap-1">
-                    <Image
-                      src={nom.photoUrl!}
-                      alt={nom.fullName}
-                      width={48}
-                      height={48}
-                      className="rounded-full border-2 border-red-400"
-                       data-ai-hint="portrait person"
-                    />
-                    <span className="text-xs">{nom.fullName.split(' ')[0]}</span>
-                  </div>
-                ))
-              ) : (
-                 <>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                     <HelpCircle className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                </>
-              )}
+                {nomWinners.length > 0 ? (
+                  nomWinners.map((nom) => (
+                    <div
+                      key={nom.id}
+                      className="flex flex-col items-center gap-1"
+                    >
+                      <Image
+                        src={nom.photoUrl!}
+                        alt={nom.fullName}
+                        width={48}
+                        height={48}
+                        className="rounded-full border-2 border-red-400"
+                        data-ai-hint="portrait person"
+                      />
+                      <span className="text-xs">
+                        {nom.fullName.split(" ")[0]}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                      <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                  </>
+                )}
               </div>
-               {nomWinners.length === 0 && <span className="text-sm text-muted-foreground">TBD</span>}
+              {nomWinners.length === 0 && (
+                <span className="text-sm text-muted-foreground">TBD</span>
+              )}
             </div>
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
@@ -121,7 +168,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                     <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <span className="text-sm text-muted-foreground">TBD</span>
                 </>
@@ -140,14 +187,14 @@ export default function DashboardPage() {
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-muted-foreground"
-                     data-ai-hint="portrait person"
+                    data-ai-hint="portrait person"
                   />
                   <span className="text-sm">{evictedPlayer.fullName}</span>
                 </>
               ) : (
                 <>
-                   <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                     <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
                   </div>
                   <span className="text-sm text-muted-foreground">TBD</span>
                 </>
@@ -155,15 +202,76 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-         <Card>
-          <CardHeader>
-            <CardTitle>Welcome to Your Dashboard</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>The dashboard content will be built here.</p>
-          </CardContent>
-        </Card>
+        
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><TrendingUp /> Current Standings</CardTitle>
+                    <CardDescription>Team rankings and weekly performance.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {sortedTeams.map((team, index) => (
+                             <div key={team.id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className={cn("text-lg font-bold w-6 text-center", 
+                                        index === 0 && "text-amber-400",
+                                        index === 1 && "text-slate-300",
+                                        index === 2 && "text-orange-400"
+                                    )}>{index + 1}</span>
+                                    <div>
+                                        <p className="font-medium">{team.name}</p>
+                                        <p className="text-sm text-muted-foreground">{team.total_score.toLocaleString()} pts</p>
+                                    </div>
+                                </div>
+                                <div className={cn(
+                                    "flex items-center gap-1 text-sm font-semibold",
+                                    team.weekly_score >= 0 ? "text-green-500" : "text-red-500"
+                                )}>
+                                    {team.weekly_score >= 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
+                                    <span>({team.weekly_score > 0 ? '+': ''}{team.weekly_score})</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Medal/> Top Movers (Week 4)</CardTitle>
+                    <CardDescription>Players with the biggest point swings last week.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     <div className="space-y-4">
+                        {topPlayers.map(player => (
+                            <div key={player.id} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Image 
+                                        src={player.photoUrl!}
+                                        alt={player.fullName}
+                                        width={40}
+                                        height={40}
+                                        className="rounded-full"
+                                        data-ai-hint="portrait person"
+                                    />
+                                    <div>
+                                        <p className="font-medium">{player.fullName}</p>
+                                        <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
+                                    </div>
+                                </div>
+                                <Badge variant={player.points > 0 ? "default" : "destructive"} className="text-sm font-bold">
+                                    {player.points > 0 ? '+': ''}{player.points}
+                                </Badge>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
       </main>
     </div>
   );
 }
+
+    
