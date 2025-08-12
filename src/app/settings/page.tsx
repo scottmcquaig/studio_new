@@ -373,12 +373,11 @@ export default function SettingsPage() {
                                 <div className='space-y-4'>
                                   {(noms?.nominees || []).map((nomineeId, index) => {
                                       const isRenom = nomineeId === pov?.replacementNomId;
-                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' | '' = 'safe';
+                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' | '' = '';
                                       if (nomineeId === eviction?.evictedId) currentResult = 'evicted';
                                       else if (nomineeId === pov?.usedOnId) currentResult = 'saved';
                                       else if (nomineeId === blockBuster?.winnerId) currentResult = 'blockbuster';
-                                      else if (nomineeId) currentResult = 'safe';
-                                      else currentResult = '';
+                                      else if (nomineeId && noms?.nominees?.includes(nomineeId)) currentResult = 'safe';
                                     
                                     return (
                                       <div key={index} className="flex flex-col gap-3 p-3 border rounded-lg bg-background/50">
@@ -412,6 +411,7 @@ export default function SettingsPage() {
                                                             <SelectValue placeholder="Select Result..." />
                                                         </SelectTrigger>
                                                         <SelectContent>
+                                                            <SelectItem value="">Select Result...</SelectItem>
                                                             <SelectItem value="safe">Safe</SelectItem>
                                                             <SelectItem value="evicted">Evicted</SelectItem>
                                                             <SelectItem value="saved">Saved by Veto</SelectItem>
