@@ -15,7 +15,7 @@ export default function ScoringPage() {
         <Card>
           <CardHeader>
             <CardTitle>Scoring Rules</CardTitle>
-          </CardHeader>
+          </Header>
           <CardContent>
             <p>The league's scoring rules will be displayed here.</p>
           </CardContent>
