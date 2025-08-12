@@ -1,5 +1,5 @@
 
-import { MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
+import { MOCK_LEAGUES, MOCK_TEAMS, MOCK_USERS } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Award, TrendingUp, Calendar } from "lucide-react";
 import {
@@ -14,10 +14,13 @@ import {
 export default function DashboardPage() {
   const activeLeague = MOCK_LEAGUES[0];
   const teams = MOCK_TEAMS.sort((a, b) => b.total_score - a.total_score);
-  const topTeams = teams.slice(0, 3);
-  const userTeam = MOCK_TEAMS.find(t => t.id === 'team_scott');
-  const userRank = teams.findIndex(t => t.id === 'team_scott') + 1;
+  
+  // Assuming the admin user is 'user_scott' for now.
+  const currentUser = MOCK_USERS.find(u => u.id === 'user_scott');
+  const userTeam = teams.find(t => t.ownerUserIds.includes(currentUser?.id || ''));
+  const userRank = teams.findIndex(t => t.id === userTeam?.id) + 1;
 
+  const topTeams = teams.slice(0, 3);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
@@ -30,7 +33,7 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{userRank}th</div>
+            <div className="text-2xl font-bold">{userRank > 0 ? `${userRank}th` : 'N/A'}</div>
             <p className="text-xs text-muted-foreground">out of {teams.length} teams</p>
           </CardContent>
         </Card>
@@ -43,10 +46,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {userTeam?.total_score.toLocaleString()}
+              {userTeam?.total_score.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              +{userTeam?.weekly_score} from last week
+              +{userTeam?.weekly_score || 0} from last week
             </p>
           </CardContent>
         </Card>

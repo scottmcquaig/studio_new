@@ -69,7 +69,7 @@ export interface Team {
     id: string;
     leagueId: string;
     name: string;
-    ownerUserId: string;
+    ownerUserIds: string[];
     houseguestIds: string[];
     faab: number;
     createdAt: string;
@@ -83,6 +83,7 @@ export interface User {
     email: string;
     photoURL?: string;
     createdAt: string;
+    isAdmin?: boolean;
 }
 
 export interface ScoringRule {
@@ -183,15 +184,21 @@ export const MOCK_LEAGUES: League[] = [
 ];
 
 export const MOCK_TEAMS: Team[] = [
-    {"id":"team_scott","leagueId":"yac_bb27_public","name":"Yadkin Sharks","ownerUserId":"user_scott","houseguestIds":["keanu_soto", "rachel_reilly", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 1820, weekly_score: 145},
-    {"id":"team_alex","leagueId":"yac_bb27_public","name":"Pool Floaters","ownerUserId":"user_alex","houseguestIds":["ashley_hollis", "lauren_domingue", "vince_panaro"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 1950, weekly_score: 210},
-    {"id":"team_jordan","leagueId":"yac_bb27_public","name":"Trash TV Titans","ownerUserId":"user_jordan","houseguestIds":["ava_pearl", "katherine_woodman", "morgan_pope"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 1750, weekly_score: 95}
+    {"id":"team_hank_alicia","leagueId":"yac_bb27_public","name":"Hank & Lee's Excellent Evictions","ownerUserIds":["user_hank", "user_alicia"],"houseguestIds":["keanu_soto", "rachel_reilly", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 1820, weekly_score: 145},
+    {"id":"team_stone_liz","leagueId":"yac_bb27_public","name":"Zae My Name, Zae My Name","ownerUserIds":["user_stone", "user_liz"],"houseguestIds":["ashley_hollis", "lauren_domingue", "vince_panaro"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 1950, weekly_score: 210},
+    {"id":"team_jess_will","leagueId":"yac_bb27_public","name":"Expect The Unexpected","ownerUserIds":["user_jess", "user_will"],"houseguestIds":["ava_pearl", "katherine_woodman", "morgan_pope"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 1750, weekly_score: 95},
+    {"id":"team_molly_scott","leagueId":"yac_bb27_public","name":"Buddy Dan","ownerUserIds":["user_molly", "user_scott"],"houseguestIds":["zach_cornell", "will_williams", "kelley_jorgensen"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 1640, weekly_score: 110}
 ];
 
 export const MOCK_USERS: User[] = [
-    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z"},
-    {"id":"user_alex","displayName":"Alex","email":"alex@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z"},
-    {"id":"user_jordan","displayName":"Jordan","email":"jordan@example.com","photoURL":"","createdAt":"2025-08-01T12:00:45Z"}
+    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z", "isAdmin": true},
+    {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z"},
+    {"id":"user_alicia","displayName":"Alicia","email":"alicia@example.com","photoURL":"","createdAt":"2025-08-01T12:00:20Z"},
+    {"id":"user_stone","displayName":"Stone","email":"stone@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z"},
+    {"id":"user_liz","displayName":"Liz","email":"liz@example.com","photoURL":"","createdAt":"2025-08-01T12:00:40Z"},
+    {"id":"user_jess","displayName":"Jess","email":"jess@example.com","photoURL":"","createdAt":"2025-08-01T12:00:50Z"},
+    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z"},
+    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z"}
 ];
 
 export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
