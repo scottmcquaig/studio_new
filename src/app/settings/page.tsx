@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState } from 'react';
@@ -160,17 +161,18 @@ export default function SettingsPage() {
     setCompetitions(competitions.map(c => c.id === nomEvent.id ? {...c, nominees: updatedNominees} : c));
   }
 
-  const handleNomineeResultChange = (nomineeId: string, result: 'safe' | 'evicted' | 'saved' | 'blockbuster') => {
+  const handleNomineeResultChange = (nomineeId: string, result: 'safe' | 'evicted' | 'saved' | 'blockbuster' | '') => {
       let newCompetitions = [...competitions];
       
       // Clear previous results for this week
       let evictionEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'EVICTION');
+      if (evictionEvent && evictionEvent.evictedId === nomineeId) evictionEvent.evictedId = undefined;
+
       let blockBusterEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'BLOCK_BUSTER');
+      if (blockBusterEvent && blockBusterEvent.winnerId === nomineeId) blockBusterEvent.winnerId = undefined;
+
       let povEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'VETO');
-      
-      if (evictionEvent) evictionEvent.evictedId = undefined;
-      if (blockBusterEvent) blockBusterEvent.winnerId = undefined;
-      if (povEvent) povEvent.usedOnId = undefined;
+      if (povEvent && povEvent.usedOnId === nomineeId) povEvent.usedOnId = undefined;
 
       // Set new result
       if (result === 'evicted') {
@@ -188,18 +190,23 @@ export default function SettingsPage() {
       } else if (result === 'saved') {
           if (povEvent) {
               povEvent.usedOnId = nomineeId;
+          } else { // create if doesn't exist
+              const newPovEvent = { id: `bb27_wk${selectedWeek}_veto`, seasonId: 'bb27', week: selectedWeek, type: 'VETO' as const, airDate: new Date().toISOString(), used: true, usedOnId: nomineeId };
+              newCompetitions.push(newPovEvent);
           }
       }
       setCompetitions(newCompetitions);
   };
 
   const handleRenomChange = (nomineeId: string, isChecked: boolean) => {
-    const povEvent = competitions.find(c => c.week === selectedWeek && c.type === 'VETO');
-    if (povEvent) {
-        setCompetitions(competitions.map(c => 
-            c.id === povEvent.id ? { ...c, replacementNomId: isChecked ? nomineeId : undefined } : c
-        ));
+    let povEvent = competitions.find(c => c.week === selectedWeek && c.type === 'VETO');
+    if (!povEvent) {
+        povEvent = { id: `bb27_wk${selectedWeek}_veto`, seasonId: 'bb27', week: selectedWeek, type: 'VETO', airDate: new Date().toISOString() };
+        setCompetitions([...competitions, povEvent]);
     }
+    setCompetitions(currentCompetitions => currentCompetitions.map(c => 
+        c.id === povEvent!.id ? { ...c, replacementNomId: isChecked ? nomineeId : undefined } : c
+    ));
   }
 
   const handleAddNominee = () => {
@@ -366,10 +373,12 @@ export default function SettingsPage() {
                                 <div className='space-y-4'>
                                   {(noms?.nominees || []).map((nomineeId, index) => {
                                       const isRenom = nomineeId === pov?.replacementNomId;
-                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' = 'safe';
+                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' | '' = 'safe';
                                       if (nomineeId === eviction?.evictedId) currentResult = 'evicted';
                                       else if (nomineeId === pov?.usedOnId) currentResult = 'saved';
                                       else if (nomineeId === blockBuster?.winnerId) currentResult = 'blockbuster';
+                                      else if (nomineeId) currentResult = 'safe';
+                                      else currentResult = '';
                                     
                                     return (
                                       <div key={index} className="flex flex-col gap-3 p-3 border rounded-lg bg-background/50">
@@ -394,28 +403,22 @@ export default function SettingsPage() {
                                                         Replacement Nominee
                                                     </label>
                                                 </div>
-                                                <RadioGroup 
-                                                  value={currentResult}
-                                                  onValueChange={(val) => handleNomineeResultChange(nomineeId, val as any)}
-                                                  className="flex flex-wrap gap-x-4 gap-y-2"
-                                                >
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="safe" id={`safe-${nomineeId}`} />
-                                                        <Label htmlFor={`safe-${nomineeId}`}>Safe</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="evicted" id={`evicted-${nomineeId}`} />
-                                                        <Label htmlFor={`evicted-${nomineeId}`}>Evicted</Label>
-                                                    </div>
-                                                     <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="saved" id={`saved-${nomineeId}`} />
-                                                        <Label htmlFor={`saved-${nomineeId}`}>Saved by Veto</Label>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        <RadioGroupItem value="blockbuster" id={`blockbuster-${nomineeId}`} />
-                                                        <Label htmlFor={`blockbuster-${nomineeId}`}>Block Buster</Label>
-                                                    </div>
-                                                </RadioGroup>
+                                                <div className="w-full sm:w-auto">
+                                                    <Select
+                                                        value={currentResult}
+                                                        onValueChange={(val) => handleNomineeResultChange(nomineeId, val as any)}
+                                                    >
+                                                        <SelectTrigger className="w-full sm:w-[150px]">
+                                                            <SelectValue placeholder="Select Result..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="safe">Safe</SelectItem>
+                                                            <SelectItem value="evicted">Evicted</SelectItem>
+                                                            <SelectItem value="saved">Saved by Veto</SelectItem>
+                                                            <SelectItem value="blockbuster">Block Buster</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
                                         )}
                                       </div>
