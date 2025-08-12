@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart2, Users, ClipboardList, Settings } from "lucide-react";
+import { Home, Users, UserSquare, ClipboardList, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/", icon: Home, label: "Dashboard" },
-  { href: "/standings", icon: BarChart2, label: "Standings" },
   { href: "/teams", icon: Users, label: "Teams" },
+  { href: "/houseguests", icon: UserSquare, label: "Houseguests" },
   { href: "/scoring", icon: ClipboardList, label: "Scoring" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
