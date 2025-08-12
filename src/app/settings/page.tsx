@@ -1,8 +1,7 @@
 
-
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -11,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw } from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
+import { MOCK_USERS, MOCK_TEAMS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -20,28 +19,42 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-
-// For this prototype, we'll assume the logged-in user is the first site admin found.
-const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
-const activeSeason = MOCK_SEASONS[0];
+import { getLeagues } from '@/lib/firestore';
 
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [isAdminView, setIsAdminView] = useState(false);
+  
+  const [leagues, setLeagues] = useState<League[]>([]);
+  
+  useEffect(() => {
+    async function fetchLeagues() {
+      const fetchedLeagues = await getLeagues();
+      setLeagues(fetchedLeagues);
+    }
+    fetchLeagues();
+  }, [])
+  
+  const league = leagues.length > 0 ? leagues[0] : null;
+
+
+  // For this prototype, we'll assume the logged-in user is the first site admin found.
+  const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
+  const activeSeason = MOCK_SEASONS[0];
+
 
   // Admin state
   const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
-  const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
+  // const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
   const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
 
   const specialEventRules = scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
   
-  const contestantTerm = league.contestantTerm;
+  const contestantTerm = league?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
@@ -307,6 +320,10 @@ export default function SettingsPage() {
 
   const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
 
+  if (!league) {
+    return <div>Loading...</div>; // Or a spinner
+  }
+
   return (
     <div className="flex flex-col">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
@@ -568,11 +585,11 @@ export default function SettingsPage() {
                                 <h3 className="text-lg font-medium">General</h3>
                                 <div className="space-y-2">
                                     <Label htmlFor="leagueName">League Name</Label>
-                                    <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
+                                    <Input id="leagueName" value={league.name} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, name: e.target.value} : l))} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="maxTeams">Number of Teams</Label>
-                                    <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
+                                    <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, maxTeams: Number(e.target.value)} : l))} />
                                 </div>
                                 <Label>Team Names</Label>
                                 <div className="space-y-2">
@@ -594,11 +611,11 @@ export default function SettingsPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                        <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, singular: e.target.value }})} />
+                                        <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, contestantTerm: { ...l.contestantTerm, singular: e.target.value }} : l))} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                        <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, plural: e.target.value }})} />
+                                        <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, contestantTerm: { ...l.contestantTerm, plural: e.target.value }} : l))} />
                                     </div>
                                 </div>
                              </div>
