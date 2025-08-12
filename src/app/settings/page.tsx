@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User, Team, UserRole, Houseguest, Competition, League } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -170,8 +170,14 @@ export default function SettingsPage() {
     setIsSpecialEventDialogOpen(false);
   }
 
-  const handleTeamNameChange = (teamId: string, newName: string) => {
-    setTeams(teams.map(t => t.id === teamId ? {...t, name: newName} : t));
+  const handleTeamNameChange = (teamIndex: number, newName: string) => {
+    setTeams(currentTeams => {
+        const updatedTeams = [...currentTeams];
+        if (updatedTeams[teamIndex]) {
+            updatedTeams[teamIndex] = { ...updatedTeams[teamIndex], name: newName };
+        }
+        return updatedTeams;
+    });
   }
 
 
@@ -339,71 +345,64 @@ export default function SettingsPage() {
                 <CardTitle className="flex items-center gap-2"><UserSquare/> Houseguest Management</CardTitle>
                 <CardDescription>Edit houseguest information and photos.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-                {houseguests.map(hg => (
-                    <div key={hg.id} className="flex items-center justify-between p-2 rounded-lg border">
-                        <div className="flex items-center gap-3">
-                            <Image
-                                src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                                alt={hg.fullName}
-                                width={40}
-                                height={40}
-                                className="rounded-full"
-                                data-ai-hint="portrait person"
-                            />
-                            <div>
-                                <p className="font-medium">{hg.fullName}</p>
-                                <p className="text-xs text-muted-foreground">{hg.occupation}</p>
-                            </div>
-                        </div>
-                        <Dialog onOpenChange={(open) => !open && setEditingHouseguest(null)}>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHouseguest({...hg})}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            {editingHouseguest && editingHouseguest.id === hg.id && (
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Edit Houseguest: {editingHouseguest.fullName}</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="hgName">Full Name</Label>
-                                    <Input id="hgName" value={editingHouseguest.fullName} onChange={(e) => setEditingHouseguest({...editingHouseguest, fullName: e.target.value})} />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="hgOccupation">Occupation</Label>
-                                    <Input id="hgOccupation" value={editingHouseguest.occupation} onChange={(e) => setEditingHouseguest({...editingHouseguest, occupation: e.target.value})} />
-                                  </div>
-                                   <div className="space-y-2">
-                                    <Label htmlFor="hgPhotoUrl">Photo URL</Label>
-                                    <div className="flex items-center gap-2">
-                                      <Input id="hgPhotoUrl" value={editingHouseguest.photoUrl || ''} onChange={(e) => setEditingHouseguest({...editingHouseguest, photoUrl: e.target.value})} />
-                                      <Button variant="outline" size="icon"><Upload className="h-4 w-4"/></Button>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                      <Label>Status</Label>
-                                      <Select value={editingHouseguest.status} onValueChange={(val: 'active' | 'evicted' | 'jury') => setEditingHouseguest({...editingHouseguest, status: val})}>
-                                          <SelectTrigger><SelectValue/></SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="active">Active</SelectItem>
-                                              <SelectItem value="evicted">Evicted</SelectItem>
-                                              <SelectItem value="jury">Jury</SelectItem>
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {houseguests.map(hg => (
+                        <div key={hg.id} className="flex items-center justify-between p-2 rounded-lg border">
+                            <div className="flex items-center gap-3">
+                                <Image
+                                    src={hg.photoUrl || "https://placehold.co/100x100.png"}
+                                    alt={hg.fullName}
+                                    width={40}
+                                    height={40}
+                                    className="rounded-full"
+                                    data-ai-hint="portrait person"
+                                />
+                                <div>
+                                    <p className="font-medium">{hg.fullName}</p>
+                                    <Badge variant={hg.status === 'active' ? 'default' : 'destructive'} className="h-fit text-xs mt-1">
+                                        {hg.status.charAt(0).toUpperCase() + hg.status.slice(1)}
+                                    </Badge>
                                 </div>
-                                <DialogFooter>
-                                  <Button variant="outline" onClick={() => setEditingHouseguest(null)}>Cancel</Button>
-                                  <Button onClick={handleUpdateHouseguest}>Save Changes</Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            )}
-                          </Dialog>
-                    </div>
-                ))}
+                            </div>
+                            <Dialog onOpenChange={(open) => !open && setEditingHouseguest(null)}>
+                                <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHouseguest({...hg})}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                </DialogTrigger>
+                                {editingHouseguest && editingHouseguest.id === hg.id && (
+                                <DialogContent>
+                                    <DialogHeader>
+                                    <DialogTitle>Edit Houseguest: {editingHouseguest.fullName}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="hgName">Full Name</Label>
+                                        <Input id="hgName" value={editingHouseguest.fullName} onChange={(e) => setEditingHouseguest({...editingHouseguest, fullName: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="hgOccupation">Occupation</Label>
+                                        <Input id="hgOccupation" value={editingHouseguest.occupation} onChange={(e) => setEditingHouseguest({...editingHouseguest, occupation: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="hgPhotoUrl">Photo URL</Label>
+                                        <div className="flex items-center gap-2">
+                                        <Input id="hgPhotoUrl" value={editingHouseguest.photoUrl || ''} onChange={(e) => setEditingHouseguest({...editingHouseguest, photoUrl: e.target.value})} />
+                                        <Button variant="outline" size="icon"><Upload className="h-4 w-4"/></Button>
+                                        </div>
+                                    </div>
+                                    </div>
+                                    <DialogFooter>
+                                    <Button variant="outline" onClick={() => setEditingHouseguest(null)}>Cancel</Button>
+                                    <Button onClick={handleUpdateHouseguest}>Save Changes</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                                )}
+                            </Dialog>
+                        </div>
+                    ))}
+                </div>
             </CardContent>
         </Card>
 
@@ -425,10 +424,14 @@ export default function SettingsPage() {
                     <Separator />
                     <Label>Team Names</Label>
                     <div className="space-y-2">
-                    {teams.slice(0, league.maxTeams).map((team, index) => (
-                        <div key={team.id} className="flex items-center gap-2">
+                    {Array.from({ length: league.maxTeams }).map((_, index) => (
+                        <div key={teams[index]?.id || `new_team_${index}`} className="flex items-center gap-2">
                             <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
-                            <Input value={team.name} onChange={(e) => handleTeamNameChange(team.id, e.target.value)} />
+                            <Input 
+                                value={teams[index]?.name || ''} 
+                                placeholder={`Team ${index + 1} Name`}
+                                onChange={(e) => handleTeamNameChange(index, e.target.value)} 
+                            />
                         </div>
                     ))}
                     </div>
@@ -531,33 +534,42 @@ export default function SettingsPage() {
                             </Select>
                           )}
                            <Dialog onOpenChange={(open) => !open && setEditingUser(null)}>
-                            <DialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingUser({...user})}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            {editingUser && editingUser.id === user.id && (
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="displayName">Display Name</Label>
-                                    <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="userEmail">Email</Label>
-                                    <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
-                                  </div>
-                                </div>
-                                <DialogFooter>
-                                  <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-                                  <Button onClick={handleUpdateUser}>Save Changes</Button>
-                                </DialogFooter>
-                              </DialogContent>
+                                <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Pencil className="h-4 w-4" onClick={() => setEditingUser({...user})}/>
+                                </Button>
+                                </DialogTrigger>
+                                {editingUser && editingUser.id === user.id && (
+                                <DialogContent>
+                                    <DialogHeader>
+                                    <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="displayName">Display Name</Label>
+                                        <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="userEmail">Email</Label>
+                                        <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
+                                    </div>
+                                    </div>
+                                    <DialogFooter>
+                                    <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                                    <Button onClick={handleUpdateUser}>Save Changes</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                                )}
+                            </Dialog>
+                             {user.status === 'pending' ? (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alert(`Resending invite to ${user.email}`)}>
+                                    <Mail className="h-4 w-4" />
+                                </Button>
+                            ) : (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alert(`Password reset sent to ${user.email}`)}>
+                                    <KeyRound className="h-4 w-4" />
+                                </Button>
                             )}
-                          </Dialog>
                         </div>
                       </div>
                     ))}
@@ -568,3 +580,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
