@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw } from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
+import { MOCK_USERS, MOCK_TEAMS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -26,12 +26,14 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [isAdminView, setIsAdminView] = useState(false);
   
-  const [leagues, setLeagues] = useState<League[]>([]);
+  const [leagues, setLeagues] = useState<League[]>(MOCK_LEAGUES);
   
   useEffect(() => {
     async function fetchLeagues() {
       const fetchedLeagues = await getLeagues();
-      setLeagues(fetchedLeagues);
+      if (fetchedLeagues.length > 0) {
+        setLeagues(fetchedLeagues);
+      }
     }
     fetchLeagues();
   }, [])
@@ -321,7 +323,7 @@ export default function SettingsPage() {
   const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
 
   if (!league) {
-    return <div>Loading...</div>; // Or a spinner
+    return <div>Loading...</div>;
   }
 
   return (

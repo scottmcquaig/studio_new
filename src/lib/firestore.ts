@@ -15,6 +15,18 @@ function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData, DocumentData>
 }
 
 export async function getLeagues(): Promise<League[]> {
-  const querySnapshot = await getDocs(collection(db, 'leagues'));
-  return querySnapshot.docs.map(doc => fromFirestore<League>(doc));
+  // If db is not a valid Firestore instance (i.e., credentials not set), return empty array
+  if (!db || typeof db.collection !== 'function') {
+    return [];
+  }
+  
+  try {
+    const querySnapshot = await getDocs(collection(db, 'leagues'));
+    return querySnapshot.docs.map(doc => fromFirestore<League>(doc));
+  } catch (error) {
+    console.error("Error fetching leagues from Firestore:", error);
+    // In case of an error during fetch (e.g., permissions), return an empty array
+    // to prevent the app from crashing.
+    return [];
+  }
 }
