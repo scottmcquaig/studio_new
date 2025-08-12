@@ -14,6 +14,7 @@ import type { User, Team, UserRole, Houseguest, Competition, League } from "@/li
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 
 // For this prototype, we'll assume the logged-in user is the first site admin found.
 const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
@@ -27,11 +28,19 @@ export default function SettingsPage() {
   const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
   const [houseguests, setHouseguests] = useState<Houseguest[]>(MOCK_HOUSEGUESTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
-  const [newUserEmail, setNewUserEmail] = useState('');
+  
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingHouseguest, setEditingHouseguest] = useState<Houseguest | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+
+  const [newUserData, setNewUserData] = useState({
+    displayName: '',
+    email: '',
+    role: 'player' as UserRole,
+    teamId: 'unassigned'
+  });
   
   const [specialEventData, setSpecialEventData] = useState({
       houseguestId: '',
@@ -50,22 +59,35 @@ export default function SettingsPage() {
   const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => i + 1);
 
 
-  const handleInviteUser = () => {
-    if (!newUserEmail.trim()) {
-      alert("Please enter a valid email.");
+  const handleAddUser = () => {
+    if (!newUserData.email.trim() || !newUserData.displayName.trim()) {
+      alert("Please enter a valid display name and email.");
       return;
     }
-    const newId = `user_${newUserEmail.split('@')[0].toLowerCase()}`;
     const newUser: User = {
-      id: newId,
-      email: newUserEmail,
-      displayName: newUserEmail.split('@')[0],
+      id: `user_${newUserData.email.split('@')[0].toLowerCase()}`,
+      displayName: newUserData.displayName,
+      email: newUserData.email,
       createdAt: new Date().toISOString(),
-      role: 'player',
+      role: newUserData.role,
+      status: 'pending',
     };
+
+    let updatedTeams = [...teams];
+    if (newUserData.teamId !== 'unassigned') {
+        updatedTeams = teams.map(team => {
+            if (team.id === newUserData.teamId) {
+                return {...team, ownerUserIds: [...team.ownerUserIds, newUser.id]};
+            }
+            return team;
+        });
+    }
+
     setUsers([...users, newUser]);
-    setNewUserEmail('');
-    alert(`User ${newUser.displayName} invited!`);
+    setTeams(updatedTeams);
+    setNewUserData({ displayName: '', email: '', role: 'player', teamId: 'unassigned' });
+    setIsAddUserDialogOpen(false);
+    alert(`User ${newUser.displayName} created and invite sent!`);
   };
 
   const handleSaveChanges = () => {
@@ -403,8 +425,9 @@ export default function SettingsPage() {
                     <Separator />
                     <Label>Team Names</Label>
                     <div className="space-y-2">
-                    {teams.map(team => (
+                    {teams.slice(0, league.maxTeams).map((team, index) => (
                         <div key={team.id} className="flex items-center gap-2">
+                            <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
                             <Input value={team.name} onChange={(e) => handleTeamNameChange(team.id, e.target.value)} />
                         </div>
                     ))}
@@ -413,16 +436,66 @@ export default function SettingsPage() {
             </Card>
 
              <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><UserCog /> League Members & Teams</CardTitle>
-                    <CardDescription>Assign users to teams and set their roles.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2"><UserCog /> League Members & Teams</CardTitle>
+                        <CardDescription>Manage user roles, assignments, and invitations.</CardDescription>
+                    </div>
+                    <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Add New League Member</DialogTitle>
+                                <CardDescription>Invite a new user and assign them to a team.</CardDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Display Name</Label>
+                                    <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe"/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Email</Label>
+                                    <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="new.user@example.com"/>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Role</Label>
+                                    <Select value={newUserData.role} onValueChange={(role: UserRole) => setNewUserData({...newUserData, role })}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="player">Player</SelectItem>
+                                            <SelectItem value="league_admin">League Admin</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Team</Label>
+                                    <Select value={newUserData.teamId} onValueChange={(teamId) => setNewUserData({...newUserData, teamId})}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                            {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddUser}>Send Invite</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </CardHeader>
                 <CardContent className="space-y-3">
                      {users.map(user => (
                       <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
-                        <div className="flex-1 min-w-[150px]">
-                          <p className="font-medium">{user.displayName}</p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        <div className="flex-1 min-w-[150px] flex items-center gap-2">
+                          <div>
+                            <p className="font-medium">{user.displayName}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                          </div>
+                           <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>{user.status === 'active' ? 'Active' : 'Pending'}</Badge>
                         </div>
                         <div className="flex items-center gap-2">
                            <Select
@@ -491,26 +564,6 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
         </div>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><UserPlus /> Invite New User</CardTitle>
-                <CardDescription>Send an invitation to a new user to join the league.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-4">
-                <div className="flex-1 space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    placeholder="new.user@example.com"
-                    value={newUserEmail}
-                    onChange={(e) => setNewUserEmail(e.target.value)}
-                />
-                </div>
-                <Button className="self-end" onClick={handleInviteUser}>Send Invite</Button>
-            </CardContent>
-        </Card>
       </main>
     </div>
   );
