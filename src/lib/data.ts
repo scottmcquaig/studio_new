@@ -106,6 +106,7 @@ export interface Pick {
     teamId: string;
     houseguestId: string;
     round: number;
+    pick: number;
     createdAt: string;
 }
 
@@ -172,7 +173,7 @@ export const MOCK_LEAGUES: League[] = [
       "seasonId":"bb27",
       "visibility":"private",
       "maxTeams":12,
-      "rosterSize":3,
+      "rosterSize":4,
       "waivers":"FAAB",
       "createdAt":"2025-08-01T12:00:00Z",
       "settings":{
@@ -184,10 +185,10 @@ export const MOCK_LEAGUES: League[] = [
 ];
 
 export const MOCK_TEAMS: Team[] = [
-    {"id":"team_hank_alicia","leagueId":"yac_bb27_public","name":"Hank & Lee's Excellent Evictions","ownerUserIds":["user_hank", "user_alicia"],"houseguestIds":["keanu_soto", "rachel_reilly", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 1820, weekly_score: 145},
-    {"id":"team_stone_liz","leagueId":"yac_bb27_public","name":"Zae My Name, Zae My Name","ownerUserIds":["user_stone", "user_liz"],"houseguestIds":["ashley_hollis", "lauren_domingue", "vince_panaro"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 1950, weekly_score: 210},
-    {"id":"team_jess_will","leagueId":"yac_bb27_public","name":"Expect The Unexpected","ownerUserIds":["user_jess", "user_will"],"houseguestIds":["ava_pearl", "katherine_woodman", "morgan_pope"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 1750, weekly_score: 95},
-    {"id":"team_molly_scott","leagueId":"yac_bb27_public","name":"Buddy Dan","ownerUserIds":["user_molly", "user_scott"],"houseguestIds":["zach_cornell", "will_williams", "kelley_jorgensen"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 1640, weekly_score: 110}
+    {"id":"team_hank_alicia","leagueId":"yac_bb27_public","name":"Hank & Lee's Excellent Evictions","ownerUserIds":["user_hank", "user_alicia"],"houseguestIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 1820, weekly_score: 145},
+    {"id":"team_stone_liz","leagueId":"yac_bb27_public","name":"Zae My Name, Zae My Name","ownerUserIds":["user_stone", "user_liz"],"houseguestIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 1950, weekly_score: 210},
+    {"id":"team_jess_will","leagueId":"yac_bb27_public","name":"Expect The Unexpected","ownerUserIds":["user_jess", "user_will"],"houseguestIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 1750, weekly_score: 95},
+    {"id":"team_molly_scott","leagueId":"yac_bb27_public","name":"Buddy Dan","ownerUserIds":["user_molly", "user_scott"],"houseguestIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 1640, weekly_score: 110}
 ];
 
 export const MOCK_USERS: User[] = [
@@ -223,12 +224,20 @@ export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
 ];
 
 export const MOCK_PICKS: Pick[] = [
-    {
-      "id":"pick_scott_round1",
-      "leagueId":"yac_bb27_public",
-      "teamId":"team_scott",
-      "houseguestId":"keanu_soto",
-      "round":1,
-      "createdAt":"2025-08-01T12:10:00Z"
-    }
+  {"id":"pick_1","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"keanu_soto","round":1,"pick":1,"createdAt":"2025-08-01T12:10:00Z"},
+  {"id":"pick_2","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"jimmy_heagerty","round":1,"pick":2,"createdAt":"2025-08-01T12:11:00Z"},
+  {"id":"pick_3","leagueId":"yac_bb27_public","teamId":"team_jess_will","houseguestId":"lauren_domingue","round":1,"pick":3,"createdAt":"2025-08-01T12:12:00Z"},
+  {"id":"pick_4","leagueId":"yac_bb27_public","teamId":"team_molly_scott","houseguestId":"zach_cornell","round":1,"pick":4,"createdAt":"2025-08-01T12:13:00Z"},
+  {"id":"pick_5","leagueId":"yac_bb27_public","teamId":"team_molly_scott","houseguestId":"morgan_pope","round":2,"pick":5,"createdAt":"2025-08-01T12:14:00Z"},
+  {"id":"pick_6","leagueId":"yac_bb27_public","teamId":"team_jess_will","houseguestId":"rylie_jeffries","round":2,"pick":6,"createdAt":"2025-08-01T12:15:00Z"},
+  {"id":"pick_7","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"kelley_jorgensen","round":2,"pick":7,"createdAt":"2025-08-01T12:16:00Z"},
+  {"id":"pick_8","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"ashley_hollis","round":2,"pick":8,"createdAt":"2025-08-01T12:17:00Z"},
+  {"id":"pick_9","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"vince_panaro","round":3,"pick":9,"createdAt":"2025-08-01T12:18:00Z"},
+  {"id":"pick_10","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"zae_frederich","round":3,"pick":10,"createdAt":"2025-08-01T12:19:00Z"},
+  {"id":"pick_11","leagueId":"yac_bb27_public","teamId":"team_jess_will","houseguestId":"katherine_woodman","round":3,"pick":11,"createdAt":"2025-08-01T12:20:00Z"},
+  {"id":"pick_12","leagueId":"yac_bb27_public","teamId":"team_molly_scott","houseguestId":"adrian_rocha","round":3,"pick":12,"createdAt":"2025-08-01T12:21:00Z"},
+  {"id":"pick_13","leagueId":"yac_bb27_public","teamId":"team_molly_scott","houseguestId":"rachel_reilly","round":4,"pick":13,"createdAt":"2025-08-01T12:22:00Z"},
+  {"id":"pick_14","leagueId":"yac_bb27_public","teamId":"team_jess_will","houseguestId":"will_williams","round":4,"pick":14,"createdAt":"2025-08-01T12:23:00Z"},
+  {"id":"pick_15","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"amy_bingham","round":4,"pick":15,"createdAt":"2025-08-01T12:24:00Z"},
+  {"id":"pick_16","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"mickey_lee","round":4,"pick":16,"createdAt":"2025-08-01T12:25:00Z"}
 ];
