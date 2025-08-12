@@ -2,7 +2,7 @@
 'use server';
 
 import { collection, getDocs, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from './firebase-admin'; // Use the server-side admin instance
 import type { League } from './data';
 
 // Helper function to convert a Firestore document to our data types
