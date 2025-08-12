@@ -6,30 +6,32 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { MOCK_HOUSEGUESTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES } from "@/lib/data";
-import type { Houseguest } from '@/lib/data';
+import { MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
+import type { Contestant } from '@/lib/data';
 import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy } from "lucide-react";
 import { cn } from '@/lib/utils';
 
-type HouseguestWithStats = Houseguest & {
+type ContestantWithStats = Contestant & {
   teamName: string;
   totalWins: number;
   totalNoms: number;
   totalPoints: number;
 };
 
-export default function HouseguestsPage() {
-  const [selectedHouseguest, setSelectedHouseguest] = useState<HouseguestWithStats | null>(null);
+export default function ContestantsPage() {
+  const [selectedContestant, setSelectedContestant] = useState<ContestantWithStats | null>(null);
   const activeSeason = MOCK_SEASONS[0];
+  const league = MOCK_LEAGUES[0];
+  const contestantTerm = league.contestantTerm;
 
-  const houseguestStats = MOCK_HOUSEGUESTS.map(hg => {
-    const team = MOCK_TEAMS.find(t => t.houseguestIds.includes(hg.id));
+  const contestantStats = MOCK_CONTESTANTS.map(hg => {
+    const team = MOCK_TEAMS.find(t => t.contestantIds.includes(hg.id));
     
     // Aggregate points from all teams' weekly breakdowns
     let totalPoints = 0;
     MOCK_TEAMS.forEach(team => {
         const weeklyData = team.weekly_score_breakdown.week4;
-        const playerData = weeklyData.find(d => d.houseguestId === hg.id);
+        const playerData = weeklyData.find(d => d.contestantId === hg.id);
         if (playerData) {
             totalPoints += playerData.points;
         }
@@ -60,7 +62,7 @@ export default function HouseguestsPage() {
   const pov = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'VETO');
   const noms = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'NOMINATIONS');
 
-  const sortedHouseguests = [...houseguestStats].sort((a, b) => {
+  const sortedContestants = [...contestantStats].sort((a, b) => {
     // Evicted players to the bottom
     if (a.status !== 'active' && b.status === 'active') return 1;
     if (a.status === 'active' && b.status !== 'active') return -1;
@@ -94,14 +96,14 @@ export default function HouseguestsPage() {
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
         <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
           <UserSquare className="h-5 w-5" />
-          Houseguests
+          {contestantTerm.plural}
         </h1>
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedHouseguest(null)}>
+        <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedContestant(null)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sortedHouseguests.map(hg => (
-              <DialogTrigger key={hg.id} asChild onClick={() => setSelectedHouseguest(hg)}>
+            {sortedContestants.map(hg => (
+              <DialogTrigger key={hg.id} asChild onClick={() => setSelectedContestant(hg)}>
                 <Card className="flex flex-col cursor-pointer hover:border-primary transition-colors">
                   <CardHeader className="flex flex-row items-center gap-4 pb-2">
                     <Image
@@ -144,14 +146,14 @@ export default function HouseguestsPage() {
             ))}
           </div>
 
-          {selectedHouseguest && (
+          {selectedContestant && (
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>{selectedHouseguest.fullName}</DialogTitle>
+                <DialogTitle>{selectedContestant.fullName}</DialogTitle>
                  <p className="text-sm text-muted-foreground">Season Stats & History</p>
               </DialogHeader>
               <div className="py-4">
-                <p>Detailed information about {selectedHouseguest.fullName}'s game will be displayed here, including a timeline of their wins, nominations, and other significant events.</p>
+                <p>Detailed information about {selectedContestant.fullName}'s game will be displayed here, including a timeline of their wins, nominations, and other significant events.</p>
               </div>
             </DialogContent>
           )}
@@ -160,5 +162,3 @@ export default function HouseguestsPage() {
     </div>
   );
 }
-
-    

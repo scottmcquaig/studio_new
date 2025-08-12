@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -5,11 +6,15 @@ import { usePathname } from "next/navigation";
 import { Home, Users, UserSquare, ClipboardList, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { MOCK_LEAGUES } from "@/lib/data";
+
+const league = MOCK_LEAGUES[0];
+const contestantTerm = league.contestantTerm;
 
 const navItems = [
   { href: "/", icon: Home, label: "Dashboard" },
   { href: "/teams", icon: Users, label: "Teams" },
-  { href: "/houseguests", icon: UserSquare, label: "Houseguests" },
+  { href: "/contestants", icon: UserSquare, label: contestantTerm.plural },
   { href: "/scoring", icon: ClipboardList, label: "Scoring" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
@@ -27,7 +32,7 @@ export function BottomNavBar() {
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center justify-around">
         {navItems.map((item) => {
           // On the client, we can check the path. On the server, we can't, so we default to false.
-          const isActive = isClient ? pathname === item.href : false;
+          const isActive = isClient ? (item.href === "/" ? pathname === item.href : pathname.startsWith(item.href)) : false;
           return (
             <Link
               key={item.href}

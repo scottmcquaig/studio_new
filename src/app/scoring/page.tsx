@@ -7,14 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS } from "@/lib/data";
+import { MOCK_COMPETITIONS, MOCK_CONTESTANTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS, MOCK_LEAGUES } from "@/lib/data";
 import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 type ScoringEvent = {
   week: number;
-  houseguestId: string;
-  houseguestName: string;
+  contestantId: string;
+  contestantName: string;
   teamId?: string;
   teamName?: string;
   eventLabel: string;
@@ -25,9 +25,12 @@ type ScoringEvent = {
 export default function ScoringPage() {
   const ruleSet = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1');
   const activeSeason = MOCK_SEASONS[0];
+  const league = MOCK_LEAGUES[0];
+  const contestantTerm = league.contestantTerm;
+
 
   const [selectedWeek, setSelectedWeek] = useState<string>(String(activeSeason.currentWeek));
-  const [selectedHouseguest, setSelectedHouseguest] = useState<string>('all');
+  const [selectedContestant, setSelectedContestant] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
   const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1));
@@ -35,15 +38,15 @@ export default function ScoringPage() {
   
   const weeklyEvents = MOCK_COMPETITIONS.filter(c => c.week === displayWeek);
   const hoh = weeklyEvents.find((c) => c.type === "HOH");
-  const hohWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === hoh?.winnerId);
+  const hohWinner = MOCK_CONTESTANTS.find((hg) => hg.id === hoh?.winnerId);
   const noms = weeklyEvents.find((c) => c.type === "NOMINATIONS");
-  const nomWinners = MOCK_HOUSEGUESTS.filter((hg) => noms?.nominees?.includes(hg.id));
+  const nomWinners = MOCK_CONTESTANTS.filter((hg) => noms?.nominees?.includes(hg.id));
   const pov = weeklyEvents.find((c) => c.type === "VETO");
-  const povWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === pov?.winnerId);
+  const povWinner = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId);
   const blockBuster = weeklyEvents.find((c) => c.type === "BLOCK_BUSTER");
-  const blockBusterWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === blockBuster?.winnerId);
+  const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
   const eviction = weeklyEvents.find((c) => c.type === "EVICTION");
-  const evictedPlayer = MOCK_HOUSEGUESTS.find((hg) => hg.id === eviction?.evictedId);
+  const evictedPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === eviction?.evictedId);
 
 
   // Memoize the creation of the event log to avoid re-computation on every render
@@ -52,7 +55,7 @@ export default function ScoringPage() {
     if (!ruleSet) return events;
 
     MOCK_COMPETITIONS.forEach(comp => {
-      const team = MOCK_TEAMS.find(t => t.houseguestIds.includes(comp.winnerId || ''));
+      const team = MOCK_TEAMS.find(t => t.contestantIds.includes(comp.winnerId || ''));
       
       let eventCode = '';
       if (comp.type === 'HOH') eventCode = 'HOH_WIN';
@@ -63,12 +66,12 @@ export default function ScoringPage() {
       // Handle single-winner events
       if (eventCode && comp.winnerId) {
         const rule = ruleSet.rules.find(r => r.code === eventCode);
-        const houseguest = MOCK_HOUSEGUESTS.find(hg => hg.id === comp.winnerId);
-        if (rule && houseguest) {
+        const contestant = MOCK_CONTESTANTS.find(hg => hg.id === comp.winnerId);
+        if (rule && contestant) {
           events.push({
             week: comp.week,
-            houseguestId: houseguest.id,
-            houseguestName: houseguest.fullName,
+            contestantId: contestant.id,
+            contestantName: contestant.fullName,
             teamId: team?.id,
             teamName: team?.name,
             eventLabel: rule.label,
@@ -83,13 +86,13 @@ export default function ScoringPage() {
         const rule = ruleSet.rules.find(r => r.code === 'NOMINATED');
         if (rule) {
           comp.nominees.forEach(nomId => {
-            const houseguest = MOCK_HOUSEGUESTS.find(hg => hg.id === nomId);
-            const nomineeTeam = MOCK_TEAMS.find(t => t.houseguestIds.includes(nomId));
-            if (houseguest) {
+            const contestant = MOCK_CONTESTANTS.find(hg => hg.id === nomId);
+            const nomineeTeam = MOCK_TEAMS.find(t => t.contestantIds.includes(nomId));
+            if (contestant) {
               events.push({
                 week: comp.week,
-                houseguestId: houseguest.id,
-                houseguestName: houseguest.fullName,
+                contestantId: contestant.id,
+                contestantName: contestant.fullName,
                 teamId: nomineeTeam?.id,
                 teamName: nomineeTeam?.name,
                 eventLabel: rule.label,
@@ -107,11 +110,11 @@ export default function ScoringPage() {
   const filteredEvents = useMemo(() => {
     return scoringEvents.filter(event => {
       const weekMatch = selectedWeek === 'all' || event.week === Number(selectedWeek);
-      const houseguestMatch = selectedHouseguest === 'all' || event.houseguestId === selectedHouseguest;
+      const contestantMatch = selectedContestant === 'all' || event.contestantId === selectedContestant;
       const teamMatch = selectedTeam === 'all' || event.teamId === selectedTeam;
-      return weekMatch && houseguestMatch && teamMatch;
+      return weekMatch && contestantMatch && teamMatch;
     });
-  }, [scoringEvents, selectedWeek, selectedHouseguest, selectedTeam]);
+  }, [scoringEvents, selectedWeek, selectedContestant, selectedTeam]);
 
 
   return (
@@ -301,12 +304,12 @@ export default function ScoringPage() {
                 </Select>
               </div>
               <div className="flex-1 min-w-[150px]">
-                <label className="text-sm font-medium">Houseguest</label>
-                <Select value={selectedHouseguest} onValueChange={setSelectedHouseguest}>
+                <label className="text-sm font-medium">{contestantTerm.plural}</label>
+                <Select value={selectedContestant} onValueChange={setSelectedContestant}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Houseguests</SelectItem>
-                    {MOCK_HOUSEGUESTS.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                    <SelectItem value="all">All {contestantTerm.plural}</SelectItem>
+                    {MOCK_CONTESTANTS.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -326,7 +329,7 @@ export default function ScoringPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Week</TableHead>
-                  <TableHead>Houseguest</TableHead>
+                  <TableHead>{contestantTerm.singular}</TableHead>
                   <TableHead>Team</TableHead>
                   <TableHead>Event</TableHead>
                   <TableHead className="text-right">Points</TableHead>
@@ -336,7 +339,7 @@ export default function ScoringPage() {
                 {filteredEvents.length > 0 ? filteredEvents.map((event, index) => (
                   <TableRow key={index}>
                     <TableCell>{event.week}</TableCell>
-                    <TableCell>{event.houseguestName}</TableCell>
+                    <TableCell>{event.contestantName}</TableCell>
                     <TableCell>{event.teamName || 'N/A'}</TableCell>
                     <TableCell>{event.eventLabel}</TableCell>
                     <TableCell className={cn(
@@ -361,22 +364,19 @@ export default function ScoringPage() {
             <CardTitle>{ruleSet?.name || 'Scoring Rules'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Rule Description</TableHead>
-                  <TableHead className="text-right">Points</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
                 {ruleSet?.rules.map((rule) => (
-                  <TableRow key={rule.code}>
-                    <TableCell>{rule.label}</TableCell>
-                    <TableCell className="text-right font-mono">{rule.points > 0 ? `+${rule.points}` : rule.points}</TableCell>
-                  </TableRow>
+                  <div key={rule.code} className="flex justify-between items-center text-sm border-b py-2">
+                    <span>{rule.label}</span>
+                    <span className={cn(
+                        "font-mono font-bold",
+                         rule.points >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                        {rule.points > 0 ? `+${rule.points}` : rule.points}
+                    </span>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+            </div>
           </CardContent>
         </Card>
 

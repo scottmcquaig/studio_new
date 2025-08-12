@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_TEAMS, MOCK_USERS, MOCK_HOUSEGUESTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
+import { MOCK_TEAMS, MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -24,7 +24,7 @@ const calculateKpis = (team) => {
     let totalPoints = 0;
 
     MOCK_COMPETITIONS.forEach(comp => {
-        if (team.houseguestIds.includes(comp.winnerId)) {
+        if (team.contestantIds.includes(comp.winnerId)) {
             if (comp.type === 'HOH') {
                 const rule = rules.find(r => r.code === 'HOH_WIN');
                 if(rule) kpis.HOH_WIN += rule.points;
@@ -39,7 +39,7 @@ const calculateKpis = (team) => {
         if (comp.type === 'NOMINATIONS' && comp.nominees) {
             const rule = rules.find(r => r.code === 'NOMINATED');
             if(rule){
-                const nomCount = comp.nominees.filter(id => team.houseguestIds.includes(id)).length;
+                const nomCount = comp.nominees.filter(id => team.contestantIds.includes(id)).length;
                 kpis.NOMINATED += nomCount * rule.points;
             }
         }
@@ -92,7 +92,7 @@ export default function TeamsPage() {
             {sortedTeams.map((team) => {
                 const owners = team.ownerUserIds.map(getOwner);
                 const kpis = calculateKpis(team);
-                const teamHouseguests = MOCK_HOUSEGUESTS.filter(hg => team.houseguestIds.includes(hg.id));
+                const teamContestants = MOCK_CONTESTANTS.filter(hg => team.contestantIds.includes(hg.id));
 
                 return (
                     <Card key={team.id}>
@@ -111,7 +111,7 @@ export default function TeamsPage() {
                            <div className="mb-4">
                              <h4 className="text-sm font-semibold text-muted-foreground mb-2">Roster</h4>
                              <div className="flex items-center gap-2">
-                                {teamHouseguests.map(hg => (
+                                {teamContestants.map(hg => (
                                     <div key={hg.id} className="flex flex-col items-center">
                                         <Image
                                             src={hg.photoUrl || "https://placehold.co/100x100.png"}

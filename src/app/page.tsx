@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_TEAMS, MOCK_SCORING_RULES } from "@/lib/data";
+import { MOCK_COMPETITIONS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import {
   Home,
   Crown,
@@ -25,11 +25,14 @@ import {
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
+const league = MOCK_LEAGUES[0];
+const contestantTerm = league.contestantTerm;
+
 // Helper to get top players
 const getTopPlayers = () => {
   const allPlayers = MOCK_TEAMS.flatMap(team => 
     team.weekly_score_breakdown.week4.map(playerScore => {
-      const player = MOCK_HOUSEGUESTS.find(hg => hg.id === playerScore.houseguestId);
+      const player = MOCK_CONTESTANTS.find(hg => hg.id === playerScore.contestantId);
       return {
         ...player,
         points: playerScore.points,
@@ -51,21 +54,21 @@ export default function DashboardPage() {
   );
 
   const hoh = currentWeekEvents.find((c) => c.type === "HOH");
-  const hohWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === hoh?.winnerId);
+  const hohWinner = MOCK_CONTESTANTS.find((hg) => hg.id === hoh?.winnerId);
 
   const noms = currentWeekEvents.find((c) => c.type === "NOMINATIONS");
-  const nomWinners = MOCK_HOUSEGUESTS.filter(
+  const nomWinners = MOCK_CONTESTANTS.filter(
     (hg) => noms?.nominees?.includes(hg.id)
   );
 
   const pov = currentWeekEvents.find((c) => c.type === "VETO");
-  const povWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === pov?.winnerId);
+  const povWinner = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId);
 
   const blockBuster = currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER");
-  const blockBusterWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === blockBuster?.winnerId);
+  const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
 
   const eviction = currentWeekEvents.find((c) => c.type === "EVICTION");
-  const evictedPlayer = MOCK_HOUSEGUESTS.find(
+  const evictedPlayer = MOCK_CONTESTANTS.find(
     (hg) => hg.id === eviction?.evictedId
   );
   

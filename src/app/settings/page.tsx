@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building } from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Houseguest, Competition, League } from "@/lib/data";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote } from "lucide-react";
+import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,11 +33,12 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
   const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
-  const [houseguests, setHouseguests] = useState<Houseguest[]>(MOCK_HOUSEGUESTS);
+  const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   
+  const contestantTerm = league.contestantTerm;
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [editingHouseguest, setEditingHouseguest] = useState<Houseguest | null>(null);
+  const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -50,12 +51,12 @@ export default function SettingsPage() {
   });
   
   const [specialEventData, setSpecialEventData] = useState({
-      houseguestId: '',
+      contestantId: '',
       ruleCode: '',
       notes: ''
   });
 
-  const activeHouseguests = houseguests.filter(hg => hg.status === 'active');
+  const activeContestants = contestants.filter(hg => hg.status === 'active');
   const weekEvents = competitions.filter(c => c.week === selectedWeek);
   
   const hoh = weekEvents.find(c => c.type === 'HOH');
@@ -120,10 +121,10 @@ export default function SettingsPage() {
     setEditingUser(null);
   };
 
-  const handleUpdateHouseguest = () => {
-      if(!editingHouseguest) return;
-      setHouseguests(houseguests.map(hg => hg.id === editingHouseguest.id ? editingHouseguest : hg));
-      setEditingHouseguest(null);
+  const handleUpdateContestant = () => {
+      if(!editingContestant) return;
+      setContestants(contestants.map(hg => hg.id === editingContestant.id ? editingContestant : hg));
+      setEditingContestant(null);
   }
   
   const handleRoleChange = (userId: string, role: UserRole) => {
@@ -151,8 +152,8 @@ export default function SettingsPage() {
   };
   
   const handleAddSpecialEvent = () => {
-    if (!specialEventData.houseguestId || !specialEventData.ruleCode) {
-        toast({ title: "Error", description: "Please select a houseguest and an event type.", variant: "destructive" });
+    if (!specialEventData.contestantId || !specialEventData.ruleCode) {
+        toast({ title: "Error", description: `Please select a ${contestantTerm.singular} and an event type.`, variant: "destructive" });
         return;
     }
     const newEvent: Competition = {
@@ -160,13 +161,13 @@ export default function SettingsPage() {
         seasonId: 'bb27',
         week: selectedWeek,
         type: 'SPECIAL_EVENT',
-        winnerId: specialEventData.houseguestId,
+        winnerId: specialEventData.contestantId,
         notes: specialEventData.notes,
         specialEventCode: specialEventData.ruleCode,
         airDate: new Date().toISOString()
     };
     setCompetitions([...competitions, newEvent]);
-    setSpecialEventData({ houseguestId: '', ruleCode: '', notes: '' });
+    setSpecialEventData({ contestantId: '', ruleCode: '', notes: '' });
     setIsSpecialEventDialogOpen(false);
     toast({ title: "Special Event Added", description: `Event logged for week ${selectedWeek}.` });
   }
@@ -229,7 +230,7 @@ export default function SettingsPage() {
                                       <Select value={hoh?.winnerId || ''} onValueChange={(val) => handleEventUpdate('HOH', val)}>
                                           <SelectTrigger><SelectValue placeholder="Select HOH..."/></SelectTrigger>
                                           <SelectContent>
-                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -238,7 +239,7 @@ export default function SettingsPage() {
                                       <Select value={pov?.winnerId || ''} onValueChange={(val) => handleEventUpdate('VETO', val)}>
                                           <SelectTrigger><SelectValue placeholder="Select Veto Winner..."/></SelectTrigger>
                                           <SelectContent>
-                                            {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -247,7 +248,7 @@ export default function SettingsPage() {
                                       <Select value={noms?.nominees?.[0] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [val, noms?.nominees?.[1] || '', noms?.nominees?.[2] || ''])}>
                                           <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
                                           <SelectContent>
-                                            {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -256,7 +257,7 @@ export default function SettingsPage() {
                                       <Select value={noms?.nominees?.[1] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', val, noms?.nominees?.[2] || ''])}>
                                           <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
                                           <SelectContent>
-                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -265,16 +266,16 @@ export default function SettingsPage() {
                                       <Select value={noms?.nominees?.[2] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', noms?.nominees?.[1] || '', val])}>
                                           <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
                                           <SelectContent>
-                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
                                   <div>
-                                      <Label className="flex items-center gap-1 mb-1"><UserX className="text-muted-foreground"/>Evicted Houseguest</Label>
+                                      <Label className="flex items-center gap-1 mb-1"><UserX className="text-muted-foreground"/>Evicted {contestantTerm.singular}</Label>
                                       <Select value={eviction?.evictedId || ''} onValueChange={(val) => handleEventUpdate('EVICTION', val)}>
                                           <SelectTrigger><SelectValue placeholder="Select Evicted..."/></SelectTrigger>
                                           <SelectContent>
-                                              {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -292,11 +293,11 @@ export default function SettingsPage() {
                                           </DialogHeader>
                                           <div className="space-y-4 py-4">
                                             <div className="space-y-2">
-                                                  <Label>Houseguest</Label>
-                                                  <Select value={specialEventData.houseguestId} onValueChange={(val) => setSpecialEventData({...specialEventData, houseguestId: val})}>
-                                                      <SelectTrigger><SelectValue placeholder="Select a houseguest..."/></SelectTrigger>
+                                                  <Label>{contestantTerm.singular}</Label>
+                                                  <Select value={specialEventData.contestantId} onValueChange={(val) => setSpecialEventData({...specialEventData, contestantId: val})}>
+                                                      <SelectTrigger><SelectValue placeholder={`Select a ${contestantTerm.singular.toLowerCase()}...`}/></SelectTrigger>
                                                       <SelectContent>
-                                                          {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                                       </SelectContent>
                                                   </Select>
                                             </div>
@@ -331,17 +332,17 @@ export default function SettingsPage() {
                       </AccordionContent>
                     </Card>
                 </AccordionItem>
-                 <AccordionItem value="houseguests" asChild>
+                 <AccordionItem value="contestants" asChild>
                     <Card>
                       <AccordionTrigger className="p-6">
                         <CardHeader className="p-0 text-left">
-                           <CardTitle className="flex items-center gap-2"><UserSquare/> Houseguest Management</CardTitle>
-                           <CardDescription>Edit houseguest information and photos.</CardDescription>
+                           <CardTitle className="flex items-center gap-2"><UserSquare/> {contestantTerm.plural} Roster</CardTitle>
+                           <CardDescription>Edit {contestantTerm.plural.toLowerCase()} information and photos.</CardDescription>
                         </CardHeader>
                       </AccordionTrigger>
                       <AccordionContent className="px-6 pb-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                {houseguests.map(hg => (
+                                {contestants.map(hg => (
                                     <div key={hg.id} className="flex items-center justify-between p-2 rounded-lg border">
                                         <div className="flex items-center gap-3">
                                             <Image
@@ -361,37 +362,37 @@ export default function SettingsPage() {
                                                 </Badge>
                                             </div>
                                         </div>
-                                        <Dialog onOpenChange={(open) => !open && setEditingHouseguest(null)}>
+                                        <Dialog onOpenChange={(open) => !open && setEditingContestant(null)}>
                                             <DialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHouseguest({...hg})}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingContestant({...hg})}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
                                             </DialogTrigger>
-                                            {editingHouseguest && editingHouseguest.id === hg.id && (
+                                            {editingContestant && editingContestant.id === hg.id && (
                                             <DialogContent>
                                                 <DialogHeader>
-                                                <DialogTitle>Edit Houseguest: {editingHouseguest.fullName}</DialogTitle>
+                                                <DialogTitle>Edit {contestantTerm.singular}: {editingContestant.fullName}</DialogTitle>
                                                 </DialogHeader>
                                                 <div className="space-y-4 py-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hgName">Full Name</Label>
-                                                    <Input id="hgName" value={editingHouseguest.fullName} onChange={(e) => setEditingHouseguest({...editingHouseguest, fullName: e.target.value})} />
+                                                    <Input id="hgName" value={editingContestant.fullName} onChange={(e) => setEditingContestant({...editingContestant, fullName: e.target.value})} />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hgOccupation">Occupation</Label>
-                                                    <Input id="hgOccupation" value={editingHouseguest.occupation} onChange={(e) => setEditingHouseguest({...editingHouseguest, occupation: e.target.value})} />
+                                                    <Input id="hgOccupation" value={editingContestant.occupation} onChange={(e) => setEditingContestant({...editingContestant, occupation: e.target.value})} />
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hgPhotoUrl">Photo URL</Label>
                                                     <div className="flex items-center gap-2">
-                                                    <Input id="hgPhotoUrl" value={editingHouseguest.photoUrl || ''} onChange={(e) => setEditingHouseguest({...editingHouseguest, photoUrl: e.target.value})} />
+                                                    <Input id="hgPhotoUrl" value={editingContestant.photoUrl || ''} onChange={(e) => setEditingContestant({...editingContestant, photoUrl: e.target.value})} />
                                                     <Button variant="outline" size="icon"><Upload className="h-4 w-4"/></Button>
                                                     </div>
                                                 </div>
                                                 </div>
                                                 <DialogFooter>
-                                                <Button variant="outline" onClick={() => setEditingHouseguest(null)}>Cancel</Button>
-                                                <Button onClick={handleUpdateHouseguest}>Save Changes</Button>
+                                                <Button variant="outline" onClick={() => setEditingContestant(null)}>Cancel</Button>
+                                                <Button onClick={handleUpdateContestant}>Save Changes</Button>
                                                 </DialogFooter>
                                             </DialogContent>
                                             )}
@@ -400,7 +401,32 @@ export default function SettingsPage() {
                                 ))}
                             </div>
                             <CardFooter className="justify-end p-0 pt-6">
-                                <Button onClick={() => handleSaveChanges('Houseguests')}><Save className="mr-2"/>Save Houseguest Changes</Button>
+                                <Button onClick={() => handleSaveChanges(`${contestantTerm.plural}`)}><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
+                            </CardFooter>
+                      </AccordionContent>
+                    </Card>
+                 </AccordionItem>
+                 <AccordionItem value="terminology" asChild>
+                    <Card>
+                      <AccordionTrigger className="p-6">
+                        <CardHeader className="p-0 text-left">
+                           <CardTitle className="flex items-center gap-2"><MessageSquareQuote/> Terminology Management</CardTitle>
+                           <CardDescription>Customize labels for contestants, competitions, etc.</CardDescription>
+                        </CardHeader>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-6 pb-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="termSingular">Contestant (Singular)</Label>
+                                    <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, singular: e.target.value }})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="termPlural">Contestant (Plural)</Label>
+                                    <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeague({...league, contestantTerm: { ...league.contestantTerm, plural: e.target.value }})} />
+                                </div>
+                            </div>
+                           <CardFooter className="justify-end p-0 pt-6">
+                                <Button onClick={() => handleSaveChanges('Terminology')}><Save className="mr-2"/>Save Terminology</Button>
                             </CardFooter>
                       </AccordionContent>
                     </Card>
