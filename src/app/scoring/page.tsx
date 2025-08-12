@@ -30,9 +30,10 @@ export default function ScoringPage() {
   const [selectedHouseguest, setSelectedHouseguest] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
-  const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => String(i + 1));
+  const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1));
+  const displayWeek = selectedWeek === 'all' ? activeSeason.currentWeek : Number(selectedWeek);
   
-  const weeklyEvents = MOCK_COMPETITIONS.filter(c => c.week === Number(selectedWeek));
+  const weeklyEvents = MOCK_COMPETITIONS.filter(c => c.week === displayWeek);
   const hoh = weeklyEvents.find((c) => c.type === "HOH");
   const hohWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === hoh?.winnerId);
   const noms = weeklyEvents.find((c) => c.type === "NOMINATIONS");
@@ -134,10 +135,7 @@ export default function ScoringPage() {
         <Card className="bg-card/50">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>Week {selectedWeek} Status</span>
-              <span className="text-sm font-normal text-muted-foreground">
-                Read-only view of weekly results.
-              </span>
+              <span>Week {displayWeek} Status</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -294,7 +292,7 @@ export default function ScoringPage() {
             <div className="flex flex-wrap gap-4 mb-4">
                <div className="flex-1 min-w-[150px]">
                 <label className="text-sm font-medium">Filter Week</label>
-                <Select value={selectedWeek} onValueChange={val => setSelectedWeek(val === 'all' ? 'all' : String(val))}>
+                <Select value={selectedWeek} onValueChange={val => setSelectedWeek(val)}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Weeks</SelectItem>
