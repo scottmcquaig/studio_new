@@ -29,23 +29,40 @@ export default function SettingsPage() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   
+  const league = leagues.length > 0 ? leagues[0] : null;
+
   useEffect(() => {
     async function fetchData() {
       const fetchedLeagues = await getLeagues();
-      if (fetchedLeagues.length > 0) {
-        setLeagues(fetchedLeagues);
-      } else {
-        setLeagues(MOCK_LEAGUES); 
-      }
+      const currentLeague = fetchedLeagues.length > 0 ? fetchedLeagues[0] : MOCK_LEAGUES[0];
+      setLeagues(fetchedLeagues.length > 0 ? fetchedLeagues : MOCK_LEAGUES);
 
       const fetchedTeams = await getTeams();
-      setTeams(fetchedTeams);
+      
+      const teamsToSet = [...fetchedTeams];
+      const maxTeams = currentLeague.maxTeams || 0;
+
+      if (teamsToSet.length < maxTeams) {
+        for (let i = teamsToSet.length; i < maxTeams; i++) {
+          teamsToSet.push({
+            id: `new_team_${i}`,
+            leagueId: currentLeague.id,
+            name: '',
+            ownerUserIds: [],
+            contestantIds: [],
+            faab: 100,
+            createdAt: new Date().toISOString(),
+            total_score: 0,
+            weekly_score: 0,
+            weekly_score_breakdown: { week4: [] }
+          });
+        }
+      }
+      setTeams(teamsToSet);
     }
     fetchData();
-  }, [])
+  }, []);
   
-  const league = leagues.length > 0 ? leagues[0] : null;
-
 
   // For this prototype, we'll assume the logged-in user is the first site admin found.
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
@@ -913,5 +930,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
