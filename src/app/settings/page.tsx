@@ -7,16 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
-import type { User, Team, UserRole, Houseguest, Competition } from "@/lib/data";
+import type { User, Team, UserRole, Houseguest, Competition, League } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 
 // For this prototype, we'll assume the logged-in user is the first site admin found.
 const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
-const activeLeague = MOCK_LEAGUES[0];
 const activeSeason = MOCK_SEASONS[0];
 const specialEventRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
 
@@ -24,6 +23,7 @@ const specialEventRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_
 export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
+  const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -70,15 +70,13 @@ export default function SettingsPage() {
     console.log("Saving changes for users:", users);
     console.log("Saving changes for teams:", teams);
     console.log("Saving changes for competitions:", competitions);
+    console.log("Saving changes for league:", league);
     alert("Changes saved to console!");
   };
 
   const handleAssignTeam = (userId: string, teamId: string) => {
     const updatedTeams = teams.map(team => {
-      // Create a new list of owner IDs, excluding the current user to prevent duplicates or handle re-assignment.
       let newOwnerIds = team.ownerUserIds.filter(id => id !== userId);
-      
-      // If the current team is the one being assigned to, add the user.
       if (team.id === teamId) {
         if (!newOwnerIds.includes(userId)) {
           newOwnerIds.push(userId);
@@ -87,9 +85,6 @@ export default function SettingsPage() {
       return { ...team, ownerUserIds: newOwnerIds };
     });
     setTeams(updatedTeams);
-
-    // Also update the user state to reflect this change immediately in the UI if needed
-    // This part is mostly for consistency if the user object itself tracks the team
   };
 
   const handleUpdateUser = () => {
@@ -100,15 +95,6 @@ export default function SettingsPage() {
   
   const handleRoleChange = (userId: string, role: UserRole) => {
     setUsers(users.map(u => u.id === userId ? {...u, role, managedLeagueIds: role === 'league_admin' ? u.managedLeagueIds || [] : undefined} : u));
-  }
-
-  const handleLeagueAdminChange = (userId: string, leagueId: string) => {
-    setUsers(users.map(u => {
-      if (u.id === userId && u.role === 'league_admin') {
-        return {...u, managedLeagueIds: [leagueId]}
-      }
-      return u;
-    }));
   }
   
   const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION', value: string | string[]) => {
@@ -148,9 +134,12 @@ export default function SettingsPage() {
     };
     setCompetitions([...competitions, newEvent]);
     console.log("Added special event:", newEvent);
-    // Reset form and close dialog
     setSpecialEventData({ houseguestId: '', ruleCode: '', notes: '' });
     setIsSpecialEventDialogOpen(false);
+  }
+
+  const handleTeamNameChange = (teamId: string, newName: string) => {
+    setTeams(teams.map(t => t.id === teamId ? {...t, name: newName} : t));
   }
 
 
@@ -185,6 +174,7 @@ export default function SettingsPage() {
           <Settings className="h-5 w-5" />
           Admin Settings
         </h1>
+        <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4"/>Save All Changes</Button>
       </header>
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
 
@@ -312,129 +302,133 @@ export default function SettingsPage() {
             </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><UserPlus /> Invite New User</CardTitle>
-            <CardDescription>Send an invitation to a new user to join the league.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="new.user@example.com"
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-              />
-            </div>
-            <Button className="self-end" onClick={handleInviteUser}>Send Invite</Button>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2"><Users /> Manage Users</CardTitle>
-              <CardDescription>Edit user roles, league assignments, and team assignments.</CardDescription>
-            </div>
-            <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4"/>Save User Changes</Button>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {users.map(user => (
-              <div key={user.id} className="flex flex-wrap items-center justify-between gap-4 p-3 rounded-lg border bg-card/50">
-                <div className="flex-1 min-w-[200px]">
-                  <p className="font-medium">{user.displayName}</p>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                   <Select
-                    value={user.role}
-                    onValueChange={(role: UserRole) => handleRoleChange(user.id, role)}
-                  >
-                    <SelectTrigger className="w-full sm:w-[150px]">
-                      <SelectValue placeholder="Select a role..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="site_admin">Site Admin</SelectItem>
-                      <SelectItem value="league_admin">League Admin</SelectItem>
-                      <SelectItem value="player">Player</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  {user.role === 'league_admin' && (
-                     <Select
-                        value={user.managedLeagueIds?.[0] || ''}
-                        onValueChange={(leagueId) => handleLeagueAdminChange(user.id, leagueId)}
-                      >
-                      <SelectTrigger className="w-full sm:w-[200px]">
-                        <SelectValue placeholder="Assign a league..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MOCK_LEAGUES.map(league => (
-                          <SelectItem key={league.id} value={league.id}>
-                            {league.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  
-                  {user.role !== 'site_admin' && (
-                    <Select
-                      value={teams.find(t => t.ownerUserIds.includes(user.id))?.id || 'unassigned'}
-                      onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}
-                    >
-                      <SelectTrigger className="w-full sm:w-[200px]">
-                        <SelectValue placeholder="Assign a team..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {teams.map(team => (
-                          <SelectItem key={team.id} value={team.id}>
-                            {team.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  
-                  <Dialog onOpenChange={(open) => !open && setEditingUser(null)}>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => setEditingUser({...user})}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    {editingUser && editingUser.id === user.id && (
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="displayName">Display Name</Label>
-                            <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="userEmail">Email</Label>
-                            <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
-                          </div>
+        <div className="grid lg:grid-cols-2 gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
+                    <CardDescription>Manage core settings for the league.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="leagueName">League Name</Label>
+                        <Input id="leagueName" value={league.name} onChange={(e) => setLeague({...league, name: e.target.value})} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="maxTeams">Max Teams</Label>
+                        <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeague({...league, maxTeams: Number(e.target.value)})} />
+                    </div>
+                    <Separator />
+                    <Label>Team Names</Label>
+                    <div className="space-y-2">
+                    {teams.map(team => (
+                        <div key={team.id} className="flex items-center gap-2">
+                            <Input value={team.name} onChange={(e) => handleTeamNameChange(team.id, e.target.value)} />
                         </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-                          <Button onClick={handleUpdateUser}>Save Changes</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    )}
-                  </Dialog>
+                    ))}
+                    </div>
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><UserCog /> League Members & Teams</CardTitle>
+                    <CardDescription>Assign users to teams and set their roles.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                     {users.map(user => (
+                      <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
+                        <div className="flex-1 min-w-[150px]">
+                          <p className="font-medium">{user.displayName}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                           <Select
+                            value={user.role}
+                            onValueChange={(role: UserRole) => handleRoleChange(user.id, role)}
+                          >
+                            <SelectTrigger className="w-full sm:w-[130px] h-9">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="site_admin">Site Admin</SelectItem>
+                              <SelectItem value="league_admin">League Admin</SelectItem>
+                              <SelectItem value="player">Player</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          {user.role !== 'site_admin' && (
+                            <Select
+                              value={teams.find(t => t.ownerUserIds.includes(user.id))?.id || 'unassigned'}
+                              onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}
+                            >
+                              <SelectTrigger className="w-full sm:w-[150px] h-9">
+                                <SelectValue placeholder="Assign team" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {teams.map(team => (
+                                  <SelectItem key={team.id} value={team.id}>
+                                    {team.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                           <Dialog onOpenChange={(open) => !open && setEditingUser(null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingUser({...user})}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            {editingUser && editingUser.id === user.id && (
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="displayName">Display Name</Label>
+                                    <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="userEmail">Email</Label>
+                                    <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                                  <Button onClick={handleUpdateUser}>Save Changes</Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            )}
+                          </Dialog>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+            </Card>
+        </div>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UserPlus /> Invite New User</CardTitle>
+                <CardDescription>Send an invitation to a new user to join the league.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    placeholder="new.user@example.com"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                />
                 </div>
-              </div>
-            ))}
-          </CardContent>
+                <Button className="self-end" onClick={handleInviteUser}>Send Invite</Button>
+            </CardContent>
         </Card>
       </main>
     </div>
   );
 }
-
-    
