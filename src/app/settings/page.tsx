@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState } from 'react';
@@ -62,7 +61,10 @@ export default function SettingsPage() {
 
   const handleAssignTeam = (userId: string, teamId: string) => {
     const updatedTeams = teams.map(team => {
-      const newOwnerIds = team.ownerUserIds.filter(id => id !== userId);
+      // Create a new list of owner IDs, excluding the current user to prevent duplicates or handle re-assignment.
+      let newOwnerIds = team.ownerUserIds.filter(id => id !== userId);
+      
+      // If the current team is the one being assigned to, add the user.
       if (team.id === teamId) {
         if (!newOwnerIds.includes(userId)) {
           newOwnerIds.push(userId);
@@ -71,6 +73,9 @@ export default function SettingsPage() {
       return { ...team, ownerUserIds: newOwnerIds };
     });
     setTeams(updatedTeams);
+
+    // Also update the user state to reflect this change immediately in the UI if needed
+    // This part is mostly for consistency if the user object itself tracks the team
   };
 
   const handleUpdateUser = () => {
@@ -143,7 +148,6 @@ export default function SettingsPage() {
           <Settings className="h-5 w-5" />
           Admin Settings
         </h1>
-        <Button onClick={handleSaveChanges}><Save />Save All Changes</Button>
       </header>
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
 
@@ -211,7 +215,7 @@ export default function SettingsPage() {
                 </div>
                 <Separator/>
                 <div className="flex justify-end gap-2">
-                    <Button variant="outline" disabled>End Week & Lock Scoring</Button>
+                    <Button variant="outline" onClick={handleSaveChanges}>Apply & Lock Events</Button>
                     <Button variant="outline" disabled>Start Next Week</Button>
                 </div>
             </CardContent>
@@ -238,9 +242,12 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users /> Manage Users</CardTitle>
-            <CardDescription>Edit user roles, league assignments, and team assignments.</CardDescription>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2"><Users /> Manage Users</CardTitle>
+              <CardDescription>Edit user roles, league assignments, and team assignments.</CardDescription>
+            </div>
+            <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4"/>Save User Changes</Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {users.map(user => (
@@ -323,7 +330,7 @@ export default function SettingsPage() {
                           </div>
                         </div>
                         <DialogFooter>
-                          <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</button>
+                          <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
                           <Button onClick={handleUpdateUser}>Save Changes</Button>
                         </DialogFooter>
                       </DialogContent>
