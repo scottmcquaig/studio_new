@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw } from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getLeagues } from '@/lib/firestore';
+import { getLeagues, getTeams } from '@/lib/firestore';
 
 
 export default function SettingsPage() {
@@ -27,17 +27,21 @@ export default function SettingsPage() {
   const [isAdminView, setIsAdminView] = useState(false);
   
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   
   useEffect(() => {
-    async function fetchLeagues() {
+    async function fetchData() {
       const fetchedLeagues = await getLeagues();
       if (fetchedLeagues.length > 0) {
         setLeagues(fetchedLeagues);
       } else {
-        setLeagues(MOCK_LEAGUES); // Fallback to mock data if fetch fails or returns empty
+        setLeagues(MOCK_LEAGUES); 
       }
+
+      const fetchedTeams = await getTeams();
+      setTeams(fetchedTeams);
     }
-    fetchLeagues();
+    fetchData();
   }, [])
   
   const league = leagues.length > 0 ? leagues[0] : null;
@@ -50,7 +54,7 @@ export default function SettingsPage() {
 
   // Admin state
   const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
-  const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
+  // const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
   // const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
   const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
@@ -909,3 +913,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
