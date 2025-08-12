@@ -7,18 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users } from "lucide-react";
+import { Settings, UserPlus, Users, ShieldCheck, Pencil } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES } from "@/lib/data";
-import type { User, Team } from "@/lib/data";
+import type { User, Team, UserRole } from "@/lib/data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 
-// For this prototype, we'll assume the logged-in user is the first admin found.
-const currentUser = MOCK_USERS.find(u => u.isAdmin);
+// For this prototype, we'll assume the logged-in user is the first site admin found.
+const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
 const activeLeague = MOCK_LEAGUES[0];
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const handleInviteUser = () => {
     if (!newUserEmail.trim()) {
@@ -29,8 +31,9 @@ export default function SettingsPage() {
     const newUser: User = {
       id: newId,
       email: newUserEmail,
-      displayName: newUserEmail.split('@')[0], // Simple display name from email
+      displayName: newUserEmail.split('@')[0],
       createdAt: new Date().toISOString(),
+      role: 'player',
     };
     setUsers([...users, newUser]);
     setNewUserEmail('');
@@ -39,10 +42,8 @@ export default function SettingsPage() {
 
   const handleAssignTeam = (userId: string, teamId: string) => {
     const updatedTeams = teams.map(team => {
-      // Remove user from their current team if they are on one
       const newOwnerIds = team.ownerUserIds.filter(id => id !== userId);
       if (team.id === teamId) {
-        // Add user to the new team, preventing duplicates
         if (!newOwnerIds.includes(userId)) {
           newOwnerIds.push(userId);
         }
@@ -52,7 +53,27 @@ export default function SettingsPage() {
     setTeams(updatedTeams);
   };
 
-  if (!currentUser?.isAdmin) {
+  const handleUpdateUser = () => {
+    if (!editingUser) return;
+    setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
+    setEditingUser(null);
+  };
+  
+  const handleRoleChange = (userId: string, role: UserRole) => {
+    setUsers(users.map(u => u.id === userId ? {...u, role, managedLeagueIds: role === 'league_admin' ? u.managedLeagueIds || [] : undefined} : u));
+  }
+
+  const handleLeagueAdminChange = (userId: string, leagueId: string) => {
+    setUsers(users.map(u => {
+      if (u.id === userId && u.role === 'league_admin') {
+        // for now, we only support one league
+        return {...u, managedLeagueIds: [leagueId]}
+      }
+      return u;
+    }));
+  }
+
+  if (currentUser?.role !== 'site_admin') {
     return (
       <div className="flex flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
@@ -68,6 +89,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <p>User and league settings will be displayed here.</p>
+              <p className="text-muted-foreground mt-4">You do not have administrative permissions.</p>
             </CardContent>
           </Card>
         </main>
@@ -107,11 +129,89 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users /> Manage Team Rosters</CardTitle>
-            <CardDescription>Assign users to their respective teams for the "{activeLeague.name}" league.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><ShieldCheck /> Manage User Roles</CardTitle>
+            <CardDescription>Assign roles and permissions to users across the site.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {users.map(user => (
+              <div key={user.id} className="flex flex-wrap items-center justify-between gap-4 p-2 rounded-md border">
+                <div>
+                  <p className="font-medium">{user.displayName} <span className="text-sm text-muted-foreground">({user.email})</span></p>
+                </div>
+                <div className="flex items-center gap-2">
+                   <Select
+                    value={user.role}
+                    onValueChange={(role: UserRole) => handleRoleChange(user.id, role)}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select a role..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="site_admin">Site Admin</SelectItem>
+                      <SelectItem value="league_admin">League Admin</SelectItem>
+                      <SelectItem value="player">Player</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  {user.role === 'league_admin' && (
+                     <Select
+                        value={user.managedLeagueIds?.[0] || ''}
+                        onValueChange={(leagueId) => handleLeagueAdminChange(user.id, leagueId)}
+                      >
+                      <SelectTrigger className="w-[240px]">
+                        <SelectValue placeholder="Assign a league..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MOCK_LEAGUES.map(league => (
+                          <SelectItem key={league.id} value={league.id}>
+                            {league.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  <Dialog onOpenChange={(open) => !open && setEditingUser(null)}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => setEditingUser({...user})}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    {editingUser && editingUser.id === user.id && (
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit User: {editingUser.displayName}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="displayName">Display Name</Label>
+                            <Input id="displayName" value={editingUser.displayName} onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="userEmail">Email</Label>
+                            <Input id="userEmail" type="email" value={editingUser.email} onChange={(e) => setEditingUser({...editingUser, email: e.target.value})} />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                          <Button onClick={handleUpdateUser}>Save Changes</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    )}
+                  </Dialog>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Users /> Manage Team Assignments</CardTitle>
+            <CardDescription>Assign users to their respective teams for the "{activeLeague.name}" league.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {users.filter(u => u.role !== 'site_admin').map(user => (
               <div key={user.id} className="flex items-center justify-between gap-4 p-2 rounded-md border">
                 <p className="font-medium">{user.displayName} <span className="text-sm text-muted-foreground">({user.email})</span></p>
                 <Select

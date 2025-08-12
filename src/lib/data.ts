@@ -1,4 +1,3 @@
-
 // All data is for a fictional Big Brother 27 season for mocking purposes.
 
 import { BB_RULES, SURVIVOR_RULES } from "@/lib/constants";
@@ -80,14 +79,18 @@ export interface Team {
     weekly_score: number;
 }
 
+export type UserRole = 'site_admin' | 'league_admin' | 'player';
+
 export interface User {
     id: string;
     displayName: string;
     email: string;
     photoURL?: string;
     createdAt: string;
-    isAdmin?: boolean;
+    role: UserRole;
+    managedLeagueIds?: string[];
 }
+
 
 export interface ScoringRule {
     code: string;
@@ -196,15 +199,15 @@ export const MOCK_TEAMS: Team[] = [
 ];
 
 export const MOCK_USERS: User[] = [
-    {"id":"user_admin","displayName":"YAC Admin","email":"admin@yac.com","photoURL":"","createdAt":"2025-07-31T12:00:00Z", "isAdmin": true},
-    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z"},
-    {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z"},
-    {"id":"user_alicia","displayName":"Alicia","email":"alicia@example.com","photoURL":"","createdAt":"2025-08-01T12:00:20Z"},
-    {"id":"user_stone","displayName":"Stone","email":"stone@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z"},
-    {"id":"user_liz","displayName":"Liz","email":"liz@example.com","photoURL":"","createdAt":"2025-08-01T12:00:40Z"},
-    {"id":"user_jess","displayName":"Jess","email":"jess@example.com","photoURL":"","createdAt":"2025-08-01T12:00:50Z"},
-    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z"},
-    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z"}
+    {"id":"user_admin","displayName":"YAC Admin","email":"admin@yac.com","photoURL":"","createdAt":"2025-07-31T12:00:00Z", "role": "site_admin"},
+    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z", "role": "player"},
+    {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z", "role": "player"},
+    {"id":"user_alicia","displayName":"Alicia","email":"alicia@example.com","photoURL":"","createdAt":"2025-08-01T12:00:20Z", "role": "player"},
+    {"id":"user_stone","displayName":"Stone","email":"stone@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z", "role": "league_admin", "managedLeagueIds": ["yac_bb27_public"]},
+    {"id":"user_liz","displayName":"Liz","email":"liz@example.com","photoURL":"","createdAt":"2025-08-01T12:00:40Z", "role": "player"},
+    {"id":"user_jess","displayName":"Jess","email":"jess@example.com","photoURL":"","createdAt":"2025-08-01T12:00:50Z", "role": "player"},
+    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z", "role": "player"},
+    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z", "role": "player"}
 ];
 
 export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
