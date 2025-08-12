@@ -3,7 +3,7 @@
 
 import { collection, getDocs, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase-admin'; // Use the server-side admin instance
-import type { League } from './data';
+import type { League, Team } from './data';
 
 // Helper function to convert a Firestore document to our data types
 function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData, DocumentData>): T {
@@ -25,6 +25,23 @@ export async function getLeagues(): Promise<League[]> {
     return querySnapshot.docs.map(doc => fromFirestore<League>(doc));
   } catch (error) {
     console.error("Error fetching leagues from Firestore:", error);
+    // In case of an error during fetch (e.g., permissions), return an empty array
+    // to prevent the app from crashing.
+    return [];
+  }
+}
+
+export async function getTeams(): Promise<Team[]> {
+  // If db is not a valid Firestore instance (i.e., credentials not set), return empty array
+  if (!db || typeof db.collection !== 'function') {
+    return [];
+  }
+
+  try {
+    const querySnapshot = await getDocs(collection(db, 'teams'));
+    return querySnapshot.docs.map(doc => fromFirestore<Team>(doc));
+  } catch (error) {
+    console.error("Error fetching teams from Firestore:", error);
     // In case of an error during fetch (e.g., permissions), return an empty array
     // to prevent the app from crashing.
     return [];

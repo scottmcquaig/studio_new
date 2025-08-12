@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_TEAMS, MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
+import { getTeams } from "@/lib/firestore";
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -51,8 +52,9 @@ const calculateKpis = (team) => {
 };
 
 
-export default function TeamsPage() {
-    const sortedTeams = [...MOCK_TEAMS].sort((a, b) => b.total_score - a.total_score);
+export default async function TeamsPage() {
+    const teams = await getTeams();
+    const sortedTeams = [...teams].sort((a, b) => b.total_score - a.total_score);
 
     const getOwner = (userId) => MOCK_USERS.find(u => u.id === userId);
 
