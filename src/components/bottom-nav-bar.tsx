@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, BarChart2, Users, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { href: "/", icon: Home, label: "Dashboard" },
@@ -15,19 +16,24 @@ const navItems = [
 
 export function BottomNavBar() {
   const pathname = usePathname();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm md:hidden">
       <div className="mx-auto grid h-16 max-w-md grid-cols-4 items-center justify-around">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = isClient ? pathname === item.href : false;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 rounded-md p-2 text-sm font-medium transition-colors hover:bg-accent/10",
-                isActive ? "text-accent" : "text-muted-foreground"
+                isActive ? "text-primary" : "text-muted-foreground"
               )}
             >
               <item.icon className="h-5 w-5" />
