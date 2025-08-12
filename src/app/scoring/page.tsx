@@ -145,7 +145,7 @@ export default function ScoringPage() {
             </CardTitle>
           </CardHeader>
            <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
-             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background md:col-span-1">
+             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                 <Crown className="h-4 w-4" /> HOH
               </h3>
@@ -208,7 +208,7 @@ export default function ScoringPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-amber-500">
                 <Shield className="h-4 w-4" /> POV
               </h3>
@@ -234,11 +234,8 @@ export default function ScoringPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
-               <h3 className="font-semibold flex items-center gap-1 text-gray-500">
-                Veto Usage
-              </h3>
-               <div className="flex flex-col items-center justify-center h-full">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1 justify-center">
+               <div className="flex flex-col items-center justify-center h-full min-h-[96px]">
                 {pov?.used === false && (
                     <div className="flex flex-col items-center gap-1">
                       <ShieldOff className="h-8 w-8 text-muted-foreground"/>
@@ -266,7 +263,7 @@ export default function ScoringPage() {
               </div>
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-sky-500">
                 <ShieldCheck className="h-4 w-4" /> Block Buster
               </h3>
@@ -292,7 +289,7 @@ export default function ScoringPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background md:col-span-1">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
                 <UserX className="h-4 w-4" /> Evicted
               </h3>
