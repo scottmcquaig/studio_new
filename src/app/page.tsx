@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 const league = MOCK_LEAGUES[0];
 const contestantTerm = league.contestantTerm;
@@ -130,7 +131,7 @@ export default function DashboardPage() {
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                 <Crown className="h-4 w-4" /> HOH
@@ -194,38 +195,38 @@ export default function DashboardPage() {
               )}
             </div>
             
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
-              <h3 className="font-semibold flex items-center gap-1 text-amber-500">
-                <Shield className="h-4 w-4" /> POV
-              </h3>
-              {povWinner ? (
-                <>
-                  <Image
-                    src={povWinner.photoUrl!}
-                    alt={povWinner.fullName}
-                    width={64}
-                    height={64}
-                    className="rounded-full border-2 border-amber-500"
-                    data-ai-hint="portrait person"
-                  />
-                  <span className="text-sm">{povWinner.fullName.split(' ')[0]}</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">TBD</span>
-                </>
-              )}
-            </div>
-            
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1 justify-center">
-               <div className="flex flex-col items-center justify-center h-full min-h-[96px]">
+            <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
+              <div className="flex flex-col items-center flex-grow w-[65%]">
+                <h3 className="font-semibold flex items-center gap-1 text-amber-500">
+                  <Shield className="h-4 w-4" /> POV
+                </h3>
+                {povWinner ? (
+                  <>
+                    <Image
+                      src={povWinner.photoUrl!}
+                      alt={povWinner.fullName}
+                      width={64}
+                      height={64}
+                      className="rounded-full border-2 border-amber-500 mt-2"
+                      data-ai-hint="portrait person"
+                    />
+                    <span className="text-sm mt-1">{povWinner.fullName.split(' ')[0]}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50 mt-2">
+                      <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <span className="text-sm text-muted-foreground mt-1">TBD</span>
+                  </>
+                )}
+              </div>
+              <Separator orientation="vertical" className="h-auto"/>
+               <div className="flex flex-col items-center justify-center w-[35%]">
                 {pov?.used === false && (
                     <div className="flex flex-col items-center gap-1">
                       <ShieldOff className="h-8 w-8 text-muted-foreground"/>
-                      <span className="text-sm text-muted-foreground">Not Used</span>
+                      <span className="text-xs text-muted-foreground">Not Used</span>
                     </div>
                   )}
                   {pov?.used === true && savedPlayer && (
@@ -234,7 +235,7 @@ export default function DashboardPage() {
                           <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
                           <span className="text-xs">{savedPlayer.fullName.split(' ')[0]}</span>
                        </div>
-                       <div className="flex flex-col items-center">
+                       <div className="flex flex-col items-center mt-1">
                            <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
                            <span className="text-xs">{renomPlayer ? renomPlayer.fullName.split(' ')[0] : 'TBD'}</span>
                        </div>
@@ -243,12 +244,11 @@ export default function DashboardPage() {
                   {pov?.used === undefined && !povWinner && (
                      <div className="flex flex-col items-center gap-1">
                       <HelpCircle className="h-8 w-8 text-muted-foreground"/>
-                      <span className="text-sm text-muted-foreground">TBD</span>
+                      <span className="text-xs text-muted-foreground">TBD</span>
                     </div>
                   )}
               </div>
             </div>
-
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-sky-500">
@@ -428,5 +428,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
