@@ -26,13 +26,15 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [isAdminView, setIsAdminView] = useState(false);
   
-  const [leagues, setLeagues] = useState<League[]>(MOCK_LEAGUES);
+  const [leagues, setLeagues] = useState<League[]>([]);
   
   useEffect(() => {
     async function fetchLeagues() {
       const fetchedLeagues = await getLeagues();
       if (fetchedLeagues.length > 0) {
         setLeagues(fetchedLeagues);
+      } else {
+        setLeagues(MOCK_LEAGUES); // Fallback to mock data if fetch fails or returns empty
       }
     }
     fetchLeagues();
@@ -176,8 +178,9 @@ export default function SettingsPage() {
     setCompetitions(competitions.map(c => c.id === nomEvent.id ? {...c, nominees: updatedNominees} : c));
   }
 
-  const handleNomineeResultChange = (nomineeId: string, result: 'safe' | 'evicted' | 'saved' | 'blockbuster' | '') => {
+  const handleNomineeResultChange = (nomineeId: string, result: 'safe' | 'evicted' | 'saved' | 'blockbuster' | 'tbd') => {
       let newCompetitions = [...competitions];
+      const effectiveResult = result === 'tbd' ? '' : result;
       
       // Clear previous results for this week
       let evictionEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'EVICTION');
@@ -190,20 +193,21 @@ export default function SettingsPage() {
       if (povEvent && povEvent.usedOnId === nomineeId) povEvent.usedOnId = undefined;
 
       // Set new result
-      if (result === 'evicted') {
+      if (effectiveResult === 'evicted') {
           if (!evictionEvent) {
               evictionEvent = { id: `bb27_wk${selectedWeek}_eviction`, seasonId: 'bb27', week: selectedWeek, type: 'EVICTION', airDate: new Date().toISOString() };
               newCompetitions.push(evictionEvent);
           }
           evictionEvent.evictedId = nomineeId;
-      } else if (result === 'blockbuster') {
+      } else if (effectiveResult === 'blockbuster') {
           if (!blockBusterEvent) {
               blockBusterEvent = { id: `bb27_wk${selectedWeek}_block_buster`, seasonId: 'bb27', week: selectedWeek, type: 'BLOCK_BUSTER', airDate: new Date().toISOString() };
               newCompetitions.push(blockBusterEvent);
           }
           blockBusterEvent.winnerId = nomineeId;
-      } else if (result === 'saved') {
+      } else if (effectiveResult === 'saved') {
           if (povEvent) {
+              povEvent.used = true;
               povEvent.usedOnId = nomineeId;
           } else { // create if doesn't exist
               const newPovEvent = { id: `bb27_wk${selectedWeek}_veto`, seasonId: 'bb27', week: selectedWeek, type: 'VETO' as const, airDate: new Date().toISOString(), used: true, usedOnId: nomineeId };
@@ -392,7 +396,7 @@ export default function SettingsPage() {
                                 <div className='space-y-4'>
                                   {(noms?.nominees || []).map((nomineeId, index) => {
                                       const isRenom = nomineeId === pov?.replacementNomId;
-                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' | '' = '';
+                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' | 'tbd' = 'tbd';
                                       if (nomineeId === eviction?.evictedId) currentResult = 'evicted';
                                       else if (nomineeId === pov?.usedOnId) currentResult = 'saved';
                                       else if (nomineeId === blockBuster?.winnerId) currentResult = 'blockbuster';
@@ -430,7 +434,7 @@ export default function SettingsPage() {
                                                             <SelectValue placeholder="Select Result..." />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="">Select Result...</SelectItem>
+                                                            <SelectItem value="tbd">Select Result...</SelectItem>
                                                             <SelectItem value="safe">Safe</SelectItem>
                                                             <SelectItem value="evicted">Evicted</SelectItem>
                                                             <SelectItem value="saved">Saved by Veto</SelectItem>
