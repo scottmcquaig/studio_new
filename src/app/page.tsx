@@ -258,7 +258,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className={cn(
                                     "flex items-center gap-1 text-sm font-semibold",
-                                    team.weekly_score >= 0 ? "text-green-500" : "text-red-500"
+                                    team.weekly_score >= 0 ? "text-green-600" : "text-red-600"
                                 )}>
                                     {team.weekly_score >= 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
                                     <span>({team.weekly_score > 0 ? '+': ''}{team.weekly_score})</span>
@@ -292,7 +292,7 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className="text-sm font-bold">
+                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className="text-sm font-bold bg-green-600">
                                     {player.points > 0 ? '+': ''}{player.points}
                                 </Badge>
                             </div>
@@ -329,7 +329,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={activity.points >= 0 ? "default" : "destructive"} className="text-sm font-bold">
+                  <Badge variant={activity.points >= 0 ? "default" : "destructive"} className="text-sm font-bold bg-green-600">
                     {activity.points > 0 ? '+': ''}{activity.points}
                   </Badge>
                 </div>

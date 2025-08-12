@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { MOCK_HOUSEGUESTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { Houseguest } from '@/lib/data';
 import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy } from "lucide-react";
+import { cn } from '@/lib/utils';
 
 type HouseguestWithStats = Houseguest & {
   teamName: string;
@@ -115,7 +116,9 @@ export default function HouseguestsPage() {
                       <CardTitle className="text-xl">{hg.fullName}</CardTitle>
                       <p className="text-xs text-muted-foreground">{hg.teamName}</p>
                     </div>
-                    <Badge variant={hg.status === 'active' ? 'default' : 'destructive'} className="h-fit">
+                    <Badge 
+                      variant={hg.status === 'active' ? 'default' : 'destructive'} 
+                      className={cn(hg.status === 'active' && 'bg-green-600 text-white')}>
                       {hg.status === 'active' ? 'Active' : 'Evicted'}
                     </Badge>
                   </CardHeader>

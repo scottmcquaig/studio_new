@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // For this prototype, we'll assume the logged-in user is the first site admin found.
 const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
@@ -360,7 +361,9 @@ export default function SettingsPage() {
                                 />
                                 <div>
                                     <p className="font-medium">{hg.fullName}</p>
-                                    <Badge variant={hg.status === 'active' ? 'default' : 'destructive'} className="h-fit text-xs mt-1">
+                                    <Badge 
+                                      variant={hg.status === 'active' ? 'default' : 'destructive'} 
+                                      className={cn('h-fit text-xs mt-1', hg.status === 'active' && 'bg-green-600 text-white')}>
                                         {hg.status.charAt(0).toUpperCase() + hg.status.slice(1)}
                                     </Badge>
                                 </div>
@@ -498,7 +501,7 @@ export default function SettingsPage() {
                             <p className="font-medium">{user.displayName}</p>
                             <p className="text-xs text-muted-foreground">{user.email}</p>
                           </div>
-                           <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>{user.status === 'active' ? 'Active' : 'Pending'}</Badge>
+                           <Badge variant={user.status === 'active' ? 'default' : 'secondary'} className={cn(user.status === 'active' && 'bg-green-600 text-white')}>{user.status === 'active' ? 'Active' : 'Pending'}</Badge>
                         </div>
                         <div className="flex items-center gap-2">
                            <Select
@@ -580,5 +583,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
