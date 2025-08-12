@@ -291,10 +291,12 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{team.total_score.toLocaleString()} pts</p>
                                     </div>
                                 </div>
-                                <Badge variant={team.weekly_score >= 0 ? "default" : "destructive"} className={cn("flex items-center gap-1", team.weekly_score >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
-                                    {team.weekly_score > 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
-                                    <span>{team.weekly_score > 0 ? '+': ''}{team.weekly_score}</span>
-                                </Badge>
+                                <div className="flex items-center gap-1">
+                                    {team.weekly_score > 0 ? <ArrowUp className="h-4 w-4 text-green-600"/> : <ArrowDown className="h-4 w-4 text-red-600"/>}
+                                    <Badge variant={team.weekly_score >= 0 ? "default" : "destructive"} className={cn(team.weekly_score >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                                      <span>{team.weekly_score > 0 ? '+': ''}{team.weekly_score}</span>
+                                    </Badge>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -324,10 +326,12 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn("flex items-center gap-1", player.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
-                                    {player.points > 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
-                                    <span>{player.points > 0 ? '+': ''}{player.points}</span>
-                                </Badge>
+                                <div className="flex items-center gap-1">
+                                    {player.points > 0 ? <ArrowUp className="h-4 w-4 text-green-600"/> : <ArrowDown className="h-4 w-4 text-red-600"/>}
+                                    <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(player.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                                      <span>{player.points > 0 ? '+': ''}{player.points}</span>
+                                    </Badge>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -362,10 +366,12 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn("flex items-center gap-1", activity.points! >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
-                      {activity.points! > 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
-                      <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    {activity.points! > 0 ? <ArrowUp className="h-4 w-4 text-green-600"/> : <ArrowDown className="h-4 w-4 text-red-600"/>}
+                    <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(activity.points! >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                        <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
+                    </Badge>
+                  </div>
                 </div>
               )) : (
                 <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
