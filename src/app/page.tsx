@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Medal,
   ListOrdered,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +60,9 @@ export default function DashboardPage() {
 
   const pov = currentWeekEvents.find((c) => c.type === "VETO");
   const povWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === pov?.winnerId);
+
+  const blockBuster = currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER");
+  const blockBusterWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === blockBuster?.winnerId);
 
   const eviction = currentWeekEvents.find((c) => c.type === "EVICTION");
   const evictedPlayer = MOCK_HOUSEGUESTS.find(
@@ -117,7 +121,7 @@ export default function DashboardPage() {
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
               <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                 <Crown className="h-4 w-4" /> HOH
@@ -170,8 +174,8 @@ export default function DashboardPage() {
                   ))
                 ) : (
                   <>
-                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                      <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                      <HelpCircle className="w-6 h-6 text-muted-foreground" />
                     </div>
                   </>
                 )}
@@ -206,6 +210,33 @@ export default function DashboardPage() {
                 </>
               )}
             </div>
+
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+              <h3 className="font-semibold flex items-center gap-1 text-sky-500">
+                <ShieldCheck className="h-4 w-4" /> Block Buster
+              </h3>
+              {blockBusterWinner ? (
+                <>
+                  <Image
+                    src={blockBusterWinner.photoUrl!}
+                    alt={blockBusterWinner.fullName}
+                    width={64}
+                    height={64}
+                    className="rounded-full border-2 border-sky-500"
+                    data-ai-hint="portrait person"
+                  />
+                  <span className="text-sm">{blockBusterWinner.fullName.split(' ')[0]}</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">None</span>
+                </>
+              )}
+            </div>
+
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
               <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
@@ -264,7 +295,7 @@ export default function DashboardPage() {
                                     "flex items-center gap-1 text-sm font-semibold",
                                     team.weekly_score >= 0 ? "text-green-600" : "text-red-600"
                                 )}>
-                                    {team.weekly_score >= 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
+                                    {team.weekly_score > 0 ? <ArrowUp className="h-4 w-4"/> : <ArrowDown className="h-4 w-4"/>}
                                     <span>{team.weekly_score > 0 ? '+': ''}{team.weekly_score}</span>
                                 </div>
                             </div>
@@ -338,9 +369,9 @@ export default function DashboardPage() {
                   </div>
                    <div className={cn(
                         "text-sm font-bold",
-                        activity.points >= 0 ? "text-green-600" : "text-red-600"
+                        activity.points! >= 0 ? "text-green-600" : "text-red-600"
                     )}>
-                        {activity.points > 0 ? '+': ''}{activity.points}
+                        {activity.points! > 0 ? '+': ''}{activity.points}
                     </div>
                 </div>
               )) : (

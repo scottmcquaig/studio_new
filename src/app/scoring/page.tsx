@@ -2,12 +2,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS } from "@/lib/data";
-import { ClipboardList, Filter } from "lucide-react";
+import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 type ScoringEvent = {
@@ -29,7 +30,20 @@ export default function ScoringPage() {
   const [selectedHouseguest, setSelectedHouseguest] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
-  const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1));
+  const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => String(i + 1));
+  
+  const weeklyEvents = MOCK_COMPETITIONS.filter(c => c.week === Number(selectedWeek));
+  const hoh = weeklyEvents.find((c) => c.type === "HOH");
+  const hohWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === hoh?.winnerId);
+  const noms = weeklyEvents.find((c) => c.type === "NOMINATIONS");
+  const nomWinners = MOCK_HOUSEGUESTS.filter((hg) => noms?.nominees?.includes(hg.id));
+  const pov = weeklyEvents.find((c) => c.type === "VETO");
+  const povWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === pov?.winnerId);
+  const blockBuster = weeklyEvents.find((c) => c.type === "BLOCK_BUSTER");
+  const blockBusterWinner = MOCK_HOUSEGUESTS.find((hg) => hg.id === blockBuster?.winnerId);
+  const eviction = weeklyEvents.find((c) => c.type === "EVICTION");
+  const evictedPlayer = MOCK_HOUSEGUESTS.find((hg) => hg.id === eviction?.evictedId);
+
 
   // Memoize the creation of the event log to avoid re-computation on every render
   const scoringEvents = useMemo(() => {
@@ -106,8 +120,170 @@ export default function ScoringPage() {
           <ClipboardList className="h-5 w-5" />
           Scoring
         </h1>
+        <div className="w-40">
+          <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+            <SelectTrigger><SelectValue/></SelectTrigger>
+            <SelectContent>
+              {weekOptions.map(week => <SelectItem key={week} value={week}>Week {week}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </header>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+
+        <Card className="bg-card/50">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Week {selectedWeek} Status</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Read-only view of weekly results.
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+              <h3 className="font-semibold flex items-center gap-1 text-purple-600">
+                <Crown className="h-4 w-4" /> HOH
+              </h3>
+              {hohWinner ? (
+                <>
+                  <Image
+                    src={hohWinner.photoUrl!}
+                    alt={hohWinner.fullName}
+                    width={64}
+                    height={64}
+                    className="rounded-full border-2 border-purple-600"
+                    data-ai-hint="portrait person"
+                  />
+                  <span className="text-sm">{hohWinner.fullName.split(' ')[0]}</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">TBD</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+              <h3 className="font-semibold flex items-center gap-1 text-red-400">
+                <Users className="h-4 w-4" /> Noms
+              </h3>
+              <div className="flex items-center justify-center gap-2 min-h-[76px]">
+                {nomWinners.length > 0 ? (
+                  nomWinners.map((nom) => (
+                    <div
+                      key={nom.id}
+                      className="flex flex-col items-center gap-1"
+                    >
+                      <Image
+                        src={nom.photoUrl!}
+                        alt={nom.fullName}
+                        width={48}
+                        height={48}
+                        className="rounded-full border-2 border-red-400"
+                        data-ai-hint="portrait person"
+                      />
+                      <span className="text-xs">
+                        {nom.fullName.split(" ")[0]}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <>
+                     <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                      <HelpCircle className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  </>
+                )}
+              </div>
+               {nomWinners.length === 0 && (
+                <span className="text-sm text-muted-foreground -mt-2">TBD</span>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+              <h3 className="font-semibold flex items-center gap-1 text-amber-500">
+                <Shield className="h-4 w-4" /> POV
+              </h3>
+              {povWinner ? (
+                <>
+                  <Image
+                    src={povWinner.photoUrl!}
+                    alt={povWinner.fullName}
+                    width={64}
+                    height={64}
+                    className="rounded-full border-2 border-amber-500"
+                    data-ai-hint="portrait person"
+                  />
+                  <span className="text-sm">{povWinner.fullName.split(' ')[0]}</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">TBD</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+              <h3 className="font-semibold flex items-center gap-1 text-sky-500">
+                <ShieldCheck className="h-4 w-4" /> Block Buster
+              </h3>
+              {blockBusterWinner ? (
+                <>
+                  <Image
+                    src={blockBusterWinner.photoUrl!}
+                    alt={blockBusterWinner.fullName}
+                    width={64}
+                    height={64}
+                    className="rounded-full border-2 border-sky-500"
+                    data-ai-hint="portrait person"
+                  />
+                  <span className="text-sm">{blockBusterWinner.fullName.split(' ')[0]}</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">None</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+              <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
+                <UserX className="h-4 w-4" /> Evicted
+              </h3>
+              {evictedPlayer ? (
+                <>
+                  <Image
+                    src={evictedPlayer.photoUrl!}
+                    alt={evictedPlayer.fullName}
+                    width={64}
+                    height={64}
+                    className="rounded-full border-2 border-muted-foreground"
+                    data-ai-hint="portrait person"
+                  />
+                  <span className="text-sm">{evictedPlayer.fullName.split(' ')[0]}</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">TBD</span>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
 
         <Card>
           <CardHeader>
@@ -116,9 +292,9 @@ export default function ScoringPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-4 mb-4">
-              <div className="flex-1 min-w-[150px]">
-                <label className="text-sm font-medium">Week</label>
-                <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+               <div className="flex-1 min-w-[150px]">
+                <label className="text-sm font-medium">Filter Week</label>
+                <Select value={selectedWeek} onValueChange={val => setSelectedWeek(val === 'all' ? 'all' : String(val))}>
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Weeks</SelectItem>
@@ -165,12 +341,11 @@ export default function ScoringPage() {
                     <TableCell>{event.houseguestName}</TableCell>
                     <TableCell>{event.teamName || 'N/A'}</TableCell>
                     <TableCell>{event.eventLabel}</TableCell>
-                    <TableCell className="text-right font-mono">
-                       <Badge 
-                          variant={event.points >= 0 ? "default" : "destructive"}
-                          className={cn(event.points >= 0 && "bg-green-600 text-white")}>
-                          {event.points > 0 ? `+${event.points}` : event.points}
-                       </Badge>
+                    <TableCell className={cn(
+                        "text-right font-mono font-bold",
+                         event.points >= 0 ? "text-green-600" : "text-red-600"
+                    )}>
+                        {event.points > 0 ? `+${event.points}` : event.points}
                     </TableCell>
                   </TableRow>
                 )) : (
