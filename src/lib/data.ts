@@ -24,6 +24,7 @@ export interface Houseguest {
   hometown: string;
   status: 'active' | 'evicted' | 'jury';
   enteredDay: number;
+  photoUrl?: string;
   isReturnee?: boolean;
   specialPower?: string;
   evictedDay?: number;
@@ -133,23 +134,23 @@ export const MOCK_SEASONS: Season[] = [
   ];
 
 export const MOCK_HOUSEGUESTS: Houseguest[] = [
-    {"id":"keanu_soto","seasonId":"bb27","fullName":"Keanu Soto","age":33,"occupation":"Dungeon master","hometown":"McKinney, TX","status":"active","enteredDay":1},
-    {"id":"jimmy_heagerty","seasonId":"bb27","fullName":"Jimmy Heagerty","age":25,"occupation":"Strategy consultant","hometown":"Washington, DC","status":"evicted","evictedDay":31,"finish":"16th"},
-    {"id":"lauren_domingue","seasonId":"bb27","fullName":"Lauren Domingue","age":22,"occupation":"Bridal stylist","hometown":"Lafayette, LA","status":"active","enteredDay":1},
-    {"id":"zach_cornell","seasonId":"bb27","fullName":"Zach Cornell","age":27,"occupation":"Marketing manager","hometown":"Cartersville, GA","status":"active","enteredDay":1,"specialPower":"$10k immunity pre-jury"},
-    {"id":"morgan_pope","seasonId":"bb27","fullName":"Morgan Pope","age":33,"occupation":"Gamer","hometown":"Los Angeles, CA","status":"active","enteredDay":1},
-    {"id":"rylie_jeffries","seasonId":"bb27","fullName":"Rylie Jeffries","age":27,"occupation":"Professional bull rider","hometown":"Luther, OK","status":"active","enteredDay":1},
-    {"id":"kelley_jorgensen","seasonId":"bb27","fullName":"Kelley Jorgensen","age":29,"occupation":"Web designer","hometown":"Burbank, SD","status":"active","enteredDay":1},
-    {"id":"ashley_hollis","seasonId":"bb27","fullName":"Ashley Hollis","age":25,"occupation":"Attorney","hometown":"New York, NY","status":"active","enteredDay":1},
-    {"id":"vince_panaro","seasonId":"bb27","fullName":"Vince Panaro","age":34,"occupation":"Unemployed","hometown":"West Hills, CA","status":"active","enteredDay":1},
-    {"id":"zae_frederich","seasonId":"bb27","fullName":"Isaiah \"Zae\" Frederich","age":23,"occupation":"Salesperson","hometown":"Phoenix, AZ","status":"evicted","evictedDay":10,"finish":"19th"},
-    {"id":"katherine_woodman","seasonId":"bb27","fullName":"Katherine Woodman","age":23,"occupation":"Fine dining server","hometown":"Columbia, SC","status":"active","enteredDay":1},
-    {"id":"adrian_rocha","seasonId":"bb27","fullName":"Adrian Rocha","age":23,"occupation":"Carpenter","hometown":"San Antonio, TX","status":"evicted","evictedDay":24,"finish":"17th"},
-    {"id":"rachel_reilly","seasonId":"bb27","fullName":"Rachel Reilly","age":40,"occupation":"TV personality","hometown":"Hoover, AL","status":"active","enteredDay":1,"isReturnee":true},
-    {"id":"will_williams","seasonId":"bb27","fullName":"Cliffton \"Will\" Williams","age":50,"occupation":"College sports podcaster","hometown":"Charlotte, NC","status":"active","enteredDay":1},
-    {"id":"amy_bingham","seasonId":"bb27","fullName":"Amy Bingham","age":43,"occupation":"Insurance agent","hometown":"Stockton, CA","status":"evicted","evictedDay":17,"finish":"18th","note":"Entered as Mastermind's accomplice"},
-    {"id":"mickey_lee","seasonId":"bb27","fullName":"Mickey Lee","age":35,"occupation":"Event curator","hometown":"Atlanta, GA","status":"active","enteredDay":1},
-    {"id":"ava_pearl","seasonId":"bb27","fullName":"Ava Pearl","age":24,"occupation":"Aura painter","hometown":"New York, NY","status":"active","enteredDay":1},
+    {"id":"keanu_soto","seasonId":"bb27","fullName":"Keanu Soto","age":33,"occupation":"Dungeon master","hometown":"McKinney, TX","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"jimmy_heagerty","seasonId":"bb27","fullName":"Jimmy Heagerty","age":25,"occupation":"Strategy consultant","hometown":"Washington, DC","status":"evicted","evictedDay":31,"finish":"16th", "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"lauren_domingue","seasonId":"bb27","fullName":"Lauren Domingue","age":22,"occupation":"Bridal stylist","hometown":"Lafayette, LA","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"zach_cornell","seasonId":"bb27","fullName":"Zach Cornell","age":27,"occupation":"Marketing manager","hometown":"Cartersville, GA","status":"active","enteredDay":1,"specialPower":"$10k immunity pre-jury", "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"morgan_pope","seasonId":"bb27","fullName":"Morgan Pope","age":33,"occupation":"Gamer","hometown":"Los Angeles, CA","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"rylie_jeffries","seasonId":"bb27","fullName":"Rylie Jeffries","age":27,"occupation":"Professional bull rider","hometown":"Luther, OK","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"kelley_jorgensen","seasonId":"bb27","fullName":"Kelley Jorgensen","age":29,"occupation":"Web designer","hometown":"Burbank, SD","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"ashley_hollis","seasonId":"bb27","fullName":"Ashley Hollis","age":25,"occupation":"Attorney","hometown":"New York, NY","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"vince_panaro","seasonId":"bb27","fullName":"Vince Panaro","age":34,"occupation":"Unemployed","hometown":"West Hills, CA","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"zae_frederich","seasonId":"bb27","fullName":"Isaiah \"Zae\" Frederich","age":23,"occupation":"Salesperson","hometown":"Phoenix, AZ","status":"evicted","evictedDay":10,"finish":"19th", "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"katherine_woodman","seasonId":"bb27","fullName":"Katherine Woodman","age":23,"occupation":"Fine dining server","hometown":"Columbia, SC","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"adrian_rocha","seasonId":"bb27","fullName":"Adrian Rocha","age":23,"occupation":"Carpenter","hometown":"San Antonio, TX","status":"evicted","evictedDay":24,"finish":"17th", "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"rachel_reilly","seasonId":"bb27","fullName":"Rachel Reilly","age":40,"occupation":"TV personality","hometown":"Hoover, AL","status":"active","enteredDay":1,"isReturnee":true, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"will_williams","seasonId":"bb27","fullName":"Cliffton \"Will\" Williams","age":50,"occupation":"College sports podcaster","hometown":"Charlotte, NC","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"amy_bingham","seasonId":"bb27","fullName":"Amy Bingham","age":43,"occupation":"Insurance agent","hometown":"Stockton, CA","status":"evicted","evictedDay":17,"finish":"18th","note":"Entered as Mastermind's accomplice", "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"mickey_lee","seasonId":"bb27","fullName":"Mickey Lee","age":35,"occupation":"Event curator","hometown":"Atlanta, GA","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"ava_pearl","seasonId":"bb27","fullName":"Ava Pearl","age":24,"occupation":"Aura painter","hometown":"New York, NY","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
 ];
 
 
