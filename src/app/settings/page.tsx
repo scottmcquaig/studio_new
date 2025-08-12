@@ -342,19 +342,34 @@ export default function SettingsPage() {
                               <div className="space-y-2">
                                 <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominees</Label>
                                 <div className='space-y-2'>
-                                  {(noms?.nominees || []).map((nomineeId, index) => (
+                                  {(noms?.nominees || []).map((nomineeId, index) => {
+                                    const isReplacement = nomineeId === pov?.replacementNomId;
+                                    const wasSavedByVeto = nomineeId === pov?.usedOnId;
+                                    const wasEvicted = nomineeId === eviction?.evictedId;
+                                    const isSafe = !wasSavedByVeto && !wasEvicted;
+
+                                    return (
                                       <div key={index} className="flex items-center gap-2">
+                                        <div className="flex-1">
                                           <Select value={nomineeId} onValueChange={(val) => handleEventUpdate('NOMINATIONS', val, index)}>
                                               <SelectTrigger><SelectValue placeholder={`Select Nominee ${index + 1}...`}/></SelectTrigger>
                                               <SelectContent>
                                                   {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                               </SelectContent>
                                           </Select>
-                                          <Button variant="ghost" size="icon" onClick={() => handleRemoveNominee(index)} className="h-9 w-9">
-                                              <Trash2 className="h-4 w-4"/>
-                                          </Button>
+                                        </div>
+                                        <div className='flex items-center gap-2'>
+                                          {isReplacement && <Badge variant="secondary" className="bg-orange-100 text-orange-800">Renom</Badge>}
+                                          {wasSavedByVeto && <Badge variant="secondary" className="bg-sky-100 text-sky-800">Saved by Veto</Badge>}
+                                          {eviction && wasEvicted && <Badge variant="destructive">Evicted</Badge>}
+                                          {eviction && isSafe && <Badge variant="secondary" className="bg-green-100 text-green-800">Safe</Badge>}
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveNominee(index)} className="h-9 w-9">
+                                            <Trash2 className="h-4 w-4"/>
+                                        </Button>
                                       </div>
-                                  ))}
+                                    )
+                                  })}
                                 </div>
                                 <Button variant="outline" size="sm" onClick={handleAddNominee} className="mt-2">
                                     <PlusCircle className="mr-2 h-4 w-4"/> Add Nominee

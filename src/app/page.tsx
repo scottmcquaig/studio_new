@@ -21,8 +21,6 @@ import {
   ListOrdered,
   ShieldCheck,
   Minus,
-  ArrowUp,
-  ArrowDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
