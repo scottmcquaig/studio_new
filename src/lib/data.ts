@@ -196,7 +196,8 @@ export const MOCK_TEAMS: Team[] = [
 ];
 
 export const MOCK_USERS: User[] = [
-    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z", "isAdmin": true},
+    {"id":"user_admin","displayName":"YAC Admin","email":"admin@yac.com","photoURL":"","createdAt":"2025-07-31T12:00:00Z", "isAdmin": true},
+    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z"},
     {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z"},
     {"id":"user_alicia","displayName":"Alicia","email":"alicia@example.com","photoURL":"","createdAt":"2025-08-01T12:00:20Z"},
     {"id":"user_stone","displayName":"Stone","email":"stone@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z"},
