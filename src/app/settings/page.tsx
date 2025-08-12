@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -18,6 +18,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 // For this prototype, we'll assume the logged-in user is the first site admin found.
 const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
@@ -137,7 +139,7 @@ export default function SettingsPage() {
     setUsers(users.map(u => u.id === userId ? {...u, role, managedLeagueIds: role === 'league_admin' ? u.managedLeagueIds || [] : undefined} : u));
   }
   
-  const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION' | 'BLOCK_BUSTER', value: string | string[], nomineeIndex?: number) => {
+  const handleEventUpdate = (type: 'HOH' | 'VETO', value: string) => {
     let newCompetitions = [...competitions];
     let event = newCompetitions.find(c => c.week === selectedWeek && c.type === type);
     
@@ -146,21 +148,59 @@ export default function SettingsPage() {
       newCompetitions.push(event);
     }
     
-    if (type === 'HOH' || type === 'VETO' || type === 'BLOCK_BUSTER') {
-        event.winnerId = value as string;
-    } else if (type === 'EVICTION') {
-        event.evictedId = value as string;
-    } else if (type === 'NOMINATIONS') {
-        if (!event.nominees) event.nominees = [];
-        if (typeof nomineeIndex === 'number') {
-            const updatedNominees = [...event.nominees];
-            updatedNominees[nomineeIndex] = value as string;
-            event.nominees = updatedNominees.filter(n => n); // clean up any empty spots
-        }
-    }
-    
+    event.winnerId = value as string;
     setCompetitions(newCompetitions);
   };
+
+  const handleNomineeChange = (index: number, newId: string) => {
+    const nomEvent = competitions.find(c => c.week === selectedWeek && c.type === 'NOMINATIONS');
+    if (!nomEvent || !nomEvent.nominees) return;
+    const updatedNominees = [...nomEvent.nominees];
+    updatedNominees[index] = newId;
+    setCompetitions(competitions.map(c => c.id === nomEvent.id ? {...c, nominees: updatedNominees} : c));
+  }
+
+  const handleNomineeResultChange = (nomineeId: string, result: 'safe' | 'evicted' | 'saved' | 'blockbuster') => {
+      let newCompetitions = [...competitions];
+      
+      // Clear previous results for this week
+      let evictionEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'EVICTION');
+      let blockBusterEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'BLOCK_BUSTER');
+      let povEvent = newCompetitions.find(c => c.week === selectedWeek && c.type === 'VETO');
+      
+      if (evictionEvent) evictionEvent.evictedId = undefined;
+      if (blockBusterEvent) blockBusterEvent.winnerId = undefined;
+      if (povEvent) povEvent.usedOnId = undefined;
+
+      // Set new result
+      if (result === 'evicted') {
+          if (!evictionEvent) {
+              evictionEvent = { id: `bb27_wk${selectedWeek}_eviction`, seasonId: 'bb27', week: selectedWeek, type: 'EVICTION', airDate: new Date().toISOString() };
+              newCompetitions.push(evictionEvent);
+          }
+          evictionEvent.evictedId = nomineeId;
+      } else if (result === 'blockbuster') {
+          if (!blockBusterEvent) {
+              blockBusterEvent = { id: `bb27_wk${selectedWeek}_block_buster`, seasonId: 'bb27', week: selectedWeek, type: 'BLOCK_BUSTER', airDate: new Date().toISOString() };
+              newCompetitions.push(blockBusterEvent);
+          }
+          blockBusterEvent.winnerId = nomineeId;
+      } else if (result === 'saved') {
+          if (povEvent) {
+              povEvent.usedOnId = nomineeId;
+          }
+      }
+      setCompetitions(newCompetitions);
+  };
+
+  const handleRenomChange = (nomineeId: string, isChecked: boolean) => {
+    const povEvent = competitions.find(c => c.week === selectedWeek && c.type === 'VETO');
+    if (povEvent) {
+        setCompetitions(competitions.map(c => 
+            c.id === povEvent.id ? { ...c, replacementNomId: isChecked ? nomineeId : undefined } : c
+        ));
+    }
+  }
 
   const handleAddNominee = () => {
     let nomEvent = competitions.find(c => c.week === selectedWeek && c.type === 'NOMINATIONS');
@@ -319,54 +359,65 @@ export default function SettingsPage() {
                                           </SelectContent>
                                       </Select>
                                   </div>
-                                  <div>
-                                      <Label className="flex items-center gap-1 mb-1"><ShieldCheck className="text-sky-500"/>Block Buster Winner</Label>
-                                      <Select value={blockBuster?.winnerId || ''} onValueChange={(val) => handleEventUpdate('BLOCK_BUSTER', val)}>
-                                          <SelectTrigger><SelectValue placeholder="Select Block Buster..."/></SelectTrigger>
-                                          <SelectContent>
-                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div>
-                                      <Label className="flex items-center gap-1 mb-1"><UserX className="text-muted-foreground"/>Evicted {contestantTerm.singular}</Label>
-                                      <Select value={eviction?.evictedId || ''} onValueChange={(val) => handleEventUpdate('EVICTION', val)}>
-                                          <SelectTrigger><SelectValue placeholder="Select Evicted..."/></SelectTrigger>
-                                          <SelectContent>
-                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
                               </div>
                               <Separator/>
                               <div className="space-y-2">
-                                <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominees</Label>
-                                <div className='space-y-2'>
+                                <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominees & Results</Label>
+                                <div className='space-y-4'>
                                   {(noms?.nominees || []).map((nomineeId, index) => {
-                                    const isReplacement = nomineeId === pov?.replacementNomId;
-                                    const wasSavedByVeto = nomineeId === pov?.usedOnId;
-                                    const wasEvicted = nomineeId === eviction?.evictedId;
-                                    const isSafe = !wasSavedByVeto && !wasEvicted;
-
+                                      const isRenom = nomineeId === pov?.replacementNomId;
+                                      let currentResult: 'safe' | 'evicted' | 'saved' | 'blockbuster' = 'safe';
+                                      if (nomineeId === eviction?.evictedId) currentResult = 'evicted';
+                                      else if (nomineeId === pov?.usedOnId) currentResult = 'saved';
+                                      else if (nomineeId === blockBuster?.winnerId) currentResult = 'blockbuster';
+                                    
                                     return (
-                                      <div key={index} className="flex items-center gap-2">
-                                        <div className="flex-1">
-                                          <Select value={nomineeId} onValueChange={(val) => handleEventUpdate('NOMINATIONS', val, index)}>
-                                              <SelectTrigger><SelectValue placeholder={`Select Nominee ${index + 1}...`}/></SelectTrigger>
-                                              <SelectContent>
-                                                  {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                              </SelectContent>
-                                          </Select>
+                                      <div key={index} className="flex flex-col gap-3 p-3 border rounded-lg bg-background/50">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <Select value={nomineeId} onValueChange={(val) => handleNomineeChange(index, val)}>
+                                                    <SelectTrigger><SelectValue placeholder={`Select Nominee ${index + 1}...`}/></SelectTrigger>
+                                                    <SelectContent>
+                                                        {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => handleRemoveNominee(index)} className="h-9 w-9">
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
                                         </div>
-                                        <div className='flex items-center gap-2'>
-                                          {isReplacement && <Badge variant="secondary" className="bg-orange-100 text-orange-800">Renom</Badge>}
-                                          {wasSavedByVeto && <Badge variant="secondary" className="bg-sky-100 text-sky-800">Saved by Veto</Badge>}
-                                          {eviction && wasEvicted && <Badge variant="destructive">Evicted</Badge>}
-                                          {eviction && isSafe && <Badge variant="secondary" className="bg-green-100 text-green-800">Safe</Badge>}
-                                        </div>
-                                        <Button variant="ghost" size="icon" onClick={() => handleRemoveNominee(index)} className="h-9 w-9">
-                                            <Trash2 className="h-4 w-4"/>
-                                        </Button>
+                                        {nomineeId && (
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox id={`renom-${nomineeId}`} checked={isRenom} onCheckedChange={(checked) => handleRenomChange(nomineeId, !!checked)}/>
+                                                    <label htmlFor={`renom-${nomineeId}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                        Replacement Nominee
+                                                    </label>
+                                                </div>
+                                                <RadioGroup 
+                                                  value={currentResult}
+                                                  onValueChange={(val) => handleNomineeResultChange(nomineeId, val as any)}
+                                                  className="flex flex-wrap gap-x-4 gap-y-2"
+                                                >
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="safe" id={`safe-${nomineeId}`} />
+                                                        <Label htmlFor={`safe-${nomineeId}`}>Safe</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="evicted" id={`evicted-${nomineeId}`} />
+                                                        <Label htmlFor={`evicted-${nomineeId}`}>Evicted</Label>
+                                                    </div>
+                                                     <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="saved" id={`saved-${nomineeId}`} />
+                                                        <Label htmlFor={`saved-${nomineeId}`}>Saved by Veto</Label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <RadioGroupItem value="blockbuster" id={`blockbuster-${nomineeId}`} />
+                                                        <Label htmlFor={`blockbuster-${nomineeId}`}>Block Buster</Label>
+                                                    </div>
+                                                </RadioGroup>
+                                            </div>
+                                        )}
                                       </div>
                                     )
                                   })}

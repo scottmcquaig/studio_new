@@ -334,14 +334,12 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(
-                                        "w-12 justify-center",
-                                        player.points >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
-                                        player.points < 0 && "bg-red-100 text-red-800")}>
-                                        <span>{player.points > 0 ? '+': ''}{player.points}</span>
-                                    </Badge>
-                                </div>
+                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(
+                                    "w-12 justify-center",
+                                    player.points >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                                    player.points < 0 && "bg-red-100 text-red-800")}>
+                                    <span>{player.points > 0 ? '+': ''}{player.points}</span>
+                                </Badge>
                             </div>
                         ))}
                     </div>
@@ -376,14 +374,12 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
-                          "w-12 justify-center",
-                          activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
-                          activity.points! < 0 && "bg-red-100 text-red-800")}>
-                          <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
-                    </Badge>
-                  </div>
+                  <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
+                        "w-12 justify-center",
+                        activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                        activity.points! < 0 && "bg-red-100 text-red-800")}>
+                        <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
+                  </Badge>
                 </div>
               )) : (
                 <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
