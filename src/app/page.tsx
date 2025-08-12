@@ -242,9 +242,13 @@ export default function DashboardPage() {
                     <CardDescription>Team rankings and weekly performance.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                    <div className="flex justify-between items-center px-4 mb-2">
+                        <span className="text-xs font-medium text-muted-foreground">TEAM</span>
+                        <span className="text-xs font-medium text-muted-foreground">WoW</span>
+                    </div>
                     <div className="space-y-4">
                         {sortedTeams.map((team, index) => (
-                             <div key={team.id} className="flex items-center justify-between">
+                             <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                 <div className="flex items-center gap-3">
                                     <span className={cn("text-lg font-bold w-6 text-center", 
                                         index === 0 && "text-amber-400",
