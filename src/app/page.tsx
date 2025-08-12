@@ -132,7 +132,7 @@ export default function DashboardPage() {
                     className="rounded-full border-2 border-primary"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{hohWinner.fullName}</span>
+                  <span className="text-sm">{hohWinner.fullName.split(' ')[0]}</span>
                 </>
               ) : (
                 <>
@@ -148,7 +148,7 @@ export default function DashboardPage() {
               <h3 className="font-semibold flex items-center gap-1 text-red-400">
                 <Users className="h-4 w-4" /> Noms
               </h3>
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2 min-h-[76px]">
                 {nomWinners.length > 0 ? (
                   nomWinners.map((nom) => (
                     <div
@@ -177,7 +177,7 @@ export default function DashboardPage() {
                 )}
               </div>
               {nomWinners.length === 0 && (
-                <span className="text-sm text-muted-foreground">TBD</span>
+                <span className="text-sm text-muted-foreground -mt-2">TBD</span>
               )}
             </div>
 
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                     className="rounded-full border-2 border-accent"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{povWinner.fullName}</span>
+                  <span className="text-sm">{povWinner.fullName.split(' ')[0]}</span>
                 </>
               ) : (
                 <>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                     className="rounded-full border-2 border-muted-foreground"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{evictedPlayer.fullName}</span>
+                  <span className="text-sm">{evictedPlayer.fullName.split(' ')[0]}</span>
                 </>
               ) : (
                 <>
