@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_TEAMS } from "@/lib/data";
+import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_TEAMS, MOCK_SCORING_RULES } from "@/lib/data";
 import {
   Home,
   Crown,
@@ -19,6 +19,7 @@ import {
   ArrowDown,
   TrendingUp,
   Medal,
+  ListOrdered,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +67,37 @@ export default function DashboardPage() {
   
   const sortedTeams = [...MOCK_TEAMS].sort((a, b) => b.total_score - a.total_score);
   const topPlayers = getTopPlayers();
+  const scoringRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules;
+
+
+  const weeklyActivity = [];
+    if (hoh && hohWinner) {
+        weeklyActivity.push({
+            type: 'HOH',
+            player: hohWinner,
+            points: scoringRules?.find(r => r.code === 'HOH_WIN')?.points,
+            description: `${hohWinner.fullName} won Head of Household.`
+        });
+    }
+    if (noms && nomWinners.length > 0) {
+        nomWinners.forEach(nominee => {
+            weeklyActivity.push({
+                type: 'NOMINATIONS',
+                player: nominee,
+                points: scoringRules?.find(r => r.code === 'NOMINATED')?.points,
+                description: `${nominee.fullName} was nominated for eviction.`
+            });
+        });
+    }
+    if (pov && povWinner) {
+        weeklyActivity.push({
+            type: 'VETO',
+            player: povWinner,
+            points: scoringRules?.find(r => r.code === 'VETO_WIN')?.points,
+            description: `${povWinner.fullName} won the Power of Veto.`
+        });
+    }
+
 
   return (
     <div className="flex flex-col">
@@ -260,7 +292,7 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <Badge variant={player.points > 0 ? "default" : "destructive"} className="text-sm font-bold">
+                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className="text-sm font-bold">
                                     {player.points > 0 ? '+': ''}{player.points}
                                 </Badge>
                             </div>
@@ -269,9 +301,46 @@ export default function DashboardPage() {
                 </CardContent>
             </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ListOrdered /> Week {activeSeason.currentWeek} Scoring Activity</CardTitle>
+            <CardDescription>A log of all point-scoring events from this week.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Image
+                      src={activity.player.photoUrl!}
+                      alt={activity.player.fullName}
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                      data-ai-hint="portrait person"
+                    />
+                    <div>
+                      <p className="font-medium">{activity.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.type === 'HOH' && 'HOH Win'}
+                        {activity.type === 'NOMINATIONS' && 'Nomination'}
+                        {activity.type === 'VETO' && 'Veto Win'}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={activity.points >= 0 ? "default" : "destructive"} className="text-sm font-bold">
+                    {activity.points > 0 ? '+': ''}{activity.points}
+                  </Badge>
+                </div>
+              )) : (
+                <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
       </main>
     </div>
   );
 }
-
-    
