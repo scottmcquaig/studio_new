@@ -129,21 +129,22 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><ShieldCheck /> Manage User Roles</CardTitle>
-            <CardDescription>Assign roles and permissions to users across the site.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Users /> Manage Users</CardTitle>
+            <CardDescription>Edit user roles, league assignments, and team assignments.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {users.map(user => (
-              <div key={user.id} className="flex flex-wrap items-center justify-between gap-4 p-2 rounded-md border">
-                <div>
-                  <p className="font-medium">{user.displayName} <span className="text-sm text-muted-foreground">({user.email})</span></p>
+              <div key={user.id} className="flex flex-wrap items-center justify-between gap-4 p-3 rounded-lg border bg-card/50">
+                <div className="flex-1 min-w-[200px]">
+                  <p className="font-medium">{user.displayName}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                    <Select
                     value={user.role}
                     onValueChange={(role: UserRole) => handleRoleChange(user.id, role)}
                   >
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[150px]">
                       <SelectValue placeholder="Select a role..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -158,13 +159,32 @@ export default function SettingsPage() {
                         value={user.managedLeagueIds?.[0] || ''}
                         onValueChange={(leagueId) => handleLeagueAdminChange(user.id, leagueId)}
                       >
-                      <SelectTrigger className="w-[240px]">
+                      <SelectTrigger className="w-full sm:w-[200px]">
                         <SelectValue placeholder="Assign a league..." />
                       </SelectTrigger>
                       <SelectContent>
                         {MOCK_LEAGUES.map(league => (
                           <SelectItem key={league.id} value={league.id}>
                             {league.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {user.role !== 'site_admin' && (
+                    <Select
+                      value={teams.find(t => t.ownerUserIds.includes(user.id))?.id || 'unassigned'}
+                      onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}
+                    >
+                      <SelectTrigger className="w-full sm:w-[200px]">
+                        <SelectValue placeholder="Assign a team..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {teams.map(team => (
+                          <SelectItem key={team.id} value={team.id}>
+                            {team.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -204,37 +224,9 @@ export default function SettingsPage() {
             ))}
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users /> Manage Team Assignments</CardTitle>
-            <CardDescription>Assign users to their respective teams for the "{activeLeague.name}" league.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {users.filter(u => u.role !== 'site_admin').map(user => (
-              <div key={user.id} className="flex items-center justify-between gap-4 p-2 rounded-md border">
-                <p className="font-medium">{user.displayName} <span className="text-sm text-muted-foreground">({user.email})</span></p>
-                <Select
-                  value={teams.find(t => t.ownerUserIds.includes(user.id))?.id || 'unassigned'}
-                  onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}
-                >
-                  <SelectTrigger className="w-[240px]">
-                    <SelectValue placeholder="Assign a team..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {teams.map(team => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
 }
+
+    
