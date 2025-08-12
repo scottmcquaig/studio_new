@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { Contestant } from '@/lib/data';
-import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus } from "lucide-react";
+import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 type ContestantWithStats = Contestant & {
@@ -28,6 +28,8 @@ export default function ContestantsPage() {
   const hoh = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'HOH');
   const pov = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'VETO');
   const noms = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'NOMINATIONS');
+  const blockBuster = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'BLOCK_BUSTER');
+
 
   const contestantStats: ContestantWithStats[] = MOCK_CONTESTANTS.map(hg => {
     const team = MOCK_TEAMS.find(t => t.contestantIds.includes(hg.id));
@@ -108,6 +110,7 @@ export default function ContestantsPage() {
               const isHoh = hg.id === hoh?.winnerId;
               const isPov = hg.id === pov?.winnerId;
               const isNom = noms?.nominees?.includes(hg.id);
+              const isBlockBuster = hg.id === blockBuster?.winnerId;
               
               return (
               <DialogTrigger key={hg.id} asChild onClick={() => setSelectedContestant(hg)}>
@@ -127,7 +130,8 @@ export default function ContestantsPage() {
                         {hg.status === 'active' && (
                           <>
                             {isHoh && <Crown className="h-4 w-4 text-purple-600" title="Head of Household"/>}
-                            {isPov && <Shield className="h-4 w-4 text-amber-500" title="Power of Veto"/>}
+                            {isPov && !isHoh && <Shield className="h-4 w-4 text-amber-500" title="Power of Veto"/>}
+                            {isBlockBuster && <ShieldCheck className="h-4 w-4 text-sky-500" title="Block Buster Winner" />}
                             {isNom && <Users className="h-4 w-4 text-red-400" title="Nominee" />}
                           </>
                         )}
