@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
+import { BottomNavBar } from "@/components/bottom-nav-bar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,8 +27,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-body antialiased">
-        {children}
+      <body className="font-body antialiased bg-muted/40">
+        <div className="flex flex-col min-h-screen">
+          <main className="flex-1 pb-20">{children}</main>
+          <BottomNavBar />
+        </div>
         <Toaster />
       </body>
     </html>
