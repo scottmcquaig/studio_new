@@ -127,14 +127,6 @@ export default function ContestantsPage() {
                     <div className="flex-1">
                       <CardTitle className="text-xl flex items-center gap-2">
                         {hg.fullName}
-                        {hg.status === 'active' && (
-                          <>
-                            {isHoh && <Crown className="h-4 w-4 text-purple-600" title="Head of Household"/>}
-                            {isPov && !isHoh && <Shield className="h-4 w-4 text-amber-500" title="Power of Veto"/>}
-                            {isBlockBuster && <ShieldCheck className="h-4 w-4 text-sky-500" title="Block Buster Winner" />}
-                            {isNom && <Users className="h-4 w-4 text-red-400" title="Nominee" />}
-                          </>
-                        )}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">{hg.teamName}</p>
                     </div>
@@ -149,6 +141,12 @@ export default function ContestantsPage() {
                             Week {hg.evictionWeek}
                           </Badge>
                         )}
+                        <div className="flex flex-wrap justify-end gap-1 mt-1">
+                            {hg.status === 'active' && isHoh && <Badge className="bg-purple-600 text-white hover:bg-purple-700">HOH</Badge>}
+                            {hg.status === 'active' && isPov && !isHoh && <Badge className="bg-amber-500 text-white hover:bg-amber-600">Veto</Badge>}
+                            {hg.status === 'active' && isBlockBuster && <Badge className="bg-sky-500 text-white hover:bg-sky-600">BB Winner</Badge>}
+                            {hg.status === 'active' && isNom && <Badge variant="destructive" className="bg-red-500 hover:bg-red-600">Nominee</Badge>}
+                        </div>
                     </div>
                   </CardHeader>
                   <CardContent className="flex-grow flex items-center justify-around text-center gap-2 text-sm pt-2">
