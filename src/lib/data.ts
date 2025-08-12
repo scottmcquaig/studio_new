@@ -1,3 +1,4 @@
+
 // All data is for a fictional Big Brother 27 season for mocking purposes.
 
 export interface Season {
@@ -127,24 +128,25 @@ export const MOCK_SEASONS: Season[] = [
   ];
 
 export const MOCK_HOUSEGUESTS: Houseguest[] = [
-    {"id":"ashley_hollis","seasonId":"bb27","fullName":"Ashley Hollis","age":25,"occupation":"Attorney","hometown":"New York, NY","status":"active","enteredDay":1},
-    {"id":"ava_pearl","seasonId":"bb27","fullName":"Ava Pearl","age":24,"occupation":"Aura painter","hometown":"New York, NY","status":"active","enteredDay":1},
-    {"id":"katherine_woodman","seasonId":"bb27","fullName":"Katherine Woodman","age":23,"occupation":"Fine dining server","hometown":"Columbia, SC","status":"active","enteredDay":1},
     {"id":"keanu_soto","seasonId":"bb27","fullName":"Keanu Soto","age":33,"occupation":"Dungeon master","hometown":"McKinney, TX","status":"active","enteredDay":1},
-    {"id":"kelley_jorgensen","seasonId":"bb27","fullName":"Kelley Jorgensen","age":29,"occupation":"Web designer","hometown":"Burbank, SD","status":"active","enteredDay":1},
-    {"id":"lauren_domingue","seasonId":"bb27","fullName":"Lauren Domingue","age":22,"occupation":"Bridal stylist","hometown":"Lafayette, LA","status":"active","enteredDay":1},
-    {"id":"mickey_lee","seasonId":"bb27","fullName":"Mickey Lee","age":35,"occupation":"Event curator","hometown":"Atlanta, GA","status":"active","enteredDay":1},
-    {"id":"morgan_pope","seasonId":"bb27","fullName":"Morgan Pope","age":33,"occupation":"Gamer","hometown":"Los Angeles, CA","status":"active","enteredDay":1},
-    {"id":"rachel_reilly","seasonId":"bb27","fullName":"Rachel Reilly","age":40,"occupation":"TV personality","hometown":"Hoover, AL","status":"active","enteredDay":1,"isReturnee":true},
-    {"id":"rylie_jeffries","seasonId":"bb27","fullName":"Rylie Jeffries","age":27,"occupation":"Professional bull rider","hometown":"Luther, OK","status":"active","enteredDay":1},
-    {"id":"vince_panaro","seasonId":"bb27","fullName":"Vince Panaro","age":34,"occupation":"Unemployed","hometown":"West Hills, CA","status":"active","enteredDay":1},
-    {"id":"will_williams","seasonId":"bb27","fullName":"Cliffton \"Will\" Williams","age":50,"occupation":"College sports podcaster","hometown":"Charlotte, NC","status":"active","enteredDay":1},
-    {"id":"zach_cornell","seasonId":"bb27","fullName":"Zach Cornell","age":27,"occupation":"Marketing manager","hometown":"Cartersville, GA","status":"active","enteredDay":1,"specialPower":"$10k immunity pre-jury"},
     {"id":"jimmy_heagerty","seasonId":"bb27","fullName":"Jimmy Heagerty","age":25,"occupation":"Strategy consultant","hometown":"Washington, DC","status":"evicted","evictedDay":31,"finish":"16th"},
+    {"id":"lauren_domingue","seasonId":"bb27","fullName":"Lauren Domingue","age":22,"occupation":"Bridal stylist","hometown":"Lafayette, LA","status":"active","enteredDay":1},
+    {"id":"zach_cornell","seasonId":"bb27","fullName":"Zach Cornell","age":27,"occupation":"Marketing manager","hometown":"Cartersville, GA","status":"active","enteredDay":1,"specialPower":"$10k immunity pre-jury"},
+    {"id":"morgan_pope","seasonId":"bb27","fullName":"Morgan Pope","age":33,"occupation":"Gamer","hometown":"Los Angeles, CA","status":"active","enteredDay":1},
+    {"id":"rylie_jeffries","seasonId":"bb27","fullName":"Rylie Jeffries","age":27,"occupation":"Professional bull rider","hometown":"Luther, OK","status":"active","enteredDay":1},
+    {"id":"kelley_jorgensen","seasonId":"bb27","fullName":"Kelley Jorgensen","age":29,"occupation":"Web designer","hometown":"Burbank, SD","status":"active","enteredDay":1},
+    {"id":"ashley_hollis","seasonId":"bb27","fullName":"Ashley Hollis","age":25,"occupation":"Attorney","hometown":"New York, NY","status":"active","enteredDay":1},
+    {"id":"vince_panaro","seasonId":"bb27","fullName":"Vince Panaro","age":34,"occupation":"Unemployed","hometown":"West Hills, CA","status":"active","enteredDay":1},
+    {"id":"zae_frederich","seasonId":"bb27","fullName":"Isaiah \"Zae\" Frederich","age":23,"occupation":"Salesperson","hometown":"Phoenix, AZ","status":"evicted","evictedDay":10,"finish":"19th"},
+    {"id":"katherine_woodman","seasonId":"bb27","fullName":"Katherine Woodman","age":23,"occupation":"Fine dining server","hometown":"Columbia, SC","status":"active","enteredDay":1},
     {"id":"adrian_rocha","seasonId":"bb27","fullName":"Adrian Rocha","age":23,"occupation":"Carpenter","hometown":"San Antonio, TX","status":"evicted","evictedDay":24,"finish":"17th"},
+    {"id":"rachel_reilly","seasonId":"bb27","fullName":"Rachel Reilly","age":40,"occupation":"TV personality","hometown":"Hoover, AL","status":"active","enteredDay":1,"isReturnee":true},
+    {"id":"will_williams","seasonId":"bb27","fullName":"Cliffton \"Will\" Williams","age":50,"occupation":"College sports podcaster","hometown":"Charlotte, NC","status":"active","enteredDay":1},
     {"id":"amy_bingham","seasonId":"bb27","fullName":"Amy Bingham","age":43,"occupation":"Insurance agent","hometown":"Stockton, CA","status":"evicted","evictedDay":17,"finish":"18th","note":"Entered as Mastermind's accomplice"},
-    {"id":"zae_frederich","seasonId":"bb27","fullName":"Isaiah \"Zae\" Frederich","age":23,"occupation":"Salesperson","hometown":"Phoenix, AZ","status":"evicted","evictedDay":10,"finish":"19th"}
+    {"id":"mickey_lee","seasonId":"bb27","fullName":"Mickey Lee","age":35,"occupation":"Event curator","hometown":"Atlanta, GA","status":"active","enteredDay":1},
+    {"id":"ava_pearl","seasonId":"bb27","fullName":"Ava Pearl","age":24,"occupation":"Aura painter","hometown":"New York, NY","status":"active","enteredDay":1},
 ];
+
 
 export const MOCK_COMPETITIONS: Competition[] = [
     { "id":"bb27_wk1_hoh", "seasonId":"bb27", "week":1, "type":"HOH", "name":"BB Blaster Balance", "winnerId":"vince_panaro", "airDate":"2025-07-10", "notes":"First HOH of the season." },
@@ -215,9 +217,9 @@ export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
         {"code":"FINAL_NOM","label":"Sits on eviction night","points":-2},
         {"code":"SURVIVES_EVICTION","label":"Survives eviction vote","points":5},
         {"code":"BLOCK_BUSTER_SAFE","label":"Wins Block Buster safety","points":4},
-        {"code":"HAVE_NOT","label":"Becomes Have-Not","points":-1},
+        {"code":"HAVE_NOT","label":"Becomes a Have-Not","points":-1},
         {"code":"PENALTY_RULE","label":"Rule violation penalty","points":-5},
-        {"code":"SPECIAL_POWER","label":"Activates special twist power","points":5}
+        {"code":"SPECIAL_POWER","label":"Activates a special twist power","points":5}
       ],
       "createdAt":"2025-08-01T12:00:00Z"
     }
@@ -241,3 +243,31 @@ export const MOCK_PICKS: Pick[] = [
   {"id":"pick_15","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"amy_bingham","round":4,"pick":15,"createdAt":"2025-08-01T12:24:00Z"},
   {"id":"pick_16","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"mickey_lee","round":4,"pick":16,"createdAt":"2025-08-01T12:25:00Z"}
 ];
+
+export const BB_RULES = [
+    { id: 'HOH_WIN', name: 'Head of Household Win', points: 10 },
+    { id: 'POV_WIN', name: 'Power of Veto Win', points: 8 },
+    { id: 'POWER_WIN', name: 'Other Power/Comp Win', points: 5 },
+    { id: 'SURVIVE', name: 'Survives a Week', points: 3 },
+    { id: 'NOMINATED', name: 'Nominated for Eviction', points: -2 },
+    { id: 'EVICTED', name: 'Evicted from the House', points: -5 },
+    { id: 'FINAL3', name: 'Makes Final 3', points: 15 },
+    { id: 'RUNNER_UP', name: 'Runner-Up', points: 20 },
+    { id: 'WINNER', name: 'Winner', points: 30 },
+    { id: 'AFP', name: 'America\'s Favorite Player', points: 10 },
+  ];
+  
+  export const SURVIVOR_RULES = [
+    { id: 'IMMUNITY_WIN', name: 'Immunity Challenge Win (Individual)', points: 10 },
+    { id: 'REWARD_WIN', name: 'Reward Challenge Win (Individual)', points: 5 },
+    { id: 'IDOL_FOUND', name: 'Finds Hidden Immunity Idol', points: 8 },
+    { id: 'IDOL_PLAYED', name: 'Plays Idol Correctly', points: 6 },
+    { id: 'ADVANTAGE_FOUND', name: 'Finds an Advantage', points: 4 },
+    { id: 'FIRE_MAKING_WIN', name: 'Wins Fire-Making Challenge', points: 7 },
+    { id: 'SAFE_AT_TRIBAL', name: 'Safe at Tribal Council', points: 2 },
+    { id: 'VOTED_OUT', name: 'Voted Out', points: -5 },
+    { id: 'JURY', name: 'Makes the Jury', points: 10 },
+    { id: 'FINAL_TRIBAL', name: 'Makes Final Tribal Council', points: 15 },
+    { id: 'SOLE_SURVIVOR', name: 'Sole Survivor (Winner)', points: 30 },
+    { id: 'FAN_FAVORITE', name: 'Sia Award / Fan Favorite', points: 10 },
+  ];
