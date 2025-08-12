@@ -127,7 +127,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                 <Crown className="h-4 w-4" /> HOH
               </h3>
@@ -153,7 +153,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-red-400">
                 <Users className="h-4 w-4" /> Noms
               </h3>
@@ -243,7 +243,7 @@ export default function DashboardPage() {
             </div>
 
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2 md:col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
                 <UserX className="h-4 w-4" /> Evicted
               </h3>
@@ -299,7 +299,7 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-1">
                                     {team.weekly_score > 0 ? <TrendingUp className="h-4 w-4 text-green-600"/> : team.weekly_score < 0 ? <TrendingDown className="h-4 w-4 text-red-600"/> : <Minus className="h-4 w-4 text-gray-500" />}
                                     <Badge variant={team.weekly_score > 0 ? "default" : team.weekly_score < 0 ? "destructive" : "secondary"} className={cn(
-                                        team.weekly_score > 0 && "bg-green-100 text-green-800",
+                                        team.weekly_score > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
                                         team.weekly_score < 0 && "bg-red-100 text-red-800",
                                         team.weekly_score === 0 && "bg-gray-100 text-gray-800"
                                      )}>
@@ -335,11 +335,11 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(player.points >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")}>
-                                      <span>{player.points > 0 ? '+': ''}{player.points}</span>
-                                    </Badge>
-                                </div>
+                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(
+                                    player.points >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                                    player.points < 0 && "bg-red-100 text-red-800")}>
+                                    <span>{player.points > 0 ? '+': ''}{player.points}</span>
+                                </Badge>
                             </div>
                         ))}
                     </div>
@@ -374,11 +374,11 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(activity.points! >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")}>
+                  <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
+                        activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                        activity.points! < 0 && "bg-red-100 text-red-800")}>
                         <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
                     </Badge>
-                  </div>
                 </div>
               )) : (
                 <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
