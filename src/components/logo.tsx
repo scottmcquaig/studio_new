@@ -3,22 +3,24 @@ import { cn } from "@/lib/utils";
 export const Logo = ({ className }: { className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 128 128"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={cn("text-primary", className)}
     aria-label="YAC Fantasy League Logo"
   >
-    <g fill="currentColor">
-      {/* TV Body */}
-      <path d="M112,36H16a8,8,0,0,0-8,8V96a8,8,0,0,0,8,8H112a8,8,0,0,0,8-8V44A8,8,0,0,0,112,36Zm0,60H16V44H112Z" />
-      {/* Screen */}
-      <rect x="24" y="52" width="80" height="40" rx="4" fill="hsl(var(--background))" stroke="currentColor" strokeWidth="2" />
-       {/* Trash Can Lid Handle */}
-      <path d="M72,12H56a4,4,0,0,0,0,8H72a4,4,0,0,0,0-8Z" />
-      {/* Trash Can Lid */}
-      <path d="M96,24H32a4,4,0,0,0-4,4v4H100V28A4,4,0,0,0,96,24Z" />
-      {/* TV Legs */}
-      <path d="M40,104l-8,12a4,4,0,0,0,6.92,4L48,108Z" />
-      <path d="M88,104l8,12a4,4,0,0,1-6.92,4L80,108Z" />
-    </g>
+    {/* TV body */}
+    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+    {/* Trash can part */}
+    <line x1="12" y1="2" x2="12" y2="7"></line>
+    <line x1="8" y1="2" x2="16" y2="2"></line>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+    {/* Antennae */}
+    <line x1="17" y1="2" x2="19" y2="4"></line>
+    <line x1="7" y1="2" x2="5" y2="4"></line>
   </svg>
 );

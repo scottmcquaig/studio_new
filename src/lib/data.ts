@@ -1,32 +1,227 @@
+// All data is for a fictional Big Brother 27 season for mocking purposes.
 
-export const MOCK_LEAGUES = [
-  {
-    id: "l1",
-    name: "Big Brother 27",
-    game: "Big Brother",
-    season: "BB27",
-    status: "Live",
-    teams: 10,
-    endDate: "Sep 28, 2024",
-  },
+export interface Season {
+  id: string;
+  franchise: string;
+  seasonNumber: number;
+  title: string;
+  theme: string;
+  network: string;
+  premiereDate: string;
+  status: 'in_progress' | 'completed' | 'upcoming';
+  currentWeek: number;
+  notes?: string;
+}
+
+export interface Houseguest {
+  id: string;
+  seasonId: string;
+  fullName: string;
+  age: number;
+  occupation: string;
+  hometown: string;
+  status: 'active' | 'evicted' | 'jury';
+  enteredDay: number;
+  isReturnee?: boolean;
+  specialPower?: string;
+  evictedDay?: number;
+  finish?: string;
+  note?: string;
+}
+
+export interface Competition {
+    id: string;
+    seasonId: string;
+    week: number;
+    type: 'HOH' | 'VETO' | 'BLOCK_BUSTER' | 'EVICTION' | 'NOMINATIONS';
+    name?: string;
+    winnerId?: string;
+    airDate: string;
+    notes?: string;
+    used?: boolean;
+    usedOnId?: string;
+    replacementNomId?: string;
+    finalNoms?: string[];
+    evictedId?: string;
+    vote?: string;
+    day?: number;
+    nominees?: string[];
+    grantedSafety?: boolean;
+}
+
+export interface League {
+    id: string;
+    name: string;
+    seasonId: string;
+    visibility: 'private' | 'public' | 'link';
+    maxTeams: number;
+    rosterSize: number;
+    waivers: 'FAAB' | 'Standard';
+    createdAt: string;
+    settings: {
+        allowMidSeasonDraft: boolean;
+        scoringRuleSetId: string;
+        transactionLockDuringEpisodes: boolean;
+    };
+}
+
+export interface Team {
+    id: string;
+    leagueId: string;
+    name: string;
+    ownerUserId: string;
+    houseguestIds: string[];
+    faab: number;
+    createdAt: string;
+    total_score: number;
+    weekly_score: number;
+}
+
+export interface User {
+    id: string;
+    displayName: string;
+    email: string;
+    photoURL?: string;
+    createdAt: string;
+}
+
+export interface ScoringRule {
+    code: string;
+    label: string;
+    points: number;
+}
+
+export interface ScoringRuleSet {
+    id: string;
+    name: string;
+    seasonId: string;
+    rules: ScoringRule[];
+    createdAt: string;
+}
+
+export interface Pick {
+    id: string;
+    leagueId: string;
+    teamId: string;
+    houseguestId: string;
+    round: number;
+    createdAt: string;
+}
+
+
+export const MOCK_SEASONS: Season[] = [
+    {
+      "id": "bb27",
+      "franchise": "Big Brother US",
+      "seasonNumber": 27,
+      "title": "Big Brother 27",
+      "theme": "Summer of Mystery / Hotel Murder Mystery",
+      "network": "CBS",
+      "premiereDate": "2025-07-10",
+      "status": "in_progress",
+      "currentWeek": 5,
+      "notes": "Live state through Aug 12, 2025."
+    }
+  ];
+
+export const MOCK_HOUSEGUESTS: Houseguest[] = [
+    {"id":"ashley_hollis","seasonId":"bb27","fullName":"Ashley Hollis","age":25,"occupation":"Attorney","hometown":"New York, NY","status":"active","enteredDay":1},
+    {"id":"ava_pearl","seasonId":"bb27","fullName":"Ava Pearl","age":24,"occupation":"Aura painter","hometown":"New York, NY","status":"active","enteredDay":1},
+    {"id":"katherine_woodman","seasonId":"bb27","fullName":"Katherine Woodman","age":23,"occupation":"Fine dining server","hometown":"Columbia, SC","status":"active","enteredDay":1},
+    {"id":"keanu_soto","seasonId":"bb27","fullName":"Keanu Soto","age":33,"occupation":"Dungeon master","hometown":"McKinney, TX","status":"active","enteredDay":1},
+    {"id":"kelley_jorgensen","seasonId":"bb27","fullName":"Kelley Jorgensen","age":29,"occupation":"Web designer","hometown":"Burbank, SD","status":"active","enteredDay":1},
+    {"id":"lauren_domingue","seasonId":"bb27","fullName":"Lauren Domingue","age":22,"occupation":"Bridal stylist","hometown":"Lafayette, LA","status":"active","enteredDay":1},
+    {"id":"mickey_lee","seasonId":"bb27","fullName":"Mickey Lee","age":35,"occupation":"Event curator","hometown":"Atlanta, GA","status":"active","enteredDay":1},
+    {"id":"morgan_pope","seasonId":"bb27","fullName":"Morgan Pope","age":33,"occupation":"Gamer","hometown":"Los Angeles, CA","status":"active","enteredDay":1},
+    {"id":"rachel_reilly","seasonId":"bb27","fullName":"Rachel Reilly","age":40,"occupation":"TV personality","hometown":"Hoover, AL","status":"active","enteredDay":1,"isReturnee":true},
+    {"id":"rylie_jeffries","seasonId":"bb27","fullName":"Rylie Jeffries","age":27,"occupation":"Professional bull rider","hometown":"Luther, OK","status":"active","enteredDay":1},
+    {"id":"vince_panaro","seasonId":"bb27","fullName":"Vince Panaro","age":34,"occupation":"Unemployed","hometown":"West Hills, CA","status":"active","enteredDay":1},
+    {"id":"will_williams","seasonId":"bb27","fullName":"Cliffton \"Will\" Williams","age":50,"occupation":"College sports podcaster","hometown":"Charlotte, NC","status":"active","enteredDay":1},
+    {"id":"zach_cornell","seasonId":"bb27","fullName":"Zach Cornell","age":27,"occupation":"Marketing manager","hometown":"Cartersville, GA","status":"active","enteredDay":1,"specialPower":"$10k immunity pre-jury"},
+    {"id":"jimmy_heagerty","seasonId":"bb27","fullName":"Jimmy Heagerty","age":25,"occupation":"Strategy consultant","hometown":"Washington, DC","status":"evicted","evictedDay":31,"finish":"16th"},
+    {"id":"adrian_rocha","seasonId":"bb27","fullName":"Adrian Rocha","age":23,"occupation":"Carpenter","hometown":"San Antonio, TX","status":"evicted","evictedDay":24,"finish":"17th"},
+    {"id":"amy_bingham","seasonId":"bb27","fullName":"Amy Bingham","age":43,"occupation":"Insurance agent","hometown":"Stockton, CA","status":"evicted","evictedDay":17,"finish":"18th","note":"Entered as Mastermind's accomplice"},
+    {"id":"zae_frederich","seasonId":"bb27","fullName":"Isaiah \"Zae\" Frederich","age":23,"occupation":"Salesperson","hometown":"Phoenix, AZ","status":"evicted","evictedDay":10,"finish":"19th"}
 ];
 
-export const MOCK_HOUSEGUESTS = [
-  { id: "hg01", name: "Amelia", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg02", name: "Benjamin", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg03", name: "Chloe", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg04", name: "David", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg05", name: "Evelyn", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg06", name: "Felix", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg07", name: "Grace", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg08", name: "Henry", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg09", name: "Isabella", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg10", name: "Jack", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg11", name: "Katherine", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg12", name: "Leo", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg13", name: "Mia", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg14", name: "Noah", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg15", name: "Olivia", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg16", name: "Penelope", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
-  { id: "hg17", name: "Quentin", status: "In House", imageUrl: "https://placehold.co/200x200.png" },
+export const MOCK_COMPETITIONS: Competition[] = [
+    { "id":"bb27_wk1_hoh", "seasonId":"bb27", "week":1, "type":"HOH", "name":"BB Blaster Balance", "winnerId":"vince_panaro", "airDate":"2025-07-10", "notes":"First HOH of the season." },
+    { "id":"bb27_wk1_veto", "seasonId":"bb27", "week":1, "type":"VETO", "name":"Campsite Caper", "winnerId":"ashley_hollis", "used":true, "usedOnId":"ashley_hollis", "replacementNomId":"kelley_jorgensen", "airDate":"2025-07-16" },
+    { "id":"bb27_wk1_blockbuster", "seasonId":"bb27", "week":1, "type":"BLOCK_BUSTER", "name":"Eviction Night Block Buster", "winnerId":"kelley_jorgensen", "grantedSafety":true, "airDate":"2025-07-13" },
+    { "id":"bb27_wk1_eviction", "seasonId":"bb27", "week":1, "type":"EVICTION", "finalNoms":["amy_bingham","kelley_jorgensen","zae_frederich"], "evictedId":"zae_frederich", "vote":"9-5", "day":10, "airDate":"2025-07-17" },
+    { "id":"bb27_wk2_hoh", "seasonId":"bb27", "week":2, "type":"HOH", "winnerId":"jimmy_heagerty", "airDate":"2025-07-20", "notes":"Made five total noms across the week." },
+    { "id":"bb27_wk2_veto", "seasonId":"bb27", "week":2, "type":"VETO", "winnerId":"keanu_soto", "used":true, "usedOnId":"keanu_soto", "airDate":"2025-07-23" },
+    { "id":"bb27_wk2_eviction", "seasonId":"bb27", "week":2, "type":"EVICTION", "evictedId":"amy_bingham", "day":17, "airDate":"2025-07-24" },
+    { "id":"bb27_wk3_hoh", "seasonId":"bb27", "week":3, "type":"HOH", "winnerId":"lauren_domingue", "airDate":"2025-07-27" },
+    { "id":"bb27_wk3_veto", "seasonId":"bb27", "week":3, "type":"VETO", "name":"Basement Break In", "winnerId":"keanu_soto", "used":true, "usedOnId":"keanu_soto", "replacementNomId":"adrian_rocha", "airDate":"2025-07-30" },
+    { "id":"bb27_wk3_eviction", "seasonId":"bb27", "week":3, "type":"EVICTION", "evictedId":"adrian_rocha", "vote":"8-4", "day":24, "airDate":"2025-07-31" },
+    { "id":"bb27_wk4_hoh", "seasonId":"bb27", "week":4, "type":"HOH", "winnerId":"mickey_lee", "airDate":"2025-08-03" },
+    { "id":"bb27_wk4_veto", "seasonId":"bb27", "week":4, "type":"VETO", "name":"Flee the Scene", "winnerId":"keanu_soto", "used":true, "usedOnId":"keanu_soto", "replacementNomId":"jimmy_heagerty", "airDate":"2025-08-06" },
+    { "id":"bb27_wk4_blockbuster", "seasonId":"bb27", "week":4, "type":"BLOCK_BUSTER", "name":"Safe Crackers", "winnerId":"rylie_jeffries", "grantedSafety":true, "airDate":"2025-08-07" },
+    { "id":"bb27_wk4_eviction", "seasonId":"bb27", "week":4, "type":"EVICTION", "evictedId":"jimmy_heagerty", "vote":"9-2", "day":31, "airDate":"2025-08-07" },
+    { "id":"bb27_wk5_hoh", "seasonId":"bb27", "week":5, "type":"HOH", "name":"Knockout (Jack in the Box clue comp)", "winnerId":"ava_pearl", "airDate":"2025-08-10" },
+    { "id":"bb27_wk5_noms", "seasonId":"bb27", "week":5, "type":"NOMINATIONS", "nominees":["keanu_soto","vince_panaro","zach_cornell"], "airDate":"2025-08-10" },
+    { "id":"bb27_wk5_veto", "seasonId":"bb27", "week":5, "type":"VETO", "winnerId":"katherine_woodman", "used":false, "airDate":"2025-08-11", "notes":"Zach holds pre-jury $10k immunity option." }
+];
+
+export const MOCK_LEAGUES: League[] = [
+    {
+      "id":"yac_bb27_public",
+      "name":"YAC Fantasy League - BB27",
+      "seasonId":"bb27",
+      "visibility":"private",
+      "maxTeams":12,
+      "rosterSize":3,
+      "waivers":"FAAB",
+      "createdAt":"2025-08-01T12:00:00Z",
+      "settings":{
+        "allowMidSeasonDraft":true,
+        "scoringRuleSetId":"std_bb_rules_v1",
+        "transactionLockDuringEpisodes":true
+      }
+    }
+];
+
+export const MOCK_TEAMS: Team[] = [
+    {"id":"team_scott","leagueId":"yac_bb27_public","name":"Yadkin Sharks","ownerUserId":"user_scott","houseguestIds":["keanu_soto", "rachel_reilly", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 1820, weekly_score: 145},
+    {"id":"team_alex","leagueId":"yac_bb27_public","name":"Pool Floaters","ownerUserId":"user_alex","houseguestIds":["ashley_hollis", "lauren_domingue", "vince_panaro"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 1950, weekly_score: 210},
+    {"id":"team_jordan","leagueId":"yac_bb27_public","name":"Trash TV Titans","ownerUserId":"user_jordan","houseguestIds":["ava_pearl", "katherine_woodman", "morgan_pope"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 1750, weekly_score: 95}
+];
+
+export const MOCK_USERS: User[] = [
+    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z"},
+    {"id":"user_alex","displayName":"Alex","email":"alex@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z"},
+    {"id":"user_jordan","displayName":"Jordan","email":"jordan@example.com","photoURL":"","createdAt":"2025-08-01T12:00:45Z"}
+];
+
+export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
+    {
+      "id":"std_bb_rules_v1",
+      "name":"Standard BB Rules v1",
+      "seasonId":"bb27",
+      "rules":[
+        {"code":"HOH_WIN","label":"Wins Head of Household","points":10},
+        {"code":"VETO_WIN","label":"Wins Power of Veto","points":8},
+        {"code":"VETO_USED","label":"Uses Veto (any target)","points":3},
+        {"code":"NOMINATED","label":"Is nominated at any point","points":-3},
+        {"code":"FINAL_NOM","label":"Sits on eviction night","points":-2},
+        {"code":"SURVIVES_EVICTION","label":"Survives eviction vote","points":5},
+        {"code":"BLOCK_BUSTER_SAFE","label":"Wins Block Buster safety","points":4},
+        {"code":"HAVE_NOT","label":"Becomes Have-Not","points":-1},
+        {"code":"PENALTY_RULE","label":"Rule violation penalty","points":-5},
+        {"code":"SPECIAL_POWER","label":"Activates special twist power","points":5}
+      ],
+      "createdAt":"2025-08-01T12:00:00Z"
+    }
+];
+
+export const MOCK_PICKS: Pick[] = [
+    {
+      "id":"pick_scott_round1",
+      "leagueId":"yac_bb27_public",
+      "teamId":"team_scott",
+      "houseguestId":"keanu_soto",
+      "round":1,
+      "createdAt":"2025-08-01T12:10:00Z"
+    }
 ];
