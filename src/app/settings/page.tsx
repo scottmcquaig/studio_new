@@ -63,6 +63,7 @@ export default function SettingsPage() {
   const pov = weekEvents.find(c => c.type === 'VETO');
   const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
   const eviction = weekEvents.find(c => c.type === 'EVICTION');
+  const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
   const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => i + 1);
 
   const handleAddUser = () => {
@@ -131,7 +132,7 @@ export default function SettingsPage() {
     setUsers(users.map(u => u.id === userId ? {...u, role, managedLeagueIds: role === 'league_admin' ? u.managedLeagueIds || [] : undefined} : u));
   }
   
-  const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION', value: string | string[]) => {
+  const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION' | 'BLOCK_BUSTER', value: string | string[]) => {
     const newCompetitions = [...competitions];
     let event = newCompetitions.find(c => c.week === selectedWeek && c.type === type);
     
@@ -140,7 +141,7 @@ export default function SettingsPage() {
       newCompetitions.push(event);
     }
     
-    if (type === 'HOH' || type === 'VETO') {
+    if (type === 'HOH' || type === 'VETO' || type === 'BLOCK_BUSTER') {
         event.winnerId = value as string;
     } else if (type === 'NOMINATIONS') {
         event.nominees = (value as string[]).filter(v => v);
@@ -238,6 +239,15 @@ export default function SettingsPage() {
                                       <Label className="flex items-center gap-1 mb-1"><Shield className="text-accent"/>Veto Winner</Label>
                                       <Select value={pov?.winnerId || ''} onValueChange={(val) => handleEventUpdate('VETO', val)}>
                                           <SelectTrigger><SelectValue placeholder="Select Veto Winner..."/></SelectTrigger>
+                                          <SelectContent>
+                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div>
+                                      <Label className="flex items-center gap-1 mb-1"><ShieldCheck className="text-sky-500"/>Block Buster Winner</Label>
+                                      <Select value={blockBuster?.winnerId || ''} onValueChange={(val) => handleEventUpdate('BLOCK_BUSTER', val)}>
+                                          <SelectTrigger><SelectValue placeholder="Select Block Buster Winner..."/></SelectTrigger>
                                           <SelectContent>
                                             {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
