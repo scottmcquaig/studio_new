@@ -292,7 +292,9 @@ export default function DashboardPage() {
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
-                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className="text-sm font-bold bg-green-600">
+                                <Badge 
+                                    variant={player.points >= 0 ? "default" : "destructive"} 
+                                    className={cn("text-sm font-bold", player.points >= 0 && "bg-green-600 text-white")}>
                                     {player.points > 0 ? '+': ''}{player.points}
                                 </Badge>
                             </div>
@@ -329,7 +331,9 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant={activity.points >= 0 ? "default" : "destructive"} className="text-sm font-bold bg-green-600">
+                  <Badge 
+                    variant={activity.points >= 0 ? "default" : "destructive"} 
+                    className={cn("text-sm font-bold", activity.points >= 0 && "bg-green-600 text-white")}>
                     {activity.points > 0 ? '+': ''}{activity.points}
                   </Badge>
                 </div>

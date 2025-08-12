@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { MOCK_COMPETITIONS, MOCK_HOUSEGUESTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS } from "@/lib/data";
 import { ClipboardList, Filter } from "lucide-react";
+import { cn } from '@/lib/utils';
 
 type ScoringEvent = {
   week: number;
@@ -165,7 +166,9 @@ export default function ScoringPage() {
                     <TableCell>{event.teamName || 'N/A'}</TableCell>
                     <TableCell>{event.eventLabel}</TableCell>
                     <TableCell className="text-right font-mono">
-                       <Badge variant={event.points >= 0 ? "default" : "destructive"}>
+                       <Badge 
+                          variant={event.points >= 0 ? "default" : "destructive"}
+                          className={cn(event.points >= 0 && "bg-green-600 text-white")}>
                           {event.points > 0 ? `+${event.points}` : event.points}
                        </Badge>
                     </TableCell>
