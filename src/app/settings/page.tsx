@@ -64,7 +64,7 @@ export default function SettingsPage() {
   const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
   const eviction = weekEvents.find(c => c.type === 'EVICTION');
   const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
-  const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => i + 1);
+  const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => i + 1);
 
   const handleAddUser = () => {
     if (!newUserData.email.trim() || !newUserData.displayName.trim()) {
@@ -132,8 +132,8 @@ export default function SettingsPage() {
     setUsers(users.map(u => u.id === userId ? {...u, role, managedLeagueIds: role === 'league_admin' ? u.managedLeagueIds || [] : undefined} : u));
   }
   
-  const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION' | 'BLOCK_BUSTER', value: string | string[]) => {
-    const newCompetitions = [...competitions];
+  const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION' | 'BLOCK_BUSTER', value: string | string[], nomineeIndex?: number) => {
+    let newCompetitions = [...competitions];
     let event = newCompetitions.find(c => c.week === selectedWeek && c.type === type);
     
     if (!event) {
@@ -143,14 +143,51 @@ export default function SettingsPage() {
     
     if (type === 'HOH' || type === 'VETO' || type === 'BLOCK_BUSTER') {
         event.winnerId = value as string;
-    } else if (type === 'NOMINATIONS') {
-        event.nominees = (value as string[]).filter(v => v);
     } else if (type === 'EVICTION') {
         event.evictedId = value as string;
+    } else if (type === 'NOMINATIONS') {
+        if (!event.nominees) event.nominees = [];
+        if (typeof nomineeIndex === 'number') {
+            const updatedNominees = [...event.nominees];
+            updatedNominees[nomineeIndex] = value as string;
+            event.nominees = updatedNominees.filter(n => n); // clean up any empty spots
+        }
     }
     
     setCompetitions(newCompetitions);
   };
+
+  const handleAddNominee = () => {
+    let nomEvent = competitions.find(c => c.week === selectedWeek && c.type === 'NOMINATIONS');
+    if (!nomEvent) {
+      const newNomEvent: Competition = { id: `bb27_wk${selectedWeek}_nominations`, seasonId: 'bb27', week: selectedWeek, type: 'NOMINATIONS', airDate: new Date().toISOString(), nominees: [''] };
+      setCompetitions([...competitions, newNomEvent]);
+    } else {
+      const updatedCompetitions = competitions.map(c => {
+        if (c.id === nomEvent!.id) {
+          return { ...c, nominees: [...(c.nominees || []), ''] };
+        }
+        return c;
+      });
+      setCompetitions(updatedCompetitions);
+    }
+  };
+
+  const handleRemoveNominee = (indexToRemove: number) => {
+      const nomEvent = competitions.find(c => c.week === selectedWeek && c.type === 'NOMINATIONS');
+      if (!nomEvent || !nomEvent.nominees) return;
+      
+      const updatedNominees = nomEvent.nominees.filter((_, index) => index !== indexToRemove);
+      
+      const updatedCompetitions = competitions.map(c => {
+          if (c.id === nomEvent.id) {
+              return { ...c, nominees: updatedNominees };
+          }
+          return c;
+      });
+      setCompetitions(updatedCompetitions);
+  };
+
   
   const handleAddSpecialEvent = () => {
     if (!specialEventData.contestantId || !specialEventData.ruleCode) {
@@ -205,7 +242,7 @@ export default function SettingsPage() {
               <div className="flex justify-end">
                 <Button onClick={() => handleSaveChanges()}><Save className="mr-2 h-4 w-4"/>Save All Admin Changes</Button>
               </div>
-              <Accordion type="multiple" className="w-full space-y-6">
+              <Accordion type="multiple" className="w-full space-y-6" defaultValue={["events"]}>
                 <AccordionItem value="events" asChild>
                     <Card>
                       <AccordionTrigger className="p-6">
@@ -225,7 +262,7 @@ export default function SettingsPage() {
                               </Select>
                           </div>
                           <div className="space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                   <div>
                                       <Label className="flex items-center gap-1 mb-1"><Crown className="text-primary"/>HOH Winner</Label>
                                       <Select value={hoh?.winnerId || ''} onValueChange={(val) => handleEventUpdate('HOH', val)}>
@@ -247,36 +284,9 @@ export default function SettingsPage() {
                                   <div>
                                       <Label className="flex items-center gap-1 mb-1"><ShieldCheck className="text-sky-500"/>Block Buster Winner</Label>
                                       <Select value={blockBuster?.winnerId || ''} onValueChange={(val) => handleEventUpdate('BLOCK_BUSTER', val)}>
-                                          <SelectTrigger><SelectValue placeholder="Select Block Buster Winner..."/></SelectTrigger>
+                                          <SelectTrigger><SelectValue placeholder="Select Block Buster..."/></SelectTrigger>
                                           <SelectContent>
                                             {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div>
-                                      <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 1</Label>
-                                      <Select value={noms?.nominees?.[0] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [val, noms?.nominees?.[1] || '', noms?.nominees?.[2] || ''])}>
-                                          <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
-                                          <SelectContent>
-                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div>
-                                      <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 2</Label>
-                                      <Select value={noms?.nominees?.[1] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', val, noms?.nominees?.[2] || ''])}>
-                                          <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
-                                          <SelectContent>
-                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div>
-                                      <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominee 3 (optional)</Label>
-                                      <Select value={noms?.nominees?.[2] || ''} onValueChange={(val) => handleEventUpdate('NOMINATIONS', [noms?.nominees?.[0] || '', noms?.nominees?.[1] || '', val])}>
-                                          <SelectTrigger><SelectValue placeholder="Select Nominee..."/></SelectTrigger>
-                                          <SelectContent>
-                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -289,6 +299,28 @@ export default function SettingsPage() {
                                           </SelectContent>
                                       </Select>
                                   </div>
+                              </div>
+                              <Separator/>
+                              <div className="space-y-2">
+                                <Label className="flex items-center gap-1 mb-1"><UserCheck className="text-red-400"/>Nominees</Label>
+                                <div className='space-y-2'>
+                                  {(noms?.nominees || []).map((nomineeId, index) => (
+                                      <div key={index} className="flex items-center gap-2">
+                                          <Select value={nomineeId} onValueChange={(val) => handleEventUpdate('NOMINATIONS', val, index)}>
+                                              <SelectTrigger><SelectValue placeholder={`Select Nominee ${index + 1}...`}/></SelectTrigger>
+                                              <SelectContent>
+                                                  {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                              </SelectContent>
+                                          </Select>
+                                          <Button variant="ghost" size="icon" onClick={() => handleRemoveNominee(index)} className="h-9 w-9">
+                                              <Trash2 className="h-4 w-4"/>
+                                          </Button>
+                                      </div>
+                                  ))}
+                                </div>
+                                <Button variant="outline" size="sm" onClick={handleAddNominee} className="mt-2">
+                                    <PlusCircle className="mr-2 h-4 w-4"/> Add Nominee
+                                </Button>
                               </div>
                               <Separator/>
                               <div className="flex justify-between items-center gap-2">
