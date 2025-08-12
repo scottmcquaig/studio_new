@@ -18,9 +18,11 @@ import {
   ArrowUp,
   ArrowDown,
   TrendingUp,
+  TrendingDown,
   Medal,
   ListOrdered,
   ShieldCheck,
+  Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -295,8 +297,12 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {team.weekly_score > 0 ? <ArrowUp className="h-4 w-4 text-green-600"/> : <ArrowDown className="h-4 w-4 text-red-600"/>}
-                                    <Badge variant={team.weekly_score >= 0 ? "default" : "destructive"} className={cn(team.weekly_score >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                                    {team.weekly_score > 0 ? <TrendingUp className="h-4 w-4 text-green-600"/> : team.weekly_score < 0 ? <TrendingDown className="h-4 w-4 text-red-600"/> : <Minus className="h-4 w-4 text-gray-500" />}
+                                    <Badge variant={team.weekly_score > 0 ? "default" : team.weekly_score < 0 ? "destructive" : "secondary"} className={cn(
+                                        team.weekly_score > 0 && "bg-green-100 text-green-800",
+                                        team.weekly_score < 0 && "bg-red-100 text-red-800",
+                                        team.weekly_score === 0 && "bg-gray-100 text-gray-800"
+                                     )}>
                                       <span>{team.weekly_score > 0 ? '+': ''}{team.weekly_score}</span>
                                     </Badge>
                                 </div>
@@ -330,7 +336,7 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(player.points >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                                    <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(player.points >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")}>
                                       <span>{player.points > 0 ? '+': ''}{player.points}</span>
                                     </Badge>
                                 </div>
@@ -369,7 +375,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(activity.points! >= 0 ? "bg-green-600 text-white" : "bg-red-600 text-white")}>
+                    <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(activity.points! >= 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800")}>
                         <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
                     </Badge>
                   </div>

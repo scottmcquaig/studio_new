@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { Contestant } from '@/lib/data';
-import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy } from "lucide-react";
+import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus } from "lucide-react";
 import { cn } from '@/lib/utils';
 
 type ContestantWithStats = Contestant & {
@@ -16,6 +16,7 @@ type ContestantWithStats = Contestant & {
   totalWins: number;
   totalNoms: number;
   totalPoints: number;
+  evictionWeek?: number;
 };
 
 export default function ContestantsPage() {
@@ -24,7 +25,11 @@ export default function ContestantsPage() {
   const league = MOCK_LEAGUES[0];
   const contestantTerm = league.contestantTerm;
 
-  const contestantStats = MOCK_CONTESTANTS.map(hg => {
+  const hoh = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'HOH');
+  const pov = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'VETO');
+  const noms = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'NOMINATIONS');
+
+  const contestantStats: ContestantWithStats[] = MOCK_CONTESTANTS.map(hg => {
     const team = MOCK_TEAMS.find(t => t.contestantIds.includes(hg.id));
     
     // Aggregate points from all teams' weekly breakdowns
@@ -54,13 +59,10 @@ export default function ContestantsPage() {
       teamName: team?.name || 'Unassigned',
       totalWins: hohWins + vetoWins,
       totalNoms: nomCount,
-      totalPoints: totalPoints
+      totalPoints: totalPoints,
+      evictionWeek: hg.evictedDay ? Math.ceil(hg.evictedDay / 7) : undefined,
     };
   });
-
-  const hoh = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'HOH');
-  const pov = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'VETO');
-  const noms = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'NOMINATIONS');
 
   const sortedContestants = [...contestantStats].sort((a, b) => {
     // Evicted players to the bottom
@@ -102,7 +104,12 @@ export default function ContestantsPage() {
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedContestant(null)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sortedContestants.map(hg => (
+            {sortedContestants.map(hg => {
+              const isHoh = hg.id === hoh?.winnerId;
+              const isPov = hg.id === pov?.winnerId;
+              const isNom = noms?.nominees?.includes(hg.id);
+              
+              return (
               <DialogTrigger key={hg.id} asChild onClick={() => setSelectedContestant(hg)}>
                 <Card className="flex flex-col cursor-pointer hover:border-primary transition-colors">
                   <CardHeader className="flex flex-row items-center gap-4 pb-2">
@@ -115,16 +122,32 @@ export default function ContestantsPage() {
                       data-ai-hint="portrait person"
                     />
                     <div className="flex-1">
-                      <CardTitle className="text-xl">{hg.fullName}</CardTitle>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        {hg.fullName}
+                        {hg.status === 'active' && (
+                          <>
+                            {isHoh && <Crown className="h-4 w-4 text-purple-600" title="Head of Household"/>}
+                            {isPov && <Shield className="h-4 w-4 text-amber-500" title="Power of Veto"/>}
+                            {isNom && <Users className="h-4 w-4 text-red-400" title="Nominee" />}
+                          </>
+                        )}
+                      </CardTitle>
                       <p className="text-xs text-muted-foreground">{hg.teamName}</p>
                     </div>
-                    <Badge 
-                      variant={hg.status === 'active' ? 'default' : 'destructive'} 
-                      className={cn(hg.status === 'active' && 'bg-green-600 text-white')}>
-                      {hg.status === 'active' ? 'Active' : 'Evicted'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1">
+                      <Badge 
+                        variant={hg.status === 'active' ? 'default' : 'destructive'} 
+                        className={cn('h-fit', hg.status === 'active' && 'bg-green-600 text-white')}>
+                        {hg.status === 'active' ? 'Active' : 'Evicted'}
+                      </Badge>
+                       {hg.status === 'evicted' && hg.evictionWeek && (
+                          <Badge variant="secondary" className="bg-gray-700 text-white">
+                            Week {hg.evictionWeek}
+                          </Badge>
+                        )}
+                    </div>
                   </CardHeader>
-                  <CardContent className="flex-grow flex items-center justify-around text-center gap-2 text-sm">
+                  <CardContent className="flex-grow flex items-center justify-around text-center gap-2 text-sm pt-2">
                       <div className="flex flex-col items-center">
                           <Trophy className="h-5 w-5 text-accent" />
                           <span className="font-bold">{hg.totalWins}</span>
@@ -143,7 +166,7 @@ export default function ContestantsPage() {
                   </CardContent>
                 </Card>
               </DialogTrigger>
-            ))}
+            )})}
           </div>
 
           {selectedContestant && (
