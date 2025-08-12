@@ -7,16 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save } from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_COMPETITIONS } from "@/lib/data";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle } from "lucide-react";
+import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User, Team, UserRole, Houseguest, Competition } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 // For this prototype, we'll assume the logged-in user is the first site admin found.
 const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
 const activeLeague = MOCK_LEAGUES[0];
 const activeSeason = MOCK_SEASONS[0];
+const specialEventRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
+
 
 export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
@@ -24,14 +27,25 @@ export default function SettingsPage() {
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
+  const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
+  
+  const [specialEventData, setSpecialEventData] = useState({
+      houseguestId: '',
+      ruleCode: '',
+      notes: ''
+  });
+
 
   const activeHouseguests = MOCK_HOUSEGUESTS.filter(hg => hg.status === 'active');
-  const currentWeekEvents = competitions.filter(c => c.week === activeSeason.currentWeek);
+  const weekEvents = competitions.filter(c => c.week === selectedWeek);
   
-  const hoh = currentWeekEvents.find(c => c.type === 'HOH');
-  const pov = currentWeekEvents.find(c => c.type === 'VETO');
-  const noms = currentWeekEvents.find(c => c.type === 'NOMINATIONS');
-  const eviction = currentWeekEvents.find(c => c.type === 'EVICTION');
+  const hoh = weekEvents.find(c => c.type === 'HOH');
+  const pov = weekEvents.find(c => c.type === 'VETO');
+  const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
+  const eviction = weekEvents.find(c => c.type === 'EVICTION');
+  const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => i + 1);
+
 
   const handleInviteUser = () => {
     if (!newUserEmail.trim()) {
@@ -99,10 +113,10 @@ export default function SettingsPage() {
   
   const handleEventUpdate = (type: 'HOH' | 'VETO' | 'NOMINATIONS' | 'EVICTION', value: string | string[]) => {
     const newCompetitions = [...competitions];
-    let event = newCompetitions.find(c => c.week === activeSeason.currentWeek && c.type === type);
+    let event = newCompetitions.find(c => c.week === selectedWeek && c.type === type);
     
     if (!event) {
-      event = { id: `bb27_wk${activeSeason.currentWeek}_${type.toLowerCase()}`, seasonId: 'bb27', week: activeSeason.currentWeek, type, airDate: new Date().toISOString() };
+      event = { id: `bb27_wk${selectedWeek}_${type.toLowerCase()}`, seasonId: 'bb27', week: selectedWeek, type, airDate: new Date().toISOString() };
       newCompetitions.push(event);
     }
     
@@ -116,6 +130,29 @@ export default function SettingsPage() {
     
     setCompetitions(newCompetitions);
   };
+  
+  const handleAddSpecialEvent = () => {
+    if (!specialEventData.houseguestId || !specialEventData.ruleCode) {
+        alert("Please select a houseguest and an event type.");
+        return;
+    }
+    const newEvent: Competition = {
+        id: `bb27_wk${selectedWeek}_special_${Date.now()}`,
+        seasonId: 'bb27',
+        week: selectedWeek,
+        type: 'SPECIAL_EVENT',
+        winnerId: specialEventData.houseguestId,
+        notes: specialEventData.notes,
+        specialEventCode: specialEventData.ruleCode,
+        airDate: new Date().toISOString()
+    };
+    setCompetitions([...competitions, newEvent]);
+    console.log("Added special event:", newEvent);
+    // Reset form and close dialog
+    setSpecialEventData({ houseguestId: '', ruleCode: '', notes: '' });
+    setIsSpecialEventDialogOpen(false);
+  }
+
 
   if (currentUser?.role !== 'site_admin') {
     return (
@@ -153,8 +190,21 @@ export default function SettingsPage() {
 
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
-                <CardDescription>Update results for Week {activeSeason.currentWeek}.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
+                        <CardDescription>Update results for the selected week.</CardDescription>
+                    </div>
+                     <div className="w-40">
+                         <Label>Select Week</Label>
+                         <Select value={String(selectedWeek)} onValueChange={(val) => setSelectedWeek(Number(val))}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -214,9 +264,50 @@ export default function SettingsPage() {
                     </div>
                 </div>
                 <Separator/>
-                <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={handleSaveChanges}>Apply & Lock Events</Button>
-                    <Button variant="outline" disabled>Start Next Week</Button>
+                <div className="flex justify-between items-center gap-2">
+                     <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline"><PlusCircle className="mr-2"/>Log Special Event</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Log a Special Scoring Event</DialogTitle>
+                                <CardDescription>Use for non-standard events like winning a power or penalties.</CardDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                               <div className="space-y-2">
+                                    <Label>Houseguest</Label>
+                                    <Select value={specialEventData.houseguestId} onValueChange={(val) => setSpecialEventData({...specialEventData, houseguestId: val})}>
+                                        <SelectTrigger><SelectValue placeholder="Select a houseguest..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {activeHouseguests.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                               </div>
+                               <div className="space-y-2">
+                                    <Label>Event Type</Label>
+                                    <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
+                                        <SelectTrigger><SelectValue placeholder="Select event type..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {specialEventRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label} ({rule.points > 0 ? '+':''}{rule.points} pts)</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                               </div>
+                               <div className="space-y-2">
+                                    <Label>Notes / Description</Label>
+                                    <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} placeholder="e.g., Won the 'Secret Power of Invisibility'"/>
+                               </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddSpecialEvent}>Add Event</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleSaveChanges}>Apply & Lock Events</Button>
+                        <Button variant="outline" disabled={selectedWeek !== activeSeason.currentWeek}>Start Next Week</Button>
+                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -345,3 +436,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    

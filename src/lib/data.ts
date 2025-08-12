@@ -37,7 +37,7 @@ export interface Competition {
     id: string;
     seasonId: string;
     week: number;
-    type: 'HOH' | 'VETO' | 'BLOCK_BUSTER' | 'EVICTION' | 'NOMINATIONS';
+    type: 'HOH' | 'VETO' | 'BLOCK_BUSTER' | 'EVICTION' | 'NOMINATIONS' | 'SPECIAL_EVENT';
     name?: string;
     winnerId?: string;
     airDate: string;
@@ -51,6 +51,7 @@ export interface Competition {
     day?: number;
     nominees?: string[];
     grantedSafety?: boolean;
+    specialEventCode?: string;
 }
 
 export interface League {
@@ -256,5 +257,7 @@ export const MOCK_PICKS: Pick[] = [
   {"id":"pick_15","leagueId":"yac_bb27_public","teamId":"team_stone_liz","houseguestId":"amy_bingham","round":4,"pick":15,"createdAt":"2025-08-01T12:24:00Z"},
   {"id":"pick_16","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","houseguestId":"mickey_lee","round":4,"pick":16,"createdAt":"2025-08-01T12:25:00Z"}
 ];
+
+    
 
     
