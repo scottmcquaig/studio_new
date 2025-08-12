@@ -2,12 +2,13 @@
 "use client";
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_LEAGUES, MOCK_HOUSEGUESTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User, Team, UserRole, Houseguest, Competition, League } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -24,9 +25,11 @@ export default function SettingsPage() {
   const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
   const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
+  const [houseguests, setHouseguests] = useState<Houseguest[]>(MOCK_HOUSEGUESTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingHouseguest, setEditingHouseguest] = useState<Houseguest | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   
@@ -37,7 +40,7 @@ export default function SettingsPage() {
   });
 
 
-  const activeHouseguests = MOCK_HOUSEGUESTS.filter(hg => hg.status === 'active');
+  const activeHouseguests = houseguests.filter(hg => hg.status === 'active');
   const weekEvents = competitions.filter(c => c.week === selectedWeek);
   
   const hoh = weekEvents.find(c => c.type === 'HOH');
@@ -71,6 +74,7 @@ export default function SettingsPage() {
     console.log("Saving changes for teams:", teams);
     console.log("Saving changes for competitions:", competitions);
     console.log("Saving changes for league:", league);
+    console.log("Saving changes for houseguests:", houseguests);
     alert("Changes saved to console!");
   };
 
@@ -92,6 +96,12 @@ export default function SettingsPage() {
     setUsers(users.map(u => u.id === editingUser.id ? editingUser : u));
     setEditingUser(null);
   };
+
+  const handleUpdateHouseguest = () => {
+      if(!editingHouseguest) return;
+      setHouseguests(houseguests.map(hg => hg.id === editingHouseguest.id ? editingHouseguest : hg));
+      setEditingHouseguest(null);
+  }
   
   const handleRoleChange = (userId: string, role: UserRole) => {
     setUsers(users.map(u => u.id === userId ? {...u, role, managedLeagueIds: role === 'league_admin' ? u.managedLeagueIds || [] : undefined} : u));
@@ -299,6 +309,79 @@ export default function SettingsPage() {
                         <Button variant="outline" disabled={selectedWeek !== activeSeason.currentWeek}>Start Next Week</Button>
                     </div>
                 </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UserSquare/> Houseguest Management</CardTitle>
+                <CardDescription>Edit houseguest information and photos.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                {houseguests.map(hg => (
+                    <div key={hg.id} className="flex items-center justify-between p-2 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                            <Image
+                                src={hg.photoUrl || "https://placehold.co/100x100.png"}
+                                alt={hg.fullName}
+                                width={40}
+                                height={40}
+                                className="rounded-full"
+                                data-ai-hint="portrait person"
+                            />
+                            <div>
+                                <p className="font-medium">{hg.fullName}</p>
+                                <p className="text-xs text-muted-foreground">{hg.occupation}</p>
+                            </div>
+                        </div>
+                        <Dialog onOpenChange={(open) => !open && setEditingHouseguest(null)}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingHouseguest({...hg})}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            {editingHouseguest && editingHouseguest.id === hg.id && (
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Houseguest: {editingHouseguest.fullName}</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="hgName">Full Name</Label>
+                                    <Input id="hgName" value={editingHouseguest.fullName} onChange={(e) => setEditingHouseguest({...editingHouseguest, fullName: e.target.value})} />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="hgOccupation">Occupation</Label>
+                                    <Input id="hgOccupation" value={editingHouseguest.occupation} onChange={(e) => setEditingHouseguest({...editingHouseguest, occupation: e.target.value})} />
+                                  </div>
+                                   <div className="space-y-2">
+                                    <Label htmlFor="hgPhotoUrl">Photo URL</Label>
+                                    <div className="flex items-center gap-2">
+                                      <Input id="hgPhotoUrl" value={editingHouseguest.photoUrl || ''} onChange={(e) => setEditingHouseguest({...editingHouseguest, photoUrl: e.target.value})} />
+                                      <Button variant="outline" size="icon"><Upload className="h-4 w-4"/></Button>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                      <Label>Status</Label>
+                                      <Select value={editingHouseguest.status} onValueChange={(val: 'active' | 'evicted' | 'jury') => setEditingHouseguest({...editingHouseguest, status: val})}>
+                                          <SelectTrigger><SelectValue/></SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="active">Active</SelectItem>
+                                              <SelectItem value="evicted">Evicted</SelectItem>
+                                              <SelectItem value="jury">Jury</SelectItem>
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                </div>
+                                <DialogFooter>
+                                  <Button variant="outline" onClick={() => setEditingHouseguest(null)}>Cancel</Button>
+                                  <Button onClick={handleUpdateHouseguest}>Save Changes</Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            )}
+                          </Dialog>
+                    </div>
+                ))}
             </CardContent>
         </Card>
 

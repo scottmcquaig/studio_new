@@ -1,22 +1,24 @@
 'use client';
 
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
+import { getStorage } from 'firebase/storage';
 // import { getFirestore } from 'firebase/firestore';
 // import { getAuth } from 'firebase/auth';
 
-const firebaseConfig = {
-  projectId: 'yac-fantasy-league',
-  appId: '1:495683435548:web:8786d0e791c7d9051c33d9',
-  storageBucket: 'yac-fantasy-league.firebasestorage.app',
-  apiKey: 'AIzaSyCNNCVA79p4gMT-AZ2s3KpV4_Cb4IImE3A',
-  authDomain: 'yac-fantasy-league.firebaseapp.com',
-  messagingSenderId: '495683435548',
+const firebaseConfig: FirebaseOptions = {
+  apiKey: "AIzaSyCNNCVA79p4gMT-AZ2s3KpV4_Cb4IImE3A",
+  authDomain: "yac-fantasy-league.firebaseapp.com",
+  projectId: "yac-fantasy-league",
+  storageBucket: "yac-fantasy-league.appspot.com",
+  messagingSenderId: "495683435548",
+  appId: "1:495683435548:web:8786d0e791c7d9051c33d9",
 };
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const storage = getStorage(app);
 // const db = getFirestore(app);
 // const auth = getAuth(app);
 
 // export { app, db, auth };
-export { app };
+export { app, storage };

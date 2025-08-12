@@ -141,7 +141,7 @@ export const MOCK_SEASONS: Season[] = [
   ];
 
 export const MOCK_HOUSEGUESTS: Houseguest[] = [
-    {"id":"keanu_soto","seasonId":"bb27","fullName":"Keanu Soto","age":33,"occupation":"Dungeon master","hometown":"McKinney, TX","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
+    {"id":"keanu_soto","seasonId":"bb27","fullName":"Keanu Soto","age":33,"occupation":"Dungeon master","hometown":"McKinney, TX","status":"active","enteredDay":1, "photoUrl": "https://firebasestorage.googleapis.com/v0/b/yac-fantasy-league.appspot.com/o/houseguests%2Fkeanu_soto.jpg?alt=media"},
     {"id":"jimmy_heagerty","seasonId":"bb27","fullName":"Jimmy Heagerty","age":25,"occupation":"Strategy consultant","hometown":"Washington, DC","status":"evicted","evictedDay":31,"finish":"16th", "photoUrl": "https://placehold.co/100x100.png"},
     {"id":"lauren_domingue","seasonId":"bb27","fullName":"Lauren Domingue","age":22,"occupation":"Bridal stylist","hometown":"Lafayette, LA","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
     {"id":"zach_cornell","seasonId":"bb27","fullName":"Zach Cornell","age":27,"occupation":"Marketing manager","hometown":"Cartersville, GA","status":"active","enteredDay":1,"specialPower":"$10k immunity pre-jury", "photoUrl": "https://placehold.co/100x100.png"},
