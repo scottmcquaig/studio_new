@@ -1,12 +1,13 @@
 
+
 'use server';
 
-import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot, addDoc } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin/firestore';
 import { db } from './firebase-admin'; // Use the server-side admin instance
 import type { League, Team } from './data';
 
 // Helper function to convert a Firestore document to our data types
-function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
+function fromFirestore<T>(doc: admin.QueryDocumentSnapshot<admin.DocumentData>): T {
     const data = doc.data();
     return {
         id: doc.id,
@@ -16,7 +17,7 @@ function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
 
 export async function getLeagues(): Promise<League[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, 'leagues'));
+    const querySnapshot = await admin.getDocs(admin.collection(db, 'leagues'));
     return querySnapshot.docs.map(doc => fromFirestore<League>(doc));
   } catch (error) {
     console.error("Error fetching leagues from Firestore:", error);
@@ -26,7 +27,7 @@ export async function getLeagues(): Promise<League[]> {
 
 export async function getTeams(): Promise<Team[]> {
   try {
-    const querySnapshot = await getDocs(collection(db, 'teams'));
+    const querySnapshot = await admin.getDocs(admin.collection(db, 'teams'));
     return querySnapshot.docs.map(doc => fromFirestore<Team>(doc));
   } catch (error) {
     console.error("Error fetching teams from Firestore:", error);
@@ -35,10 +36,10 @@ export async function getTeams(): Promise<Team[]> {
 }
 
 export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise<void> {
-  const batch = writeBatch(db);
+  const batch = admin.writeBatch(db);
 
   // Save the league document
-  const leagueRef = doc(db, 'leagues', league.id);
+  const leagueRef = admin.doc(db, 'leagues', league.id);
   const { id: leagueId, ...leagueData } = league;
   batch.set(leagueRef, leagueData, { merge: true });
 
@@ -52,26 +53,26 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     delete (teamData as any).weekly_score_breakdown;
 
     if (teamId && teamId.startsWith('new_team_')) {
-        const newTeamRef = doc(collection(db, 'teams'));
+        const newTeamRef = admin.doc(admin.collection(db, 'teams'));
         batch.set(newTeamRef, teamData);
     } else if (teamId) {
-        const teamRef = doc(db, 'teams', teamId);
+        const teamRef = admin.doc(db, 'teams', teamId);
         batch.set(teamRef, teamData, { merge: true });
     }
   });
 
   try {
     await batch.commit();
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error committing batch save for league and teams. The raw error is:", error);
-    throw new Error("Failed to save data to Firestore.");
+    throw new Error(`Failed to save data to Firestore: ${error.message}`);
   }
 }
 
 
 export async function testWrite(): Promise<void> {
     try {
-        const docRef = await addDoc(collection(db, "test_logs"), {
+        const docRef = await admin.addDoc(admin.collection(db, "test_logs"), {
             test: "success",
             timestamp: new Date(),
         });
