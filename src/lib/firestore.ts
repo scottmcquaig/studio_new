@@ -90,7 +90,6 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
   });
 
   try {
-    console.log('Attempting to save to Firestore with data:', JSON.stringify({ league, teams: validTeams }, null, 2));
     await batch.commit();
   } catch (error) {
     console.error("Error committing batch save for league and teams:", error);
