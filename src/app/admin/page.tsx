@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion } from "lucide-react";
-import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
+import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -22,10 +22,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { app } from '@/lib/firebase';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const db = getFirestore(app);
   
   const [leagueSettings, setLeagueSettings] = useState(MOCK_LEAGUES[0]);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
@@ -36,7 +39,7 @@ export default function AdminPage() {
   const activeSeason = MOCK_SEASONS[0];
 
   const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
-  const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
+  const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
 
@@ -60,6 +63,19 @@ export default function AdminPage() {
         return acc;
     }, {} as {[id: string]: string})
   );
+
+  useEffect(() => {
+    const contestantsCol = collection(db, "contestants");
+    const unsubscribe = onSnapshot(contestantsCol, (querySnapshot) => {
+        const contestantData: Contestant[] = [];
+        querySnapshot.forEach((doc) => {
+            contestantData.push({ ...doc.data(), id: doc.id } as Contestant);
+        });
+        setContestants(contestantData);
+    });
+    return () => unsubscribe();
+}, [db]);
+
 
   const activeContestants = contestants.filter(hg => hg.status === 'active');
   const weekEvents = competitions.filter(c => c.week === selectedWeek);
@@ -140,7 +156,7 @@ export default function AdminPage() {
   const handleOpenContestantDialog = (contestant: Contestant | 'new') => {
     if (contestant === 'new') {
         const newContestant: Contestant = {
-            id: `contestant_${Date.now()}`,
+            id: `new_contestant_${Date.now()}`,
             seasonId: activeSeason.id,
             fullName: '',
             age: 0,
@@ -162,22 +178,46 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveContestant = () => {
-    if (editingContestant && editingContestant !== 'new') {
-        const existingIndex = contestants.findIndex(c => c.id === editingContestant.id);
-        if (existingIndex > -1) {
-            // It's an existing contestant, update it
-            const updatedContestants = [...contestants];
-            updatedContestants[existingIndex] = editingContestant;
-            setContestants(updatedContestants);
-            toast({ title: "Contestant Updated", description: `${editingContestant.fullName} has been updated.` });
-        } else {
-            // It's a new contestant, add it
-            setContestants([...contestants, editingContestant]);
-            toast({ title: "Contestant Added", description: `${editingContestant.fullName} has been added.` });
-        }
-        setEditingContestant(null);
-    }
+  const handleSaveContestant = async () => {
+      if (!editingContestant || editingContestant === 'new') return;
+  
+      const contestantData = { ...editingContestant };
+      // The id is part of the doc path, so it shouldn't be in the data itself
+      delete (contestantData as any).id;
+  
+      try {
+          const contestantsCol = collection(db, 'contestants');
+          
+          const isNew = !contestants.some(c => c.id === editingContestant.id);
+  
+          if (isNew) {
+              await addDoc(contestantsCol, contestantData);
+              toast({ title: "Contestant Added", description: `${editingContestant.fullName} has been added.` });
+          } else {
+              const contestantDoc = doc(db, 'contestants', editingContestant.id);
+              await updateDoc(contestantDoc, contestantData);
+              toast({ title: "Contestant Updated", description: `${editingContestant.fullName} has been updated.` });
+          }
+          setEditingContestant(null);
+      } catch (error) {
+          console.error("Error saving contestant: ", error);
+          toast({ title: "Error", description: "Could not save contestant details.", variant: "destructive" });
+      }
+  };
+  
+  const handleDeleteContestant = async () => {
+      if (!editingContestant || editingContestant === 'new') return;
+      if (!window.confirm(`Are you sure you want to delete ${editingContestant.fullName}?`)) return;
+      
+      try {
+          const contestantDoc = doc(db, 'contestants', editingContestant.id);
+          await deleteDoc(contestantDoc);
+          toast({ title: "Contestant Deleted", description: `${editingContestant.fullName} has been removed.` });
+          setEditingContestant(null);
+      } catch (error) {
+          console.error("Error deleting contestant: ", error);
+          toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
+      }
   };
 
 
@@ -263,7 +303,7 @@ export default function AdminPage() {
                         <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                            <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>{editingContestant !== 'new' && editingContestant ? `Edit ${editingContestant.fullName}` : `Add New Contestant`}</DialogTitle>
+                                    <DialogTitle>{editingContestant && editingContestant !== 'new' && !contestants.some(c => c.id === editingContestant.id) ? 'Add New Contestant' : `Edit ${editingContestant?.fullName}`}</DialogTitle>
                                 </DialogHeader>
                                 {editingContestant && editingContestant !== 'new' && (
                                 <div className="space-y-4 py-4">
@@ -302,9 +342,16 @@ export default function AdminPage() {
                                     </div>
                                 </div>
                                 )}
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setEditingContestant(null)}>Cancel</Button>
-                                    <Button onClick={handleSaveContestant}>Save Changes</Button>
+                                <DialogFooter className="justify-between">
+                                    <div>
+                                        {!contestants.some(c => c.id === editingContestant?.id) ? null : (
+                                            <Button variant="destructive" onClick={handleDeleteContestant}>Delete</Button>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" onClick={() => setEditingContestant(null)}>Cancel</Button>
+                                        <Button onClick={handleSaveContestant}>Save Changes</Button>
+                                    </div>
                                 </DialogFooter>
                            </DialogContent>
                         </Dialog>
