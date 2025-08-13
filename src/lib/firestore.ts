@@ -1,5 +1,3 @@
-
-
 'use server';
 
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase-admin/firestore';
@@ -50,7 +48,7 @@ export async function getTeams(leagueId?: string): Promise<Team[]> {
   try {
     let query = db.collection('teams');
     if (leagueId) {
-        query = query.where('leagueId', '==', leagueId) as FirebaseFirestore.CollectionReference<DocumentData>;
+        query = query.where('leagueId', '==', leagueId);
     }
     const querySnapshot = await query.get();
     return querySnapshot.docs.map(doc => fromFirestore<Team>(doc));
@@ -76,13 +74,14 @@ export async function saveLeagueAndTeams(league: League, teamNames: string[]): P
   batch.set(leagueRef, leagueData, { merge: true });
 
   // 2. Fetch existing teams to compare against
-  const existingTeams = await getTeams(league.id);
-  const existingTeamNames = existingTeams.map(t => t.name);
+  const existingTeamsSnapshot = await db.collection('teams').where('leagueId', '==', league.id).get();
+  const existingTeams = existingTeamsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
 
   // 3. Update existing teams and identify new teams
   const teamsToUpdate = teamNames.map((name, index) => ({ name, originalIndex: index }));
   
   teamsToUpdate.forEach(({ name }) => {
+      if (!name.trim()) return;
       const existingTeam = existingTeams.find(t => t.name === name);
       if (existingTeam) {
           // If name is the same, we could update other properties here if needed.
@@ -116,5 +115,17 @@ export async function saveLeagueAndTeams(league: League, teamNames: string[]): P
   } catch (error: any) {
     console.error("Error committing batch save for league and teams. The raw error is:", error);
     throw new Error(`Failed to save data to Firestore: ${error.message}`);
+  }
+}
+
+export async function testWrite(): Promise<void> {
+  try {
+    const docRef = db.collection('test_logs').doc(`test_${Date.now()}`);
+    await docRef.set({
+      test: 'success',
+      timestamp: new Date(),
+    });
+  } catch (error: any) {
+    throw new Error(`Firestore test write failed: ${error.message}`);
   }
 }
