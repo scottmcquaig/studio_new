@@ -62,27 +62,23 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
   // Filter out any placeholder teams that don't have a name.
   const validTeams = teams.filter(team => team && team.name && team.id);
-
+  
   // Update or create each valid team document
   validTeams.forEach(team => {
     // Exclude the ID from the data being written to Firestore
     const { id: teamId, ...teamData } = team;
 
-    // Firestore SDK doesn't allow undefined values or complex nested objects that aren't plain.
-    // We need to clean the object.
-    const dataToSave = Object.entries(teamData).reduce((acc, [key, value]) => {
-      if (value !== undefined) {
-        // @ts-ignore
-        acc[key] = value;
-      }
-      return acc;
-    }, {} as DocumentData);
-
-    // Specifically handle the nested object to ensure it's serializable.
-    if (dataToSave.weekly_score_breakdown) {
-      dataToSave.weekly_score_breakdown = { ...dataToSave.weekly_score_breakdown };
+    // Firestore SDK doesn't allow undefined values. Let's create a clean object.
+    const dataToSave: DocumentData = {};
+    for (const [key, value] of Object.entries(teamData)) {
+        if (value !== undefined) {
+            dataToSave[key] = value;
+        }
     }
     
+    // Explicitly remove the complex object that is likely causing the serialization error.
+    delete dataToSave.weekly_score_breakdown;
+
     // If the team is new (has a temporary ID), create a new document reference with a unique ID.
     if (teamId && teamId.startsWith('new_team_')) {
         const teamRef = doc(collection(db, 'teams')); // Creates a new ref with a new ID
