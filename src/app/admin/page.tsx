@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,30 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getSettings, saveSettings } from '@/app/actions';
+import type { SiteSettings } from '@/lib/firestore';
 
 export default function AdminPage() {
   const { toast } = useToast();
   
-  const [leagues, setLeagues] = useState<League[]>(MOCK_LEAGUES);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
 
-  const league = leagues.length > 0 ? leagues[0] : null;
+  const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
+
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const settings = await getSettings();
+        setSiteSettings(settings);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Failed to load league settings.", variant: 'destructive' });
+      }
+    }
+    fetchSettings();
+  }, [toast]);
+
 
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
   const activeSeason = MOCK_SEASONS[0];
@@ -86,9 +102,19 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveChanges = (section?: string) => {
-    const message = section ? `${section} changes saved.` : "All updates have been saved.";
-    toast({ title: "Changes Saved", description: message });
+  const handleSaveChanges = async (section?: string) => {
+    if (!siteSettings) return;
+
+    try {
+      if (section === 'League Settings' && siteSettings) {
+        await saveSettings({ leagueName: siteSettings.leagueName });
+      }
+      // Add other section saving logic here if needed
+      toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error", description: `Failed to save ${section}.`, variant: 'destructive' });
+    }
   };
   
   const handleTeamNameChange = (teamId: string, newName: string) => {
@@ -126,9 +152,7 @@ export default function AdminPage() {
     toast({ title: "Team Assigned", description: `User has been assigned to a new team.` });
   };
   
-  // ... (all other handler functions from settings page) ...
-
-  if (!league) {
+  if (!league || !siteSettings) {
     return <div>Loading...</div>;
   }
 
@@ -166,7 +190,7 @@ export default function AdminPage() {
                        <p>Event management UI goes here.</p>
                     </CardContent>
                     <CardFooter className="justify-end">
-                       <Button onClick={() => handleSaveChanges('Weekly Events')}><Save className="mr-2"/>Save Event Changes</Button>
+                       <Button><Save className="mr-2"/>Save Event Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -182,7 +206,7 @@ export default function AdminPage() {
                        <p>{contestantTerm.plural} roster management UI goes here.</p>
                     </CardContent>
                     <CardFooter className="justify-end">
-                       <Button onClick={() => handleSaveChanges(`${contestantTerm.plural}`)}><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
+                       <Button><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -198,7 +222,7 @@ export default function AdminPage() {
                             <h3 className="text-lg font-medium">General</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="leagueName">League Name</Label>
-                                <Input id="leagueName" value={league.name} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, name: e.target.value} : l))} />
+                                <Input id="leagueName" value={siteSettings.leagueName} onChange={(e) => setSiteSettings({...siteSettings, leagueName: e.target.value})} />
                             </div>
                         </div>
                         <Separator/>
@@ -207,11 +231,11 @@ export default function AdminPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                    <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, contestantTerm: { ...l.contestantTerm, singular: e.target.value }} : l))} />
+                                    <Input id="termSingular" value={league.contestantTerm.singular} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                    <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, contestantTerm: { ...l.contestantTerm, plural: e.target.value }} : l))} />
+                                    <Input id="termPlural" value={league.contestantTerm.plural} />
                                 </div>
                             </div>
                          </div>
@@ -302,7 +326,7 @@ export default function AdminPage() {
                         ))}
                     </CardContent>
                      <CardFooter className="justify-end">
-                        <Button onClick={() => handleSaveChanges('Scoring Rules')}><Save className="mr-2"/>Save Scoring Rules</Button>
+                        <Button><Save className="mr-2"/>Save Scoring Rules</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -419,7 +443,7 @@ export default function AdminPage() {
                         </div>
                     </CardContent>
                      <CardFooter className="justify-end">
-                        <Button onClick={() => handleSaveChanges('Users & Teams')}><Save className="mr-2"/>Save User & Team Changes</Button>
+                        <Button><Save className="mr-2"/>Save User & Team Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
