@@ -11,6 +11,8 @@ export interface Season {
   theme: string;
   network: string;
   premiereDate: string;
+  endDate: string;
+  year: number;
   status: 'in_progress' | 'completed' | 'upcoming';
   currentWeek: number;
   totalWeeks?: number;
@@ -58,6 +60,8 @@ export interface Competition {
 export interface League {
     id: string;
     name: string;
+    abbreviatedName: string;
+    show: string;
     seasonId: string;
     visibility: 'private' | 'public' | 'link';
     maxTeams: number;
@@ -140,7 +144,9 @@ export const MOCK_SEASONS: Season[] = [
       "title": "Big Brother 27",
       "theme": "Summer of Mystery / Hotel Murder Mystery",
       "network": "CBS",
-      "premiereDate": "2025-07-10",
+      "year": 2025,
+      "premiereDate": "2025-07-08",
+      "endDate": "2025-09-15",
       "status": "in_progress",
       "currentWeek": 5,
       "totalWeeks": 12,
@@ -195,8 +201,10 @@ export const MOCK_COMPETITIONS: Competition[] = [
 
 export const MOCK_LEAGUES: League[] = [
     {
-      "id":"yac_bb27_public",
-      "name":"YAC Fantasy League",
+      "id":"bb27",
+      "name":"Big Brother 27",
+      "abbreviatedName": "BB27",
+      "show": "Big Brother",
       "seasonId":"bb27",
       "visibility":"private",
       "maxTeams":4,

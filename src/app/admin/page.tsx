@@ -118,8 +118,23 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveChanges = (section?: string) => {
-    toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
+  const handleSaveChanges = async (section?: string) => {
+    if (!leagueSettings) return;
+
+    if (section === 'League Settings') {
+        try {
+            const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
+            // Using setDoc with merge: true will create the doc if it doesn't exist, or update it if it does.
+            await setDoc(leagueDocRef, leagueSettings, { merge: true });
+            toast({ title: "League Settings Saved", description: "Your changes have been saved to the database." });
+        } catch (error) {
+            console.error("Error saving league settings: ", error);
+            toast({ title: "Error", description: "Could not save league settings.", variant: "destructive" });
+        }
+    } else {
+        toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
+    }
+
     if(editingContestant) {
         setEditingContestant(null);
     }
