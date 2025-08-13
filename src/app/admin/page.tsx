@@ -42,7 +42,7 @@ export default function AdminPage() {
 
   const specialEventRules = scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
   
-  const contestantTerm = league?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
+  const contestantTerm = leagueSettings?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
@@ -203,11 +203,11 @@ export default function AdminPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                    <Input id="termSingular" value={league.contestantTerm.singular} />
+                                    <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, singular: e.target.value}})} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                    <Input id="termPlural" value={league.contestantTerm.plural} />
+                                    <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
                                 </div>
                             </div>
                          </div>
