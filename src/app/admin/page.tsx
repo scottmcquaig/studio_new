@@ -1,0 +1,347 @@
+
+"use client";
+
+import { useState } from 'react';
+import Image from 'next/image';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft } from "lucide-react";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from 'next/link';
+
+export default function AdminPage() {
+  const { toast } = useToast();
+  
+  const [leagues, setLeagues] = useState<League[]>(MOCK_LEAGUES);
+  const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
+  const [teamNames, setTeamNames] = useState<string[]>(MOCK_TEAMS.map(t => t.name));
+
+  const league = leagues.length > 0 ? leagues[0] : null;
+
+  const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
+  const activeSeason = MOCK_SEASONS[0];
+
+  const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
+  const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
+  const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
+  const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
+
+  const specialEventRules = scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
+  
+  const contestantTerm = league?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
+  const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
+  const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
+
+  const [newUserData, setNewUserData] = useState({ displayName: '', email: '', role: 'player' as UserRole, teamId: 'unassigned' });
+  const [newRuleData, setNewRuleData] = useState({ code: '', label: '', points: 0 });
+  const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
+
+  const activeContestants = contestants.filter(hg => hg.status === 'active');
+  const weekEvents = competitions.filter(c => c.week === selectedWeek);
+  
+  const hoh = weekEvents.find(c => c.type === 'HOH');
+  const pov = weekEvents.find(c => c.type === 'VETO');
+  const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
+  const eviction = weekEvents.find(c => c.type === 'EVICTION');
+  const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
+  const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => i + 1);
+
+  const handleAddUser = () => {
+    // ... (logic from settings page)
+  };
+
+  const handleSaveChanges = (section?: string) => {
+    const message = section ? `${section} changes saved.` : "All updates have been saved.";
+    toast({ title: "Changes Saved", description: message });
+  };
+  
+  const handleTeamNameChange = (index: number, newName: string) => {
+    const newTeamNames = [...teamNames];
+    newTeamNames[index] = newName;
+    setTeamNames(newTeamNames);
+  };
+
+  const handleUpdateRule = (code: string, field: 'label' | 'points', value: string | number) => {
+    setScoringRules(currentRules =>
+      currentRules.map(rule =>
+        rule.code === code ? { ...rule, [field]: value } : rule
+      )
+    );
+  };
+
+  const handleAddRule = () => {
+    // ... (logic from settings page)
+  };
+
+  const handleRemoveRule = (codeToRemove: string) => {
+    setScoringRules(currentRules => currentRules.filter(rule => rule.code !== codeToRemove));
+  };
+  
+  const handleAssignTeam = (userId: string, teamId: string) => {
+    // ... (logic from settings page)
+  };
+  
+  // ... (all other handler functions from settings page) ...
+
+  if (!league) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div className="flex flex-col">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
+        <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Admin Panel
+        </h1>
+        <Button variant="outline" asChild>
+            <Link href="/settings"><ArrowLeft className="mr-2"/> Back to Settings</Link>
+        </Button>
+      </header>
+      <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
+        <Tabs defaultValue="events" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+                <TabsTrigger value="events">Events</TabsTrigger>
+                <TabsTrigger value="contestants">{contestantTerm.plural}</TabsTrigger>
+                <TabsTrigger value="league">League Settings</TabsTrigger>
+                <TabsTrigger value="scoring">Scoring Rules</TabsTrigger>
+                <TabsTrigger value="users">Users & Teams</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="events" className="mt-6">
+                <Card>
+                    <CardHeader>
+                       <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
+                       <CardDescription>Update results for the selected week.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       {/* Content from Weekly Event Management Accordion */}
+                       <p>Event management UI goes here.</p>
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                       <Button onClick={() => handleSaveChanges('Weekly Events')}><Save className="mr-2"/>Save Event Changes</Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="contestants" className="mt-6">
+                <Card>
+                    <CardHeader>
+                       <CardTitle className="flex items-center gap-2"><UserSquare/> {contestantTerm.plural} Roster</CardTitle>
+                       <CardDescription>Edit {contestantTerm.plural.toLowerCase()} information and photos.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                       {/* Content from Contestants Roster Accordion */}
+                       <p>{contestantTerm.plural} roster management UI goes here.</p>
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                       <Button onClick={() => handleSaveChanges(`${contestantTerm.plural}`)}><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="league" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
+                        <CardDescription>Manage core settings and terminology for the league.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-medium">General</h3>
+                            <div className="space-y-2">
+                                <Label htmlFor="leagueName">League Name</Label>
+                                <Input id="leagueName" value={league.name} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, name: e.target.value} : l))} />
+                            </div>
+                        </div>
+                        <Separator/>
+                         <div className="space-y-4">
+                            <h3 className="text-lg font-medium flex items-center gap-2"><MessageSquareQuote/> Terminology</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="termSingular">Contestant (Singular)</Label>
+                                    <Input id="termSingular" value={league.contestantTerm.singular} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, contestantTerm: { ...l.contestantTerm, singular: e.target.value }} : l))} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="termPlural">Contestant (Plural)</Label>
+                                    <Input id="termPlural" value={league.contestantTerm.plural} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, contestantTerm: { ...l.contestantTerm, plural: e.target.value }} : l))} />
+                                </div>
+                            </div>
+                         </div>
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                        <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save League Settings</Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+            
+            <TabsContent value="scoring" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="flex items-center gap-2"><ListChecks/> Scoring Rules</CardTitle>
+                                <CardDescription>Manage points for all scoring events.</CardDescription>
+                            </div>
+                            <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm"><PlusCircle className="mr-2"/>Add Rule</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Add New Scoring Rule</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label>Event Code</Label>
+                                            <Input 
+                                                value={newRuleData.code}
+                                                onChange={(e) => setNewRuleData({...newRuleData, code: e.target.value.toUpperCase().replace(/\s/g, '_')})}
+                                                placeholder="e.g., CUSTOM_EVENT"
+                                            />
+                                            <p className="text-xs text-muted-foreground">A unique, uppercase identifier for the rule.</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Label</Label>
+                                            <Input
+                                                value={newRuleData.label}
+                                                onChange={(e) => setNewRuleData({...newRuleData, label: e.target.value})}
+                                                placeholder="e.g., Wins a secret power"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Points</Label>
+                                            <Input
+                                                type="number"
+                                                value={newRuleData.points}
+                                                onChange={(e) => setNewRuleData({...newRuleData, points: Number(e.target.value)})}
+                                            />
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
+                                        <Button onClick={handleAddRule}>Add Rule</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {scoringRules.map(rule => (
+                            <div key={rule.code} className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-8 space-y-1">
+                                    <Label htmlFor={`rule-label-${rule.code}`}>Label</Label>
+                                    <Input
+                                        id={`rule-label-${rule.code}`}
+                                        value={rule.label}
+                                        onChange={(e) => handleUpdateRule(rule.code, 'label', e.target.value)}
+                                    />
+                                </div>
+                                <div className="col-span-3 space-y-1">
+                                    <Label htmlFor={`rule-points-${rule.code}`}>Points</Label>
+                                    <Input
+                                        id={`rule-points-${rule.code}`}
+                                        type="number"
+                                        value={rule.points}
+                                        onChange={(e) => handleUpdateRule(rule.code, 'points', Number(e.target.value))}
+                                    />
+                                </div>
+                                <div className="col-span-1 self-end">
+                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveRule(rule.code)} className="h-9 w-9">
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                     <CardFooter className="justify-end">
+                        <Button onClick={() => handleSaveChanges('Scoring Rules')}><Save className="mr-2"/>Save Scoring Rules</Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+
+            <TabsContent value="users" className="mt-6">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="flex items-center gap-2"><UserCog /> Users & Teams</CardTitle>
+                                <CardDescription>Manage user roles, team names, assignments, and invitations.</CardDescription>
+                            </div>
+                             <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Add New League Member</DialogTitle>
+                                        <CardDescription>Invite a new user and assign them to a team.</CardDescription>
+                                    </DialogHeader>
+                                    {/* Add User Dialog Content */}
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-4">
+                             <h3 className="text-lg font-medium">Teams</h3>
+                             <div className="space-y-2">
+                                <Label htmlFor="maxTeams">Number of Teams</Label>
+                                <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, maxTeams: Number(e.target.value)} : l))} />
+                             </div>
+                             <Label>Team Names</Label>
+                             <div className="space-y-2">
+                                {teamNames.slice(0, league.maxTeams).map((name, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
+                                        <Input 
+                                            value={name} 
+                                            placeholder={`Team ${index + 1} Name`}
+                                            onChange={(e) => handleTeamNameChange(index, e.target.value)} 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <Separator/>
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-medium">League Members</h3>
+                            <div className="space-y-3">
+                                {users.map(user => (
+                                    <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
+                                       {/* User management UI goes here */}
+                                       <p>{user.displayName}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                     <CardFooter className="justify-end">
+                        <Button onClick={() => handleSaveChanges('Users & Teams')}><Save className="mr-2"/>Save User & Team Changes</Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+        </Tabs>
+        <div className="flex justify-end">
+            <Button onClick={() => handleSaveChanges()}><Save className="mr-2 h-4 w-4"/>Save All Admin Changes</Button>
+        </div>
+      </main>
+    </div>
+  );
+}
