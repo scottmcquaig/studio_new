@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
@@ -68,17 +69,11 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     // Exclude the ID from the data being written to Firestore
     const { id: teamId, ...teamData } = team;
 
-    // Firestore SDK doesn't allow undefined values. Let's create a clean object.
-    const dataToSave: DocumentData = {};
-    for (const [key, value] of Object.entries(teamData)) {
-        if (value !== undefined) {
-            dataToSave[key] = value;
-        }
-    }
-    
-    // Explicitly remove the complex object that is likely causing the serialization error.
+    // The Firestore Admin SDK cannot serialize the nested weekly_score_breakdown object.
+    // We must remove it before saving.
+    const dataToSave: DocumentData = { ...teamData };
     delete dataToSave.weekly_score_breakdown;
-
+    
     // If the team is new (has a temporary ID), create a new document reference with a unique ID.
     if (teamId && teamId.startsWith('new_team_')) {
         const teamRef = doc(collection(db, 'teams')); // Creates a new ref with a new ID
