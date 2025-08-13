@@ -159,8 +159,21 @@ export default function AdminPage() {
     }
     const user = users.find(u => u.id === addUserToLeagueData.userId);
     const team = teams.find(t => t.id === addUserToLeagueData.teamId);
+    
+    // Optimistically update the UI
+    setTeams(currentTeams => 
+        currentTeams.map(t => {
+            if (t.id === team?.id) {
+                // Add user to the new team
+                return { ...t, ownerUserIds: [...t.ownerUserIds, user!.id] };
+            } else {
+                // Remove user from any other team they might have been on
+                return { ...t, ownerUserIds: t.ownerUserIds.filter(uid => uid !== user!.id) };
+            }
+        })
+    );
+    
     toast({ title: "User Added to League", description: `${user?.displayName} has been added to ${team?.name}.` });
-    // Here you would update your backend, for now, we just close the dialog
     setIsAddUserToLeagueDialogOpen(false);
     setAddUserToLeagueData({ userId: '', teamId: '' });
   };
@@ -344,6 +357,21 @@ export default function AdminPage() {
     } catch (error) {
         console.error("Error saving team changes: ", error);
         toast({ title: "Error", description: "Could not save team changes.", variant: "destructive" });
+    }
+  };
+  
+  const handleSaveUserAndTeamChanges = async () => {
+    const teamPromises = teams.map(team => {
+        const teamDocRef = doc(db, 'teams', team.id);
+        return updateDoc(teamDocRef, { ownerUserIds: team.ownerUserIds });
+    });
+
+    try {
+        await Promise.all(teamPromises);
+        toast({ title: "User & Team Changes Saved", description: "User assignments have been updated." });
+    } catch (error) {
+        console.error("Error saving user and team changes: ", error);
+        toast({ title: "Error", description: "Could not save user assignments.", variant: "destructive" });
     }
   };
 
@@ -774,7 +802,7 @@ export default function AdminPage() {
                         </div>
                     </CardContent>
                      <CardFooter className="justify-end">
-                        <Button onClick={() => handleSaveChanges('User & Team')}><Save className="mr-2"/>Save User & Team Changes</Button>
+                        <Button onClick={handleSaveUserAndTeamChanges}><Save className="mr-2"/>Save User & Team Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -783,4 +811,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
 

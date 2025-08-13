@@ -225,22 +225,22 @@ export const MOCK_LEAGUES: League[] = [
 ];
 
 export const MOCK_TEAMS: Team[] = [
-    {"id":"team_hank_alicia","leagueId":"yac_bb27_public","name":"Hank & Lee's Excellent Evictions","ownerUserIds":["user_hank", "user_alicia"],"contestantIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 182, weekly_score: 18, draftOrder: 1, weekly_score_breakdown: { week4: [{contestantId: 'mickey_lee', points: 10}, {contestantId: 'keanu_soto', points: 8}]}},
-    {"id":"team_stone_liz","leagueId":"yac_bb27_public","name":"Zae My Name, Zae My Name","ownerUserIds":["user_stone", "user_liz"],"contestantIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 195, weekly_score: -8, draftOrder: 2, weekly_score_breakdown: { week4: [{contestantId: 'jimmy_heagerty', points: -8}]}},
-    {"id":"team_jess_will","leagueId":"yac_bb27_public","name":"Expect The Unexpected","ownerUserIds":["user_jess", "user_will"],"contestantIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 175, weekly_score: 4, draftOrder: 3, weekly_score_breakdown: { week4: [{contestantId: 'rylie_jeffries', points: 4}]}},
-    {"id":"team_molly_scott","leagueId":"yac_bb27_public","name":"Buddy Dan","ownerUserIds":["user_molly", "user_scott"],"contestantIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 164, weekly_score: 0, draftOrder: 4, weekly_score_breakdown: { week4: []}}
+    {"id":"team_1","leagueId":"yac_bb27_public","name":"Team 1","ownerUserIds":[],"contestantIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 182, weekly_score: 18, draftOrder: 1, weekly_score_breakdown: { week4: [{contestantId: 'mickey_lee', points: 10}, {contestantId: 'keanu_soto', points: 8}]}},
+    {"id":"team_2","leagueId":"yac_bb27_public","name":"Team 2","ownerUserIds":[],"contestantIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 195, weekly_score: -8, draftOrder: 2, weekly_score_breakdown: { week4: [{contestantId: 'jimmy_heagerty', points: -8}]}},
+    {"id":"team_3","leagueId":"yac_bb27_public","name":"Team 3","ownerUserIds":[],"contestantIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 175, weekly_score: 4, draftOrder: 3, weekly_score_breakdown: { week4: [{contestantId: 'rylie_jeffries', points: 4}]}},
+    {"id":"team_4","leagueId":"yac_bb27_public","name":"Team 4","ownerUserIds":[],"contestantIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 164, weekly_score: 0, draftOrder: 4, weekly_score_breakdown: { week4: []}}
 ];
 
 export const MOCK_USERS: User[] = [
     {"id":"user_admin","displayName":"YAC Admin","email":"admin@yac.com","photoURL":"","createdAt":"2025-07-31T12:00:00Z", "role": "site_admin", "status": "active"},
     {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z", "role": "player", "status": "active"},
+    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z", "role": "player", "status": "active"},
     {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z", "role": "player", "status": "active"},
     {"id":"user_alicia","displayName":"Alicia","email":"alicia@example.com","photoURL":"","createdAt":"2025-08-01T12:00:20Z", "role": "player", "status": "pending"},
     {"id":"user_stone","displayName":"Stone","email":"stone@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z", "role": "league_admin", "managedLeagueIds": ["yac_bb27_public"], "status": "active"},
     {"id":"user_liz","displayName":"Liz","email":"liz@example.com","photoURL":"","createdAt":"2025-08-01T12:00:40Z", "role": "player", "status": "active"},
     {"id":"user_jess","displayName":"Jess","email":"jess@example.com","photoURL":"","createdAt":"2025-08-01T12:00:50Z", "role": "player", "status": "active"},
-    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z", "role": "player", "status": "active"},
-    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z", "role": "player", "status": "active"}
+    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z", "role": "player", "status": "active"}
 ];
 
 export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
