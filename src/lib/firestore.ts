@@ -1,7 +1,7 @@
 
 'use server';
 
-import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { db } from './firebase-admin'; // Use the server-side admin instance
 import type { League, Team } from './data';
 
@@ -57,21 +57,23 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
   // Update the league document
   const leagueRef = doc(db, 'leagues', league.id);
-  // We remove the 'id' field before saving to avoid redundancy in the document data
   const { id: leagueId, ...leagueData } = league;
   batch.set(leagueRef, leagueData, { merge: true });
 
-  // Update each team document
+  // Update or create each team document
   teams.forEach(team => {
+    // Exclude the ID from the data being written to Firestore
+    const { id: teamId, ...teamData } = team;
+    
     let teamRef;
     // If the team is new (has a temporary ID), create a new document reference with a unique ID.
-    if (team.id.startsWith('new_team_')) {
-        teamRef = doc(collection(db, 'teams'));
+    if (teamId.startsWith('new_team_')) {
+        teamRef = doc(collection(db, 'teams')); // Creates a new ref with a new ID
+        batch.set(teamRef, teamData); // Use set for new documents
     } else {
-        teamRef = doc(db, 'teams', team.id);
+        teamRef = doc(db, 'teams', teamId); // Gets a ref to the existing document
+        batch.update(teamRef, teamData); // Use update for existing documents
     }
-    const { id: teamId, ...teamData } = team;
-    batch.set(teamRef, teamData, { merge: true });
   });
 
   try {
