@@ -8,11 +8,11 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 let app: App | undefined;
 let db: Firestore;
+let initializationError: Error | null = null;
 
 try {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : undefined;
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+  const serviceAccount = serviceAccountEnv ? JSON.parse(serviceAccountEnv) : undefined;
 
   const hasServiceAccount = !!serviceAccount;
   const hasEnvVars = !!(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY);
@@ -31,21 +31,29 @@ try {
     } else {
       app = getApp('admin');
     }
+  } else {
+    // This case is for when no credentials are provided at all.
+    initializationError = new Error("Firebase Admin SDK credentials are not set. Please provide FIREBASE_SERVICE_ACCOUNT or individual Firebase environment variables in your .env.local file.");
   }
-} catch (error) {
+} catch (error: any) {
   console.error("Firebase Admin SDK initialization error:", error);
-  // We'll proceed without an initialized app, which will be handled below.
+  initializationError = error;
 }
 
-// @ts-ignore
+
 if (app) {
   db = getFirestore(app);
 } else {
-  // If the app isn't initialized, we create a dummy db object that will prevent crashes,
-  // but all operations on it will fail. This allows the app to run without credentials,
-  // though Firestore-dependent features will not work.
-  console.warn("Firebase Admin SDK not initialized. Firestore operations will not work. Please check your .env.local file.");
-  db = {} as Firestore;
+  // If the app isn't initialized, create a dummy db object that will throw a clear error.
+  const errorMessage = initializationError?.message || "Firebase Admin SDK not initialized. Please check your .env.local file for credentials and ensure Firestore is enabled in your Firebase project.";
+  console.warn(errorMessage);
+  
+  db = new Proxy({} as Firestore, {
+    get(target, prop) {
+      // For any method call on db, throw the initialization error.
+      throw new Error(`Firestore call failed: ${errorMessage}`);
+    }
+  });
 }
 
 export { db };
