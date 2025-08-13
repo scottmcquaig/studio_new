@@ -16,18 +16,18 @@ import type { Team } from '@/lib/data';
 
 // Calculate KPIs for a team
 const calculateKpis = (team) => {
-    const rules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules;
-    if (!rules) return {};
-
+    const rules = MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset')?.rules;
     const kpis = {
         HOH_WIN: 0,
         VETO_WIN: 0,
         NOMINATED: 0,
-        EVICTED: 0, // This is a placeholder; logic would need to be more complex
+        EVICTED: 0, 
         SPECIAL_POWER: 0,
     };
+
+    if (!rules) return { ...kpis, total: team.total_score || 0 };
+
     
-    let totalPoints = 0;
     const teamContestantIds = team.contestantIds || [];
 
     MOCK_COMPETITIONS.forEach(comp => {
@@ -51,8 +51,6 @@ const calculateKpis = (team) => {
             }
         }
     });
-
-    totalPoints = Object.values(kpis).reduce((sum, val) => sum + val, 0);
 
     return { ...kpis, total: team.total_score || 0 };
 };
@@ -130,7 +128,7 @@ export default function TeamsPage() {
                                         Owned by {owners.map(o => o?.displayName).join(' & ')}
                                     </CardDescription>
                                 </div>
-                                <Badge variant="secondary" className="text-lg font-bold">{kpis.total.toLocaleString()} pts</Badge>
+                                <Badge variant="secondary" className="text-lg font-bold">{(kpis.total || 0).toLocaleString()} pts</Badge>
                             </div>
                         </CardHeader>
                         <CardContent>
