@@ -9,6 +9,15 @@ import type { League, Team } from './data';
 // Helper function to convert a Firestore document to our data types
 function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
     const data = doc.data();
+    // Reconstruct the nested contestantTerm object when reading from Firestore
+    if (data.contestantTermSingular && data.contestantTermPlural) {
+        data.contestantTerm = {
+            singular: data.contestantTermSingular,
+            plural: data.contestantTermPlural,
+        };
+        delete data.contestantTermSingular;
+        delete data.contestantTermPlural;
+    }
     return {
         id: doc.id,
         ...data,
@@ -40,7 +49,13 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
   // Save the league document
   const leagueRef = db.collection('leagues').doc(league.id);
-  const { id: leagueId, ...leagueData } = league;
+  // Destructure and flatten the league object to remove nested objects before saving.
+  const { id: leagueId, contestantTerm, ...restOfLeagueData } = league;
+  const leagueData = {
+      ...restOfLeagueData,
+      contestantTermSingular: contestantTerm.singular,
+      contestantTermPlural: contestantTerm.plural,
+  };
   batch.set(leagueRef, leagueData, { merge: true });
 
   const validTeams = teams.filter(team => team && team.name);
@@ -48,8 +63,7 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
   validTeams.forEach(team => {
     const { id: teamId, ...teamData } = team;
     
-    // This is the most important fix: explicitly delete the complex nested object
-    // that the Admin SDK cannot serialize on the server.
+    // Explicitly delete the complex nested object that the Admin SDK cannot serialize.
     delete (teamData as any).weekly_score_breakdown;
 
     if (teamId && teamId.startsWith('new_team_')) {
