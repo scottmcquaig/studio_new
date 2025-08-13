@@ -33,8 +33,6 @@ export default function AdminPage() {
   const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
 
-  const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
-
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
   const activeSeason = MOCK_SEASONS[0];
 
@@ -72,7 +70,22 @@ export default function AdminPage() {
     }
   }, [teamDraftOrders, teams]);
   
-  const displayedTeams = teams.slice(0, leagueSettings?.maxTeams || MOCK_TEAMS.length);
+  const displayedTeams = Array.from({ length: leagueSettings?.maxTeams || 0 }, (_, i) => {
+    return teams[i] || {
+        id: `team_${i + 1}_placeholder`,
+        leagueId: leagueSettings?.id || '',
+        name: `Team ${i + 1}`,
+        ownerUserIds: [],
+        contestantIds: [],
+        faab: 100,
+        createdAt: new Date().toISOString(),
+        total_score: 0,
+        weekly_score: 0,
+        draftOrder: i + 1,
+        weekly_score_breakdown: { week4: [] }
+    };
+  });
+
 
   useEffect(() => {
     const contestantsCol = collection(db, "contestants");
@@ -248,7 +261,7 @@ export default function AdminPage() {
     toast({ title: "Team Assigned", description: `User has been assigned to a new team.` });
   };
   
-  if (!league || !leagueSettings) {
+  if (!leagueSettings) {
     return <div>Loading...</div>;
   }
 
