@@ -60,8 +60,11 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
   const { id: leagueId, ...leagueData } = league;
   batch.set(leagueRef, leagueData, { merge: true });
 
-  // Update or create each team document
-  teams.forEach(team => {
+  // Filter out any placeholder teams that don't have an ID or a name.
+  const validTeams = teams.filter(team => team.id && team.name);
+
+  // Update or create each valid team document
+  validTeams.forEach(team => {
     // Exclude the ID from the data being written to Firestore
     const { id: teamId, ...teamData } = team;
     
@@ -70,7 +73,7 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     if (teamId.startsWith('new_team_')) {
         teamRef = doc(collection(db, 'teams')); // Creates a new ref with a new ID
         batch.set(teamRef, teamData); // Use set for new documents
-    } else if (teamId) { // Make sure we don't process teams with no ID
+    } else { // All other valid teams are existing ones to be updated.
         teamRef = doc(db, 'teams', teamId); // Gets a ref to the existing document
         batch.set(teamRef, teamData, { merge: true }); // Use set with merge for existing documents
     }
