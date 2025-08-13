@@ -53,7 +53,7 @@ const calculateKpis = (team) => {
 
     totalPoints = Object.values(kpis).reduce((sum, val) => sum + val, 0);
 
-    return { ...kpis, total: team.total_score };
+    return { ...kpis, total: team.total_score || 0 };
 };
 
 
@@ -77,7 +77,7 @@ export default function TeamsPage() {
         return () => unsubscribe();
     }, [db]);
 
-    const sortedTeams = [...teams].sort((a, b) => b.total_score - a.total_score);
+    const sortedTeams = [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
 
     const getOwner = (userId) => MOCK_USERS.find(u => u.id === userId);
 
@@ -106,7 +106,7 @@ export default function TeamsPage() {
                         )}>{index + 1}</span>
                         <div>
                             <p className="font-semibold text-sm truncate">{team.name}</p>
-                            <p className="text-xs text-muted-foreground">{team.total_score.toLocaleString()} pts</p>
+                            <p className="text-xs text-muted-foreground">{(team.total_score || 0).toLocaleString()} pts</p>
                         </div>
                     </div>
                 ))}
