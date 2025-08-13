@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw } from "lucide-react";
-import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getLeagues, getTeams } from '@/lib/firestore';
+import { saveSettings } from '@/app/actions';
 
 
 export default function SettingsPage() {
@@ -143,10 +144,20 @@ export default function SettingsPage() {
     toast({ title: "Success!", description: `User ${newUser.displayName} created and invite sent!` });
   };
 
-  const handleSaveChanges = (section?: string) => {
-    const message = section ? `${section} changes saved.` : "All updates have been saved.";
-    console.log("Saving changes for:", section || "All sections");
-    toast({ title: "Changes Saved", description: message });
+  const handleSaveChanges = async (section?: string) => {
+    if (section === 'League Settings' && league) {
+        try {
+            await saveSettings(league, teams);
+            toast({ title: "Changes Saved", description: "League settings and team names have been saved." });
+        } catch (error) {
+            console.error("Failed to save settings:", error);
+            toast({ title: "Error", description: "Could not save settings to the database.", variant: "destructive" });
+        }
+    } else {
+        const message = section ? `${section} changes saved.` : "All updates have been saved.";
+        console.log("Saving changes for:", section || "All sections");
+        toast({ title: "Changes Saved", description: message });
+    }
   };
 
   const handleAssignTeam = (userId: string, teamId: string) => {
@@ -421,7 +432,7 @@ export default function SettingsPage() {
                                       if (nomineeId === eviction?.evictedId) currentResult = 'evicted';
                                       else if (nomineeId === pov?.usedOnId) currentResult = 'saved';
                                       else if (nomineeId === blockBuster?.winnerId) currentResult = 'blockbuster';
-                                      else if (nomineeId && noms?.nominees?.includes(nomineeId)) currentResult = 'safe';
+                                      else if (nomineeId && noms?.nominees?.includes(nomineeId) && !eviction?.evictedId && !pov?.usedOnId && !blockBuster?.winnerId) currentResult = 'safe';
                                     
                                     return (
                                       <div key={index} className="flex flex-col gap-3 p-3 border rounded-lg bg-background/50">

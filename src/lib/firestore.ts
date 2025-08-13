@@ -1,7 +1,7 @@
 
 'use server';
 
-import { collection, getDocs, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from './firebase-admin'; // Use the server-side admin instance
 import type { League, Team } from './data';
 
@@ -45,5 +45,36 @@ export async function getTeams(): Promise<Team[]> {
     // In case of an error during fetch (e.g., permissions), return an empty array
     // to prevent the app from crashing.
     return [];
+  }
+}
+
+export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise<void> {
+  if (!db || typeof db.collection !== 'function') {
+    throw new Error("Firestore is not initialized. Cannot save settings.");
+  }
+
+  const batch = writeBatch(db);
+
+  // Update the league document
+  const leagueRef = doc(db, 'leagues', league.id);
+  // We remove the 'id' field before saving to avoid redundancy in the document data
+  const { id: leagueId, ...leagueData } = league;
+  batch.set(leagueRef, leagueData, { merge: true });
+
+  // Update each team document
+  teams.forEach(team => {
+    // If the team has a real ID (not a temporary one), update it.
+    // New teams will have IDs like 'new_team_0' and should get real IDs on creation.
+    // For now, this logic will update existing teams and newly named teams.
+    const teamRef = doc(db, 'teams', team.id);
+    const { id: teamId, ...teamData } = team;
+    batch.set(teamRef, teamData, { merge: true });
+  });
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error("Error committing batch save for league and teams:", error);
+    throw new Error("Failed to save data to Firestore.");
   }
 }
