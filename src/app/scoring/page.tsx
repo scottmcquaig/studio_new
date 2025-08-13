@@ -258,7 +258,7 @@ export default function ScoringPage() {
                        </div>
                      </div>
                   )}
-                  {pov?.used === undefined && !povWinner && (
+                  {pov?.used === undefined && povWinner && (
                      <div className="flex flex-col items-center gap-1">
                       <HelpCircle className="h-8 w-8 text-muted-foreground"/>
                       <span className="text-xs text-muted-foreground">TBD</span>
@@ -420,5 +420,3 @@ export default function ScoringPage() {
     </div>
   );
 }
-
-  

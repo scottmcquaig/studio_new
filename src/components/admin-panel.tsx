@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
 import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc } from 'firebase/firestore';
 import { SheetHeader, SheetTitle } from './ui/sheet';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 
 export function AdminPanel() {
@@ -70,11 +71,34 @@ export function AdminPanel() {
     if (lastTab) {
       setActiveTab(lastTab);
     }
-  }, []);
+    const lastWeek = sessionStorage.getItem('adminSelectedWeek');
+    if (lastWeek && activeSeason && Number(lastWeek) <= activeSeason.currentWeek) {
+        setSelectedWeek(Number(lastWeek));
+    } else if (activeSeason) {
+        setSelectedWeek(activeSeason.currentWeek);
+    }
+  }, [activeSeason]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     sessionStorage.setItem('adminActiveTab', value);
+  };
+
+  const handleWeekChange = (value: string) => {
+    const week = Number(value);
+    setSelectedWeek(week);
+    sessionStorage.setItem('adminSelectedWeek', String(week));
+  };
+  
+  const handleStartNewWeek = () => {
+      if (activeSeason) {
+          const newWeek = activeSeason.currentWeek + 1;
+          // In a real app, you'd save this to the database.
+          setActiveSeason({ ...activeSeason, currentWeek: newWeek });
+          setSelectedWeek(newWeek);
+          sessionStorage.setItem('adminSelectedWeek', String(newWeek));
+          toast({ title: "New Week Started", description: `You are now managing Week ${newWeek}.`});
+      }
   };
 
    useEffect(() => {
@@ -196,7 +220,8 @@ export function AdminPanel() {
   const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
   const eviction = weekEvents.find(c => c.type === 'EVICTION');
   const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
-  const weekOptions = Array.from({ length: activeSeason?.totalWeeks || activeSeason?.currentWeek || 1 }, (_, i) => i + 1);
+  const weekOptions = Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1);
+
 
   const [nominees, setNominees] = useState<string[]>(noms?.nominees || ['', '']);
 
@@ -350,12 +375,10 @@ export function AdminPanel() {
     }
   };
 
-  const handleUpdateRule = (code: string, field: 'label' | 'points', value: string | number) => {
-    setScoringRules(currentRules =>
-      currentRules.map(rule =>
-        rule.code === code ? { ...rule, [field]: value } : rule
-      )
-    );
+  const handleUpdateRule = (index: number, field: keyof ScoringRule, value: string | number) => {
+    const updatedRules = [...scoringRules];
+    updatedRules[index] = { ...updatedRules[index], [field]: value };
+    setScoringRules(updatedRules);
   };
 
   const handleAddRule = () => {
@@ -504,12 +527,12 @@ export function AdminPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <SheetHeader className="px-4 sm:px-6 pt-6">
-        <SheetTitle className="flex items-center gap-2">
+       <SheetHeader className="px-4 sm:px-6 pt-6">
+         <SheetTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
             Admin Panel
         </SheetTitle>
-      </SheetHeader>
+       </SheetHeader>
       
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -527,18 +550,20 @@ export function AdminPanel() {
                            <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
                            <CardDescription>Update results for the selected week.</CardDescription>
                          </div>
-                         <div className="w-32">
-                             <Select value={String(selectedWeek)} onValueChange={(val) => setSelectedWeek(Number(val))}>
-                               <SelectTrigger><SelectValue/></SelectTrigger>
-                               <SelectContent>
-                                 {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
-                               </SelectContent>
-                             </Select>
+                         <div className="flex items-center gap-2">
+                            <div className="w-32">
+                                <Select value={String(selectedWeek)} onValueChange={handleWeekChange}>
+                                  <SelectTrigger><SelectValue/></SelectTrigger>
+                                  <SelectContent>
+                                    {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={handleStartNewWeek}><Plus className="mr-2 h-4 w-4"/> New Week</Button>
                          </div>
                        </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                         {/* Weekly Event Forms will go here, using state derived from selectedWeek */}
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <Card>
                                 <CardHeader>
@@ -658,9 +683,7 @@ export function AdminPanel() {
                             </Card>
                             <Card>
                                  <CardHeader>
-                                    <DialogHeader>
-                                        <CardTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</CardTitle>
-                                    </DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</DialogTitle>
                                 </CardHeader>
                                 <CardContent className="flex h-[calc(100%-4rem)] items-center justify-center">
                                      <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
@@ -825,7 +848,6 @@ export function AdminPanel() {
             </TabsContent>
 
             <TabsContent value="league" className="mt-6 space-y-6">
-                
                 <Accordion type="multiple" defaultValue={[]} className="w-full space-y-6">
                     <AccordionItem value="item-1">
                          <Card>
@@ -934,6 +956,7 @@ export function AdminPanel() {
                                                                     <div className="flex items-center gap-2">
                                                                         <span>{user.displayName}</span>
                                                                         <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className={cn(
+                                                                            'border',
                                                                             user.status === 'active' && 'text-green-600 border-green-600',
                                                                             user.status === 'pending' && 'bg-background text-amber-600 border-amber-600'
                                                                         )}>
@@ -976,8 +999,8 @@ export function AdminPanel() {
                              <AccordionTrigger className="w-full">
                                <CardHeader className="flex-row items-center justify-between w-full p-4">
                                  <div>
-                                   <CardTitle className="flex items-center gap-2 text-lg"><ListChecks/> Scoring Rules</CardTitle>
-                                   <CardDescription className="text-left">Manage points for all scoring events.</CardDescription>
+                                   <CardTitle className="flex items-center gap-2 text-lg"><ListChecks/> General & Scoring</CardTitle>
+                                   <CardDescription className="text-left">Manage league name, season, and points for all scoring events.</CardDescription>
                                  </div>
                                  <ChevronsUpDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                </CardHeader>
@@ -1011,7 +1034,8 @@ export function AdminPanel() {
                                 </CardContent>
                                 <Separator className="my-4"/>
                                 <CardContent className="p-4 pt-0">
-                                    <div className="flex justify-end mb-4">
+                                    <div className="flex justify-between items-center mb-4">
+                                         <h4 className="text-lg font-medium">Scoring Rules</h4>
                                         <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
                                             <DialogTrigger asChild>
                                                 <Button variant="outline" size="sm"><PlusCircle className="mr-2"/>Add Rule</Button>
@@ -1054,34 +1078,48 @@ export function AdminPanel() {
                                             </DialogContent>
                                         </Dialog>
                                     </div>
-                                    <div className="space-y-2">
-                                        {scoringRules.map(rule => (
-                                            <div key={rule.code} className="grid grid-cols-12 gap-2 items-center">
-                                                <div className="col-span-8">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Event Code</TableHead>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead className="text-right">Score</TableHead>
+                                                <TableHead className="w-[50px]"></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                        {scoringRules.map((rule, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>
                                                     <Input
-                                                        id={`rule-label-${rule.code}`}
-                                                        value={rule.label}
-                                                        onChange={(e) => handleUpdateRule(rule.code, 'label', e.target.value)}
-                                                        placeholder="Rule Label"
+                                                        value={rule.code}
+                                                        onChange={(e) => handleUpdateRule(index, 'code', e.target.value.toUpperCase().replace(/\s/g, '_'))}
+                                                        className="font-mono"
                                                     />
-                                                </div>
-                                                <div className="col-span-3">
+                                                </TableCell>
+                                                <TableCell>
                                                     <Input
-                                                        id={`rule-points-${rule.code}`}
+                                                        value={rule.label}
+                                                        onChange={(e) => handleUpdateRule(index, 'label', e.target.value)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Input
                                                         type="number"
                                                         value={rule.points}
-                                                        onChange={(e) => handleUpdateRule(rule.code, 'points', Number(e.target.value))}
-                                                        placeholder="Points"
+                                                        onChange={(e) => handleUpdateRule(index, 'points', Number(e.target.value))}
+                                                        className="w-20 text-right"
                                                     />
-                                                </div>
-                                                <div className="col-span-1 self-center">
+                                                </TableCell>
+                                                <TableCell>
                                                      <Button variant="ghost" size="icon" onClick={() => handleRemoveRule(rule.code)} className="h-9 w-9">
                                                         <Trash2 className="h-4 w-4 text-red-500" />
                                                     </Button>
-                                                </div>
-                                            </div>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </div>
+                                        </TableBody>
+                                    </Table>
                                 </CardContent>
                                 <CardFooter className="justify-end">
                                     <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save Settings & Rules</Button>
@@ -1096,5 +1134,3 @@ export function AdminPanel() {
     </div>
   );
 }
-
-  
