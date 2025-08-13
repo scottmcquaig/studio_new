@@ -7,11 +7,11 @@ import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Send } from "lucide-react";
-import { saveFormSubmission } from "./actions";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { app } from '@/lib/firebase';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -22,6 +22,7 @@ const formSchema = z.object({
 
 export default function FormsPage() {
   const { toast } = useToast();
+  const db = getFirestore(app);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -34,18 +35,22 @@ export default function FormsPage() {
   const { isSubmitting } = form.formState;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const result = await saveFormSubmission(values as { name: string; favNumber: number });
+    try {
+      await addDoc(collection(db, "submissions"), {
+        ...values,
+        submittedAt: new Date(),
+      });
 
-    if (result.success) {
       toast({
         title: "Form Submitted!",
         description: `Your submission has been saved.`,
       });
       form.reset();
-    } else {
-      toast({
+    } catch (error) {
+       console.error('Failed to save form submission:', error);
+       toast({
         title: "Submission Failed",
-        description: result.error || "An unknown error occurred.",
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
     }
