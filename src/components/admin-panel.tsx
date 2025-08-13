@@ -63,6 +63,20 @@ export function AdminPanel() {
 
   const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
 
+  const [activeTab, setActiveTab] = useState('scoring');
+
+  useEffect(() => {
+    const lastTab = sessionStorage.getItem('adminActiveTab');
+    if (lastTab) {
+      setActiveTab(lastTab);
+    }
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    sessionStorage.setItem('adminActiveTab', value);
+  };
+
    useEffect(() => {
     const sortedTeams = [...teams].sort((a,b) => (teamDraftOrders[a.id] ?? a.draftOrder) - (teamDraftOrders[b.id] ?? b.draftOrder));
     if (JSON.stringify(sortedTeams) !== JSON.stringify(teams)) {
@@ -148,6 +162,10 @@ export function AdminPanel() {
         } else {
             console.log("No league documents found, using mock data.");
             setLeagueSettings(MOCK_LEAGUES[0] || null);
+             if (MOCK_LEAGUES[0]?.settings.scoringRuleSetId) {
+                const ruleset = MOCK_SCORING_RULES.find(rs => rs.id === MOCK_LEAGUES[0].settings.scoringRuleSetId);
+                setScoringRules(ruleset?.rules || []);
+            }
         }
     });
 
@@ -180,6 +198,27 @@ export function AdminPanel() {
   const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
   const weekOptions = Array.from({ length: activeSeason?.totalWeeks || activeSeason?.currentWeek || 1 }, (_, i) => i + 1);
 
+  const [nominees, setNominees] = useState<string[]>(noms?.nominees || ['', '']);
+
+    useEffect(() => {
+        setNominees(noms?.nominees || ['', '']);
+    }, [selectedWeek, competitions]);
+
+    const handleNomineeChange = (index: number, value: string) => {
+        const newNominees = [...nominees];
+        newNominees[index] = value;
+        setNominees(newNominees);
+    };
+    
+    const addNomineeField = () => {
+        setNominees([...nominees, '']);
+    };
+    
+    const removeNomineeField = (index: number) => {
+        const newNominees = nominees.filter((_, i) => i !== index);
+        setNominees(newNominees);
+    };
+
   const handleAddNewUser = async () => {
     if (!newUserData.displayName || !newUserData.email) {
       toast({ title: "Error", description: "Display Name and Email are required.", variant: 'destructive' });
@@ -201,43 +240,63 @@ export function AdminPanel() {
     }
   };
   
-  const handleAddUserToLeague = () => {
+  const handleAddUserToLeague = async () => {
      if (!addUserToLeagueData.userId || !addUserToLeagueData.teamId) {
         toast({ title: "Error", description: "Please select a user and a team.", variant: 'destructive' });
         return;
     }
     const user = users.find(u => u.id === addUserToLeagueData.userId);
     const team = teams.find(t => t.id === addUserToLeagueData.teamId);
-    
-    setTeams(currentTeams => 
-        currentTeams.map(t => {
-            let ownerIds = t.ownerUserIds || [];
-            // Remove user from any other team
-            ownerIds = ownerIds.filter(uid => uid !== user!.id);
-            // Add user to the new team
-            if (t.id === team?.id) {
-                ownerIds.push(user!.id);
-            }
-            return { ...t, ownerUserIds: ownerIds };
-        })
-    );
-    
-    toast({ title: "User Assigned", description: `${user?.displayName} has been assigned to ${team?.name}. Remember to save changes.` });
-    setIsAddUserToLeagueDialogOpen(false);
-    setAddUserToLeagueData({ userId: '', teamId: '' });
+
+    if (!user || !team) return;
+
+    // Remove user from any other team first
+    const updatedTeams = teams.map(t => {
+        if (t.ownerUserIds.includes(user.id)) {
+            return { ...t, ownerUserIds: t.ownerUserIds.filter(id => id !== user.id) };
+        }
+        return t;
+    });
+
+    // Add user to the selected team
+    const finalTeams = updatedTeams.map(t => {
+        if (t.id === team.id) {
+            return { ...t, ownerUserIds: [...t.ownerUserIds, user.id] };
+        }
+        return t;
+    });
+
+    try {
+        const batch = [];
+        finalTeams.forEach(t => {
+            const teamDocRef = doc(db, 'teams', t.id);
+            batch.push(updateDoc(teamDocRef, { ownerUserIds: t.ownerUserIds }));
+        });
+        await Promise.all(batch);
+
+        toast({ title: "User Assigned", description: `${user?.displayName} has been assigned to ${team?.name}.` });
+        setIsAddUserToLeagueDialogOpen(false);
+        setAddUserToLeagueData({ userId: '', teamId: '' });
+    } catch(error) {
+         console.error("Error assigning user: ", error);
+        toast({ title: "Error", description: "Could not assign user to team.", variant: "destructive" });
+    }
   };
   
-  const handleRemoveUserFromTeam = (userId: string, teamId: string) => {
-    setTeams(currentTeams => 
-        currentTeams.map(t => {
-            if (t.id === teamId) {
-                return { ...t, ownerUserIds: t.ownerUserIds.filter(uid => uid !== userId) };
-            }
-            return t;
-        })
-    );
-    const user = users.find(u => u.id === userId);
-    toast({ title: "User Unassigned", description: `${user?.displayName} has been unassigned. Remember to save changes.` });
+  const handleRemoveUserFromTeam = async (userId: string, teamId: string) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return;
+
+    const updatedOwnerIds = team.ownerUserIds.filter(id => id !== userId);
+    try {
+        const teamDocRef = doc(db, 'teams', teamId);
+        await updateDoc(teamDocRef, { ownerUserIds: updatedOwnerIds });
+        const user = users.find(u => u.id === userId);
+        toast({ title: "User Unassigned", description: `${user?.displayName} has been unassigned from ${team.name}.` });
+    } catch (error) {
+        console.error("Error unassigning user: ", error);
+        toast({ title: "Error", description: "Could not unassign user.", variant: "destructive" });
+    }
   };
 
 
@@ -417,21 +476,22 @@ export function AdminPanel() {
   
   const handleSaveTeamAndUserChanges = async () => {
     const teamPromises = displayedTeams.map(team => {
-        if(team.id.endsWith('_placeholder')) return;
+        if(team.id.endsWith('_placeholder')) return null;
         const teamDocRef = doc(db, 'teams', team.id);
-        const dataToSave = {
-            id: team.id,
-            leagueId: team.leagueId,
+        
+        const existingTeam = teams.find(t => t.id === team.id);
+        
+        const dataToSave: Partial<Team> = {
             name: teamNames[team.id] || team.name,
             draftOrder: teamDraftOrders[team.id] || team.draftOrder,
-            ownerUserIds: team.ownerUserIds,
-            contestantIds: team.contestantIds || [],
+            ownerUserIds: existingTeam ? existingTeam.ownerUserIds : team.ownerUserIds,
         };
-        return setDoc(teamDocRef, dataToSave, { merge: true });
+
+        return updateDoc(teamDocRef, dataToSave);
     }).filter(Boolean);
 
     try {
-        await Promise.all(teamPromises);
+        await Promise.all(teamPromises as Promise<void>[]);
         toast({ title: "Team & User Changes Saved", description: "Team details and user assignments have been updated." });
     } catch (error) {
         console.error("Error saving team and user changes: ", error);
@@ -452,7 +512,7 @@ export function AdminPanel() {
       </SheetHeader>
       
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
-        <Tabs defaultValue="events" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="scoring">Scoring</TabsTrigger>
                 <TabsTrigger value="contestants">Contestants</TabsTrigger>
@@ -494,20 +554,33 @@ export function AdminPanel() {
                                     </Select>
                                 </CardContent>
                             </Card>
-                            <Card>
+                           <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-red-500"><Users className="h-4 w-4" /> Nominations</CardTitle>
+                                    <CardTitle className="flex items-center gap-2 text-base text-red-500">
+                                        <Users className="h-4 w-4" /> Nominations
+                                    </CardTitle>
                                 </CardHeader>
-                                <CardContent>
-                                    <Label>Nominees</Label>
-                                    <div className="space-y-2 mt-2">
-                                    {activeContestants.map(hg => (
-                                        <div key={hg.id} className="flex items-center gap-2">
-                                            <Checkbox id={`nom-${hg.id}`} checked={noms?.nominees?.includes(hg.id)} />
-                                            <Label htmlFor={`nom-${hg.id}`}>{hg.fullName}</Label>
+                                <CardContent className="space-y-2">
+                                    {nominees.map((nomineeId, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <Select value={nomineeId} onValueChange={(value) => handleNomineeChange(index, value)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Nominee..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {activeContestants
+                                                        .filter(c => !nominees.includes(c.id) || nominees[index] === c.id)
+                                                        .map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button variant="ghost" size="icon" onClick={() => removeNomineeField(index)} className="h-9 w-9">
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
                                         </div>
                                     ))}
-                                    </div>
+                                    <Button variant="outline" size="sm" onClick={addNomineeField} className="mt-2">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Nominee
+                                    </Button>
                                 </CardContent>
                             </Card>
                              <Card>
@@ -531,11 +604,11 @@ export function AdminPanel() {
                                     {pov?.used && (
                                         <>
                                             <div>
-                                                <Label>Used On</Label>
+                                                <Label>Used On (Saved)</Label>
                                                 <Select value={pov?.usedOnId}>
                                                     <SelectTrigger><SelectValue placeholder="Select Player Saved..." /></SelectTrigger>
                                                     <SelectContent>
-                                                        {noms?.nominees?.map(nomId => {
+                                                        {nominees?.map(nomId => {
                                                             const nom = contestants.find(c => c.id === nomId);
                                                             return nom ? <SelectItem key={nom.id} value={nom.id}>{nom.fullName}</SelectItem> : null;
                                                         })}
@@ -543,11 +616,11 @@ export function AdminPanel() {
                                                 </Select>
                                             </div>
                                             <div>
-                                                <Label>Replacement Nominee</Label>
+                                                <Label>Replacement Nominee (Renom)</Label>
                                                 <Select value={pov?.replacementNomId}>
                                                     <SelectTrigger><SelectValue placeholder="Select Replacement..." /></SelectTrigger>
                                                     <SelectContent>
-                                                        {activeContestants.filter(c => !noms?.nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                        {activeContestants.filter(c => !nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -752,41 +825,6 @@ export function AdminPanel() {
             </TabsContent>
 
             <TabsContent value="league" className="mt-6 space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
-                        <CardDescription>Manage core settings for the league.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="leagueName">League Name</Label>
-                                <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="seasonName">Season Name</Label>
-                                <Input id="seasonName" value={activeSeason.title} onChange={(e) => setActiveSeason({...activeSeason, title: e.target.value})} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="maxTeams">Number of Teams</Label>
-                                <Input 
-                                    id="maxTeams" 
-                                    type="number"
-                                    min="4"
-                                    max="12"
-                                    value={leagueSettings.maxTeams} 
-                                    onChange={(e) => {
-                                        const val = Math.max(4, Math.min(12, Number(e.target.value)));
-                                        setLeagueSettings({...leagueSettings, maxTeams: val});
-                                    }}
-                                 />
-                            </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter className="justify-end">
-                        <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save Settings</Button>
-                    </CardFooter>
-                </Card>
                 
                 <Accordion type="multiple" defaultValue={[]} className="w-full space-y-6">
                     <AccordionItem value="item-1">
@@ -945,6 +983,33 @@ export function AdminPanel() {
                                </CardHeader>
                             </AccordionTrigger>
                             <AccordionContent>
+                                 <CardContent className="p-4 pt-0">
+                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2 md:col-span-3">
+                                            <Label htmlFor="leagueName">League Name</Label>
+                                            <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="seasonName">Season Name</Label>
+                                            <Input id="seasonName" value={activeSeason.title} onChange={(e) => setActiveSeason({...activeSeason, title: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="maxTeams">Number of Teams</Label>
+                                            <Input 
+                                                id="maxTeams" 
+                                                type="number"
+                                                min="4"
+                                                max="12"
+                                                value={leagueSettings.maxTeams} 
+                                                onChange={(e) => {
+                                                    const val = Math.max(4, Math.min(12, Number(e.target.value)));
+                                                    setLeagueSettings({...leagueSettings, maxTeams: val});
+                                                }}
+                                             />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                                <Separator className="my-4"/>
                                 <CardContent className="p-4 pt-0">
                                     <div className="flex justify-end mb-4">
                                         <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
@@ -1019,7 +1084,7 @@ export function AdminPanel() {
                                     </div>
                                 </CardContent>
                                 <CardFooter className="justify-end">
-                                    <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save Scoring Rules</Button>
+                                    <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save Settings & Rules</Button>
                                 </CardFooter>
                             </AccordionContent>
                         </Card>
@@ -1032,3 +1097,4 @@ export function AdminPanel() {
   );
 }
 
+  

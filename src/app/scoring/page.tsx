@@ -24,7 +24,7 @@ type ScoringEvent = {
 };
 
 export default function ScoringPage() {
-  const ruleSet = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1');
+  const ruleSet = MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset');
   const activeSeason = MOCK_SEASONS[0];
   const league = MOCK_LEAGUES[0];
   const contestantTerm = league.contestantTerm;
@@ -421,6 +421,4 @@ export default function ScoringPage() {
   );
 }
 
-    
-
-    
+  

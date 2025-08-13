@@ -74,14 +74,16 @@ export default function DashboardPage() {
   const blockBuster = currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER");
   const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
 
-  const eviction = currentWeekEvents.find((c) => c.type === "EVICTION");
+  const eviction = currentWeekEvents.find(
+    (c) => c.type === "EVICTION"
+  );
   const evictedPlayer = MOCK_CONTESTANTS.find(
     (hg) => hg.id === eviction?.evictedId
   );
   
   const sortedTeams = [...MOCK_TEAMS].sort((a, b) => b.total_score - a.total_score);
   const topPlayers = getTopPlayers();
-  const scoringRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules;
+  const scoringRules = MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset')?.rules;
 
 
   const weeklyActivity = [];
@@ -431,5 +433,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
