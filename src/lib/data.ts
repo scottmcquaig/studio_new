@@ -65,7 +65,6 @@ export interface League {
     seasonId: string;
     visibility: 'private' | 'public' | 'link';
     maxTeams: number;
-    rosterSize: number;
     waivers: 'FAAB' | 'Standard';
     createdAt: string;
     contestantTerm: {
@@ -209,7 +208,6 @@ export const MOCK_LEAGUES: League[] = [
       "seasonId":"bb27",
       "visibility":"private",
       "maxTeams":4,
-      "rosterSize":4,
       "waivers":"FAAB",
       "createdAt":"2025-08-01T12:00:00Z",
       "contestantTerm": {
