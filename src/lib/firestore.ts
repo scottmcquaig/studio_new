@@ -117,15 +117,3 @@ export async function saveLeagueAndTeams(league: League, teamNames: string[]): P
     throw new Error(`Failed to save data to Firestore: ${error.message}`);
   }
 }
-
-export async function testWrite(): Promise<void> {
-  try {
-    const docRef = db.collection('test_logs').doc(`test_${Date.now()}`);
-    await docRef.set({
-      test: 'success',
-      timestamp: new Date(),
-    });
-  } catch (error: any) {
-    throw new Error(`Firestore test write failed: ${error.message}`);
-  }
-}

@@ -1,7 +1,7 @@
 'use server';
 
 import { generateLeagueDescription, type GenerateLeagueDescriptionInput } from '@/ai/flows/generate-league-description';
-import { saveLeagueAndTeams, testWrite } from '@/lib/firestore';
+import { saveLeagueAndTeams } from '@/lib/firestore';
 import type { League } from '@/lib/data';
 
 export async function getLeagueDescription(input: GenerateLeagueDescriptionInput): Promise<string> {
@@ -21,14 +21,4 @@ export async function saveSettings(league: League, teamNames: string[]): Promise
         console.error("Error saving settings. The raw error is:", error);
         throw new Error(`Failed to save settings: ${error.message}`);
     }
-}
-
-export async function testFirestoreWrite(): Promise<string> {
-  try {
-    await testWrite();
-    return "Successfully wrote to Firestore!";
-  } catch (error: any) {
-    console.error("Error during test write. The raw error is:", error);
-    throw new Error(`Failed to perform test write to Firestore: ${error.message}`);
-  }
 }
