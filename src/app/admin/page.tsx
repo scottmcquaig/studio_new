@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2 } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -50,10 +50,14 @@ export default function AdminPage() {
   
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
-  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  
+  const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
+  const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
+
   const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
 
-  const [newUserData, setNewUserData] = useState({ displayName: '', email: '', role: 'player' as UserRole, teamId: 'unassigned' });
+  const [newUserData, setNewUserData] = useState({ displayName: '', email: ''});
+  const [addUserToLeagueData, setAddUserToLeagueData] = useState({ userId: '', teamId: '' });
   const [newRuleData, setNewRuleData] = useState({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
   
@@ -102,13 +106,26 @@ export default function AdminPage() {
   const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
   const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => i + 1);
 
-  const handleAddUser = () => {
-    toast({ title: "Invitation Sent", description: `An invitation has been sent to ${newUserData.email}.` });
-    setUsers([...users, { id: `user_${Math.random()}`, ...newUserData, createdAt: new Date().toISOString(), status: 'pending' }]);
-    setIsAddUserDialogOpen(false);
-    setNewUserData({ displayName: '', email: '', role: 'player' as UserRole, teamId: 'unassigned' });
+  const handleAddNewUser = () => {
+    toast({ title: "User Created", description: `A new user profile has been created for ${newUserData.displayName}.` });
+    setUsers([...users, { id: `user_${Math.random()}`, ...newUserData, createdAt: new Date().toISOString(), role: 'player', status: 'active' }]);
+    setIsNewUserDialogOpen(false);
+    setNewUserData({ displayName: '', email: '' });
   };
   
+  const handleAddUserToLeague = () => {
+     if (!addUserToLeagueData.userId || !addUserToLeagueData.teamId) {
+        toast({ title: "Error", description: "Please select a user and a team.", variant: 'destructive' });
+        return;
+    }
+    const user = users.find(u => u.id === addUserToLeagueData.userId);
+    const team = teams.find(t => t.id === addUserToLeagueData.teamId);
+    toast({ title: "User Added to League", description: `${user?.displayName} has been added to ${team?.name}.` });
+    // Here you would update your backend, for now, we just close the dialog
+    setIsAddUserToLeagueDialogOpen(false);
+    setAddUserToLeagueData({ userId: '', teamId: '' });
+  };
+
   const handleUserAction = (action: 'resend' | 'reset', user: UserType) => {
     if (action === 'resend') {
         toast({ title: "Invitation Resent", description: `Invitation has been resent to ${user.email}.` });
@@ -179,6 +196,12 @@ export default function AdminPage() {
 
   const getTeamForUser = (user: UserType): Team | undefined => {
     return teams.find(team => team.ownerUserIds.includes(user.id));
+  };
+  
+  const getUsersForTeam = (teamId: string): UserType[] => {
+      const team = teams.find(t => t.id === teamId);
+      if (!team) return [];
+      return users.filter(u => team.ownerUserIds.includes(u.id));
   };
 
   const contestantTerm = leagueSettings.contestantTerm;
@@ -520,64 +543,106 @@ export default function AdminPage() {
                                 <CardTitle className="flex items-center gap-2"><UserCog /> Users & Teams</CardTitle>
                                 <CardDescription>Manage user roles, team names, assignments, and invitations.</CardDescription>
                             </div>
-                             <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm"><UserPlus className="mr-2 h-4 w-4" /> Add Member</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Add New League Member</DialogTitle>
-                                        <DialogDescription>Invite a new user by email and assign them to a team.</DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="new-name">Name</Label>
-                                            <Input id="new-name" value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                             <div className="flex gap-2">
+                                <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Create New User</DialogTitle>
+                                            <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Name</Label>
+                                                <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Email</Label>
+                                                <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="new-email">Email</Label>
-                                            <Input id="new-email" type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create User</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+
+                                <Dialog open={isAddUserToLeagueDialogOpen} onOpenChange={setIsAddUserToLeagueDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm"><UserPlus2 className="mr-2 h-4 w-4" /> Add User to League</Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add User to League</DialogTitle>
+                                            <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>User</Label>
+                                                <Select value={addUserToLeagueData.userId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, userId: value})}>
+                                                    <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {users.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Team Assignment</Label>
+                                                <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
+                                                    <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Team Assignment</Label>
-                                            <Select value={newUserData.teamId} onValueChange={(value) => setNewUserData({...newUserData, teamId: value})}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a team" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                                                    {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Cancel</Button>
-                                        <Button onClick={handleAddUser}><Send className="mr-2" /> Send Invite</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsAddUserToLeagueDialogOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleAddUserToLeague}><Send className="mr-2" /> Add to League</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
-                             <h3 className="text-lg font-medium">Teams</h3>
-                             <Label>Team Names</Label>
-                             <div className="space-y-2">
+                            <h3 className="text-lg font-medium">Teams</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {teams.map((team) => (
-                                    <div key={team.id} className="flex items-center gap-2">
-                                        <Input 
-                                            value={teamNames[team.id] || ''} 
-                                            placeholder={`Team Name`}
-                                            onChange={(e) => handleTeamNameChange(team.id, e.target.value)} 
-                                        />
-                                    </div>
+                                    <Card key={team.id}>
+                                        <CardHeader className="p-4">
+                                            <CardTitle className="text-base">
+                                                <Input 
+                                                    value={teamNames[team.id] || ''} 
+                                                    placeholder="Team Name"
+                                                    onChange={(e) => handleTeamNameChange(team.id, e.target.value)}
+                                                    className="border-0 shadow-none focus-visible:ring-0 p-0 text-base font-semibold"
+                                                />
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-4 pt-0">
+                                            {getUsersForTeam(team.id).length > 0 ? (
+                                                getUsersForTeam(team.id).map(user => (
+                                                    <div key={user.id} className="flex items-center justify-between text-sm py-1">
+                                                        <span>{user.displayName}</span>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-3 w-3 text-red-500"/></Button>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground">No members assigned.</p>
+                                            )}
+                                        </CardContent>
+                                    </Card>
                                 ))}
                             </div>
                         </div>
                         <Separator/>
                         <div className="space-y-4">
-                            <h3 className="text-lg font-medium">League Members</h3>
+                            <h3 className="text-lg font-medium">Global User List</h3>
                             <div className="space-y-2">
                                 {users.map(user => {
                                     const userTeam = getTeamForUser(user);
@@ -595,16 +660,12 @@ export default function AdminPage() {
                                                 <Badge variant={user.status === 'active' ? 'default' : 'secondary'} className={cn(user.status === 'active' && 'bg-green-100 text-green-800')}>{user.status}</Badge>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                 <div className="w-48">
-                                                    <Select defaultValue={userTeam?.id || 'unassigned'} onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Assign team..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                                                            {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
+                                                 <div className="w-48 text-sm">
+                                                    {userTeam ? (
+                                                        <Badge variant="outline">{userTeam.name}</Badge>
+                                                    ) : (
+                                                        <Badge variant="secondary">Unassigned</Badge>
+                                                    )}
                                                 </div>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
