@@ -799,53 +799,7 @@ export default function AdminPage() {
                                 <Button onClick={handleSaveTeams}><Save className="mr-2"/>Save Team Changes</Button>
                             </div>
                         </div>
-                        <Separator/>
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Global User List</h3>
-                            <div className="space-y-2">
-                                {users.map(user => {
-                                    const userTeam = getTeamForUser(user);
-                                    return (
-                                        <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar>
-                                                    <AvatarImage src={user.photoURL} alt={user.displayName} />
-                                                    <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <div>
-                                                    <p className="font-medium">{user.displayName}</p>
-                                                    <p className="text-sm text-muted-foreground">{user.email}</p>
-                                                </div>
-                                                <Badge variant={user.status === 'active' ? 'default' : 'secondary'} className={cn(user.status === 'active' && 'bg-green-100 text-green-800')}>{user.status}</Badge>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                 <div className="w-48 text-sm">
-                                                    {userTeam ? (
-                                                        <Badge variant="outline">{teamNames[userTeam.id]}</Badge>
-                                                    ) : (
-                                                        <Badge variant="secondary">Unassigned</Badge>
-                                                    )}
-                                                </div>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        {user.status === 'pending' && <DropdownMenuItem onClick={() => handleUserAction('resend', user)}><MailQuestion className="mr-2" /> Resend Invite</DropdownMenuItem>}
-                                                        {user.status === 'active' && <DropdownMenuItem onClick={() => handleUserAction('reset', user)}><KeyRound className="mr-2" /> Send Password Reset</DropdownMenuItem>}
-                                                        <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50"><Trash2 className="mr-2" /> Remove User</DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
                     </CardContent>
-                     <CardFooter className="justify-end">
-                        <Button onClick={handleSaveUserAndTeamChanges}><Save className="mr-2"/>Save User & Team Changes</Button>
-                    </CardFooter>
                 </Card>
             </TabsContent>
         </Tabs>
