@@ -74,19 +74,19 @@ export default function AdminPage() {
         setContestants(contestantData);
     });
 
-    // There's only one league, so we'll listen to it directly.
-    const leagueDocRef = doc(db, "leagues", MOCK_LEAGUES[0].id);
-    const unsubscribeLeague = onSnapshot(leagueDocRef, (doc) => {
-        if (doc.exists()) {
-            setLeagueSettings({ ...doc.data(), id: doc.id } as League);
+    const leaguesCol = collection(db, "leagues");
+    const unsubscribeLeagues = onSnapshot(leaguesCol, (querySnapshot) => {
+        if (!querySnapshot.empty) {
+            const firstLeagueDoc = querySnapshot.docs[0];
+            setLeagueSettings({ ...firstLeagueDoc.data(), id: firstLeagueDoc.id } as League);
         } else {
-            console.error("League document not found!");
+            console.error("No league documents found!");
         }
     });
 
     return () => {
         unsubscribeContestants();
-        unsubscribeLeague();
+        unsubscribeLeagues();
     };
   }, [db]);
 
