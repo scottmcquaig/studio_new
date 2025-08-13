@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,9 @@ import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MO
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import type { Team } from '@/lib/data';
 
 // Calculate KPIs for a team
 const calculateKpis = (team) => {
@@ -54,7 +58,25 @@ const calculateKpis = (team) => {
 
 
 export default function TeamsPage() {
-    const teams = MOCK_TEAMS;
+    const [teams, setTeams] = useState<Team[]>([]);
+    const db = getFirestore(app);
+
+    useEffect(() => {
+        const teamsCol = collection(db, "teams");
+        const unsubscribe = onSnapshot(teamsCol, (querySnapshot) => {
+            if (!querySnapshot.empty) {
+                const teamsData: Team[] = [];
+                querySnapshot.forEach((doc) => {
+                    teamsData.push({ ...doc.data(), id: doc.id } as Team);
+                });
+                setTeams(teamsData);
+            } else {
+                setTeams(MOCK_TEAMS);
+            }
+        });
+        return () => unsubscribe();
+    }, [db]);
+
     const sortedTeams = [...teams].sort((a, b) => b.total_score - a.total_score);
 
     const getOwner = (userId) => MOCK_USERS.find(u => u.id === userId);
