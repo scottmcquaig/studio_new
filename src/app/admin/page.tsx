@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2 } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -23,15 +23,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query } from 'firebase/firestore';
 
 
 export default function AdminPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
   
-  const [leagueSettings, setLeagueSettings] = useState<League | null>(MOCK_LEAGUES[0] || null);
-  const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
+  const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
 
   const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
 
@@ -61,12 +61,18 @@ export default function AdminPage() {
   const [newRuleData, setNewRuleData] = useState({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
   
-  const [teamNames, setTeamNames] = useState<{[id: string]: string}>(
-    teams.reduce((acc, team) => {
-        acc[team.id] = team.name;
-        return acc;
-    }, {} as {[id: string]: string})
-  );
+  const [teamNames, setTeamNames] = useState<{[id: string]: string}>({});
+
+  const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
+
+   useEffect(() => {
+    const sortedTeams = [...teams].sort((a,b) => (teamDraftOrders[a.id] ?? a.draftOrder) - (teamDraftOrders[b.id] ?? b.draftOrder));
+    if (JSON.stringify(sortedTeams) !== JSON.stringify(teams)) {
+        setTeams(sortedTeams);
+    }
+  }, [teamDraftOrders, teams]);
+  
+  const displayedTeams = teams.slice(0, leagueSettings?.maxTeams || MOCK_TEAMS.length);
 
   useEffect(() => {
     const contestantsCol = collection(db, "contestants");
@@ -77,6 +83,25 @@ export default function AdminPage() {
         });
         setContestants(contestantData);
     });
+    
+    const teamsCol = collection(db, "teams");
+    const q = query(teamsCol);
+    const unsubscribeTeams = onSnapshot(q, (querySnapshot) => {
+        const teamsData: Team[] = [];
+        const teamNamesData: {[id: string]: string} = {};
+        const draftOrderData: {[id: string]: number} = {};
+
+        querySnapshot.forEach((doc) => {
+            const team = { ...doc.data(), id: doc.id } as Team;
+            teamsData.push(team);
+            teamNamesData[team.id] = team.name;
+            draftOrderData[team.id] = team.draftOrder;
+        });
+
+        setTeams(teamsData.sort((a,b) => a.draftOrder - b.draftOrder));
+        setTeamNames(teamNamesData);
+        setTeamDraftOrders(draftOrderData);
+    });
 
     const leaguesCol = collection(db, "leagues");
     const unsubscribeLeagues = onSnapshot(leaguesCol, (querySnapshot) => {
@@ -85,13 +110,14 @@ export default function AdminPage() {
             setLeagueSettings({ ...firstLeagueDoc.data(), id: firstLeagueDoc.id } as League);
         } else {
             console.log("No league documents found, using mock data.");
-            // Keep using the mock data if the collection is empty
+            setLeagueSettings(MOCK_LEAGUES[0] || null);
         }
     });
 
     return () => {
         unsubscribeContestants();
         unsubscribeLeagues();
+        unsubscribeTeams();
     };
   }, [db]);
 
@@ -141,7 +167,6 @@ export default function AdminPage() {
     if (section === 'League Settings') {
         try {
             const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
-            // Using setDoc with merge: true will create the doc if it doesn't exist, or update it if it does.
             await setDoc(leagueDocRef, leagueSettings, { merge: true });
             toast({ title: "League Settings Saved", description: "Your changes have been saved to the database." });
         } catch (error) {
@@ -159,6 +184,13 @@ export default function AdminPage() {
   
   const handleTeamNameChange = (teamId: string, newName: string) => {
     setTeamNames(prev => ({ ...prev, [teamId]: newName }));
+  };
+
+  const handleDraftOrderChange = (teamId: string, order: string) => {
+    const numOrder = Number(order);
+    if (!isNaN(numOrder)) {
+        setTeamDraftOrders(prev => ({...prev, [teamId]: numOrder}));
+    }
   };
 
   const handleUpdateRule = (code: string, field: 'label' | 'points', value: string | number) => {
@@ -237,8 +269,6 @@ export default function AdminPage() {
       const contestantData = { ...editingContestant };
       const isNew = !contestants.some(c => c.id === editingContestant.id);
       
-      // The id is part of the doc path, so it shouldn't be in the data itself for updates
-      // but for adds, we might be using a temp ID. Let's create from a specific new object instead.
       delete (contestantData as any).id;
   
       try {
@@ -284,6 +314,23 @@ export default function AdminPage() {
     } catch (error) {
         console.error("Error saving terminology: ", error);
         toast({ title: "Error", description: "Could not save terminology.", variant: "destructive" });
+    }
+  };
+  
+  const handleSaveTeams = async () => {
+    const promises = teams.map(team => {
+        const teamDocRef = doc(db, 'teams', team.id);
+        return updateDoc(teamDocRef, {
+            name: teamNames[team.id],
+            draftOrder: teamDraftOrders[team.id]
+        });
+    });
+    try {
+        await Promise.all(promises);
+        toast({ title: "Team Changes Saved", description: "Team names and draft order have been updated." });
+    } catch (error) {
+        console.error("Error saving team changes: ", error);
+        toast({ title: "Error", description: "Could not save team changes.", variant: "destructive" });
     }
   };
 
@@ -438,9 +485,25 @@ export default function AdminPage() {
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
                             <h3 className="text-lg font-medium">General</h3>
-                            <div className="space-y-2">
-                                <Label htmlFor="leagueName">League Name</Label>
-                                <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="leagueName">League Name</Label>
+                                    <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="maxTeams">Number of Teams</Label>
+                                    <Input 
+                                        id="maxTeams" 
+                                        type="number"
+                                        min="4"
+                                        max="12"
+                                        value={leagueSettings.maxTeams} 
+                                        onChange={(e) => {
+                                            const val = Math.max(4, Math.min(12, Number(e.target.value)));
+                                            setLeagueSettings({...leagueSettings, maxTeams: val});
+                                        }}
+                                     />
+                                </div>
                             </div>
                         </div>
                     </CardContent>
@@ -594,7 +657,7 @@ export default function AdminPage() {
                                                 <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
                                                     <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
                                                     <SelectContent>
-                                                        {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                                                        {displayedTeams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -612,10 +675,10 @@ export default function AdminPage() {
                         <div className="space-y-4">
                             <h3 className="text-lg font-medium">Teams</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {teams.map((team) => (
+                                {displayedTeams.map((team) => (
                                     <Card key={team.id}>
-                                        <CardHeader className="p-4">
-                                            <CardTitle className="text-base">
+                                        <CardHeader className="p-4 flex-row items-center justify-between">
+                                            <CardTitle className="text-base flex-grow mr-2">
                                                 <Input 
                                                     value={teamNames[team.id] || ''} 
                                                     placeholder="Team Name"
@@ -623,6 +686,16 @@ export default function AdminPage() {
                                                     className="border-0 shadow-none focus-visible:ring-0 p-0 text-base font-semibold"
                                                 />
                                             </CardTitle>
+                                            <div className="flex items-center gap-2">
+                                                <Label htmlFor={`draft-order-${team.id}`} className="text-xs text-muted-foreground"><SortAsc className="h-3 w-3 inline-block mr-1"/>Draft</Label>
+                                                <Input 
+                                                    id={`draft-order-${team.id}`}
+                                                    type="number"
+                                                    value={teamDraftOrders[team.id] || ''}
+                                                    onChange={(e) => handleDraftOrderChange(team.id, e.target.value)}
+                                                    className="w-14 h-8 text-center"
+                                                />
+                                            </div>
                                         </CardHeader>
                                         <CardContent className="p-4 pt-0">
                                             {getUsersForTeam(team.id).length > 0 ? (
@@ -638,6 +711,9 @@ export default function AdminPage() {
                                         </CardContent>
                                     </Card>
                                 ))}
+                            </div>
+                             <div className="flex justify-end">
+                                <Button onClick={handleSaveTeams}><Save className="mr-2"/>Save Team Changes</Button>
                             </div>
                         </div>
                         <Separator/>
@@ -662,7 +738,7 @@ export default function AdminPage() {
                                             <div className="flex items-center gap-2">
                                                  <div className="w-48 text-sm">
                                                     {userTeam ? (
-                                                        <Badge variant="outline">{userTeam.name}</Badge>
+                                                        <Badge variant="outline">{teamNames[userTeam.id]}</Badge>
                                                     ) : (
                                                         <Badge variant="secondary">Unassigned</Badge>
                                                     )}
@@ -694,5 +770,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    

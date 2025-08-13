@@ -93,6 +93,7 @@ export interface Team {
     createdAt: string;
     total_score: number;
     weekly_score: number;
+    draftOrder: number;
     weekly_score_breakdown: WeeklyScoreBreakdown;
 }
 
@@ -224,10 +225,10 @@ export const MOCK_LEAGUES: League[] = [
 ];
 
 export const MOCK_TEAMS: Team[] = [
-    {"id":"team_hank_alicia","leagueId":"yac_bb27_public","name":"Hank & Lee's Excellent Evictions","ownerUserIds":["user_hank", "user_alicia"],"contestantIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 182, weekly_score: 18, weekly_score_breakdown: { week4: [{contestantId: 'mickey_lee', points: 10}, {contestantId: 'keanu_soto', points: 8}]}},
-    {"id":"team_stone_liz","leagueId":"yac_bb27_public","name":"Zae My Name, Zae My Name","ownerUserIds":["user_stone", "user_liz"],"contestantIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 195, weekly_score: -8, weekly_score_breakdown: { week4: [{contestantId: 'jimmy_heagerty', points: -8}]}},
-    {"id":"team_jess_will","leagueId":"yac_bb27_public","name":"Expect The Unexpected","ownerUserIds":["user_jess", "user_will"],"contestantIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 175, weekly_score: 4, weekly_score_breakdown: { week4: [{contestantId: 'rylie_jeffries', points: 4}]}},
-    {"id":"team_molly_scott","leagueId":"yac_bb27_public","name":"Buddy Dan","ownerUserIds":["user_molly", "user_scott"],"contestantIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 164, weekly_score: 0, weekly_score_breakdown: { week4: []}}
+    {"id":"team_hank_alicia","leagueId":"yac_bb27_public","name":"Hank & Lee's Excellent Evictions","ownerUserIds":["user_hank", "user_alicia"],"contestantIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 182, weekly_score: 18, draftOrder: 1, weekly_score_breakdown: { week4: [{contestantId: 'mickey_lee', points: 10}, {contestantId: 'keanu_soto', points: 8}]}},
+    {"id":"team_stone_liz","leagueId":"yac_bb27_public","name":"Zae My Name, Zae My Name","ownerUserIds":["user_stone", "user_liz"],"contestantIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 195, weekly_score: -8, draftOrder: 2, weekly_score_breakdown: { week4: [{contestantId: 'jimmy_heagerty', points: -8}]}},
+    {"id":"team_jess_will","leagueId":"yac_bb27_public","name":"Expect The Unexpected","ownerUserIds":["user_jess", "user_will"],"contestantIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 175, weekly_score: 4, draftOrder: 3, weekly_score_breakdown: { week4: [{contestantId: 'rylie_jeffries', points: 4}]}},
+    {"id":"team_molly_scott","leagueId":"yac_bb27_public","name":"Buddy Dan","ownerUserIds":["user_molly", "user_scott"],"contestantIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 164, weekly_score: 0, draftOrder: 4, weekly_score_breakdown: { week4: []}}
 ];
 
 export const MOCK_USERS: User[] = [
