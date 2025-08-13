@@ -70,9 +70,9 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     if (teamId.startsWith('new_team_')) {
         teamRef = doc(collection(db, 'teams')); // Creates a new ref with a new ID
         batch.set(teamRef, teamData); // Use set for new documents
-    } else {
+    } else if (teamId) { // Make sure we don't process teams with no ID
         teamRef = doc(db, 'teams', teamId); // Gets a ref to the existing document
-        batch.update(teamRef, teamData); // Use update for existing documents
+        batch.set(teamRef, teamData, { merge: true }); // Use set with merge for existing documents
     }
   });
 
