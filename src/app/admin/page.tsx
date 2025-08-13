@@ -716,13 +716,13 @@ export default function AdminPage() {
                         <div className="space-y-4">
                             <h3 className="text-lg font-medium">Teams</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {displayedTeams.map((team) => (
+                                {displayedTeams.map((team, index) => (
                                     <Card key={team.id}>
                                         <CardHeader className="p-4 flex-row items-center justify-between">
                                             <CardTitle className="text-base flex-grow mr-2">
                                                 <Input 
-                                                    value={teamNames[team.id] || ''} 
-                                                    placeholder="Team Name"
+                                                    value={teamNames[team.id] || `Team ${index + 1}`} 
+                                                    placeholder={`Team ${index + 1}`}
                                                     onChange={(e) => handleTeamNameChange(team.id, e.target.value)}
                                                     className="border-0 shadow-none focus-visible:ring-0 p-0 text-base font-semibold"
                                                 />
@@ -812,4 +812,4 @@ export default function AdminPage() {
   );
 }
 
-
+    
