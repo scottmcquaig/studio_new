@@ -158,7 +158,7 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1.5">
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
               <h3 className="font-semibold flex items-center gap-1 text-red-400">
                 <Users className="h-4 w-4" /> Noms
               </h3>
@@ -187,6 +187,9 @@ export default function DashboardPage() {
                     <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
                       <HelpCircle className="w-6 h-6 text-muted-foreground" />
                     </div>
+                     <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                      <HelpCircle className="w-6 h-6 text-muted-foreground" />
+                    </div>
                   </>
                 )}
               </div>
@@ -195,8 +198,8 @@ export default function DashboardPage() {
               )}
             </div>
             
-            <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1.5">
-              <div className="flex flex-col items-center flex-grow w-[65%]">
+            <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+              <div className="flex flex-col items-center flex-grow">
                 <h3 className="font-semibold flex items-center gap-1 text-amber-500">
                   <Shield className="h-4 w-4" /> POV
                 </h3>
@@ -222,7 +225,7 @@ export default function DashboardPage() {
                 )}
               </div>
               <Separator orientation="vertical" className="h-auto"/>
-               <div className="flex flex-col items-center justify-center w-[35%]">
+               <div className="flex flex-col items-center justify-center w-[35%] min-w-fit">
                 {pov?.used === false && (
                     <div className="flex flex-col items-center gap-1">
                       <ShieldOff className="h-8 w-8 text-muted-foreground"/>
@@ -428,3 +431,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
