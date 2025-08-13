@@ -57,6 +57,11 @@ export interface Competition {
     specialEventCode?: string;
 }
 
+export interface LeagueScoringBreakdownCategory {
+    displayName: string;
+    ruleCodes: string[];
+}
+
 export interface League {
     id: string;
     name: string;
@@ -75,6 +80,7 @@ export interface League {
         allowMidSeasonDraft: boolean;
         scoringRuleSetId: string;
         transactionLockDuringEpisodes: boolean;
+        scoringBreakdownCategories: LeagueScoringBreakdownCategory[];
     };
 }
 
@@ -217,7 +223,15 @@ export const MOCK_LEAGUES: League[] = [
       "settings":{
         "allowMidSeasonDraft":true,
         "scoringRuleSetId":"bb27_ruleset",
-        "transactionLockDuringEpisodes":true
+        "transactionLockDuringEpisodes":true,
+        "scoringBreakdownCategories": [
+            { "displayName": "HOH Wins", "ruleCodes": ["HOH_WIN"] },
+            { "displayName": "Veto Wins", "ruleCodes": ["VETO_WIN"] },
+            { "displayName": "Powers", "ruleCodes": ["SPECIAL_POWER"] },
+            { "displayName": "Noms", "ruleCodes": ["NOMINATED"] },
+            { "displayName": "Evicted", "ruleCodes": ["EVICTED"] },
+            { "displayName": "Other", "ruleCodes": [] }
+        ]
       }
     }
 ];

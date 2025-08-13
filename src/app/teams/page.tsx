@@ -6,49 +6,61 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_TEAMS } from "@/lib/data";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_TEAMS, MOCK_LEAGUES } from "@/lib/data";
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team } from '@/lib/data';
+import type { Team, League, ScoringRuleSet } from '@/lib/data';
 
 // Calculate KPIs for a team
-const calculateKpis = (team) => {
-    const rules = MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset')?.rules;
-    const kpis = {
-        HOH_WIN: 0,
-        VETO_WIN: 0,
-        NOMINATED: 0,
-        EVICTED: 0, 
-        SPECIAL_POWER: 0,
-    };
-
-    if (!rules) return { ...kpis, total: team.total_score || 0 };
-
+const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringRuleSet | null) => {
+    const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
+    const rules = scoringRules?.rules || [];
     
+    const kpis: { [key: string]: number } = {};
+    
+    breakdownCategories.forEach(category => {
+        kpis[category.displayName] = 0;
+    });
+
+    if (!rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
+
     const teamContestantIds = team.contestantIds || [];
 
     MOCK_COMPETITIONS.forEach(comp => {
-        if (teamContestantIds.includes(comp.winnerId)) {
-            if (comp.type === 'HOH') {
-                const rule = rules.find(r => r.code === 'HOH_WIN');
-                if(rule) kpis.HOH_WIN += rule.points;
-            } else if (comp.type === 'VETO') {
-                const rule = rules.find(r => r.code === 'VETO_WIN');
-                if(rule) kpis.VETO_WIN += rule.points;
-            } else if (comp.type === 'SPECIAL_EVENT') {
-                 const rule = rules.find(r => r.code === comp.specialEventCode);
-                 if(rule) kpis.SPECIAL_POWER += rule.points;
+        const processEvent = (contestantId: string, eventCode: string) => {
+            if (teamContestantIds.includes(contestantId)) {
+                const rule = rules.find(r => r.code === eventCode);
+                if (rule) {
+                    breakdownCategories.forEach(category => {
+                        if (category.ruleCodes.includes(rule.code)) {
+                            kpis[category.displayName] = (kpis[category.displayName] || 0) + rule.points;
+                        }
+                    });
+                }
+            }
+        };
+
+        if (comp.winnerId) {
+            let eventCode = '';
+            if (comp.type === 'HOH') eventCode = 'HOH_WIN';
+            else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
+            else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE';
+            else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
+            
+            if (eventCode) {
+                processEvent(comp.winnerId, eventCode);
             }
         }
+        
         if (comp.type === 'NOMINATIONS' && comp.nominees) {
-            const rule = rules.find(r => r.code === 'NOMINATED');
-            if(rule){
-                const nomCount = comp.nominees.filter(id => teamContestantIds.includes(id)).length;
-                kpis.NOMINATED += nomCount * rule.points;
-            }
+            comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
+        }
+        
+        if (comp.type === 'EVICTION' && comp.evictedId) {
+            processEvent(comp.evictedId, 'EVICTED');
         }
     });
 
@@ -58,11 +70,36 @@ const calculateKpis = (team) => {
 
 export default function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
+    const [league, setLeague] = useState<League | null>(null);
+    const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
     const db = getFirestore(app);
 
     useEffect(() => {
+        // Assume one league for now, in a real app you'd select this
+        const leagueDocRef = doc(db, "leagues", "bb27");
+        const unsubscribeLeague = onSnapshot(leagueDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+                setLeague(leagueData);
+                
+                if (leagueData.settings.scoringRuleSetId) {
+                    const ruleSetDocRef = doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId);
+                    const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
+                        if (ruleSnap.exists()) {
+                            setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                        }
+                    });
+                    // In a real app, manage this unsubscribe properly
+                }
+            } else {
+                setLeague(MOCK_LEAGUES[0]);
+                const ruleset = MOCK_SCORING_RULES.find(rs => rs.id === MOCK_LEAGUES[0].settings.scoringRuleSetId);
+                if (ruleset) setScoringRules(ruleset);
+            }
+        });
+
         const teamsCol = collection(db, "teams");
-        const unsubscribe = onSnapshot(teamsCol, (querySnapshot) => {
+        const unsubscribeTeams = onSnapshot(teamsCol, (querySnapshot) => {
             if (!querySnapshot.empty) {
                 const teamsData: Team[] = [];
                 querySnapshot.forEach((doc) => {
@@ -73,12 +110,17 @@ export default function TeamsPage() {
                 setTeams(MOCK_TEAMS);
             }
         });
-        return () => unsubscribe();
+        
+        return () => {
+            unsubscribeLeague();
+            unsubscribeTeams();
+        };
     }, [db]);
 
     const sortedTeams = [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
-
-    const getOwner = (userId) => MOCK_USERS.find(u => u.id === userId);
+    const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
+    
+    const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
 
   return (
     <div className="flex flex-col">
@@ -115,7 +157,7 @@ export default function TeamsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {sortedTeams.map((team) => {
                 const owners = team.ownerUserIds.map(getOwner);
-                const kpis = calculateKpis(team);
+                const kpis = calculateKpis(team, league, scoringRules);
                 const teamContestants = MOCK_CONTESTANTS.filter(hg => (team.contestantIds || []).includes(hg.id));
 
                 return (
@@ -156,30 +198,16 @@ export default function TeamsPage() {
                             <div>
                                <h4 className="text-sm font-semibold text-muted-foreground mb-3">Scoring Breakdown</h4>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-sm">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1.5"><Crown className="h-4 w-4 text-primary"/> HOH Wins</span>
-                                        <span className="font-mono font-medium">{kpis.HOH_WIN > 0 ? '+':''}{kpis.HOH_WIN}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1.5"><Shield className="h-4 w-4 text-accent"/> Veto Wins</span>
-                                        <span className="font-mono font-medium">{kpis.VETO_WIN > 0 ? '+':''}{kpis.VETO_WIN}</span>
-                                    </div>
-                                     <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1.5"><ShieldPlus className="h-4 w-4 text-green-500"/> Powers</span>
-                                        <span className="font-mono font-medium">{kpis.SPECIAL_POWER > 0 ? '+':''}{kpis.SPECIAL_POWER}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1.5"><UserCheck className="h-4 w-4 text-red-500"/> Noms</span>
-                                        <span className="font-mono font-medium">{kpis.NOMINATED}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1.5"><UserX className="h-4 w-4 text-muted-foreground"/> Evicted</span>
-                                        <span className="font-mono font-medium">{kpis.EVICTED}</span>
-                                    </div>
-                                     <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1.5"><BarChart2 className="h-4 w-4 text-slate-500"/> Other</span>
-                                        <span className="font-mono font-medium">+0</span>
-                                    </div>
+                                    {breakdownCategories.map((category) => {
+                                        const value = kpis[category.displayName] || 0;
+                                        if (!category.displayName) return null;
+                                        return (
+                                            <div key={category.displayName} className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1.5">{category.displayName}</span>
+                                                <span className="font-mono font-medium">{value > 0 ? '+':''}{value}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
