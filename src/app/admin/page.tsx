@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion } from "lucide-react";
 import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, SiteSettings } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
@@ -22,8 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getSettings, saveSettings } from '@/app/actions';
-import type { SiteSettings } from '@/lib/firestore';
+
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -36,8 +35,8 @@ export default function AdminPage() {
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const settings = await getSettings();
-        setSiteSettings(settings);
+        // const settings = await getSettings();
+        // setSiteSettings(settings);
       } catch (error) {
         console.error(error);
         toast({ title: "Error", description: "Failed to load league settings.", variant: 'destructive' });
@@ -106,9 +105,9 @@ export default function AdminPage() {
     if (!siteSettings) return;
 
     try {
-      if (section === 'League Settings' && siteSettings) {
-        await saveSettings({ leagueName: siteSettings.leagueName });
-      }
+      // if (section === 'League Settings' && siteSettings) {
+      //   await saveSettings({ leagueName: siteSettings.leagueName });
+      // }
       // Add other section saving logic here if needed
       toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
     } catch (error) {

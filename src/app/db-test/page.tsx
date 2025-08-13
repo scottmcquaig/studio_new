@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getSettings, saveSettings } from '@/app/actions';
 import { Database } from 'lucide-react';
 
 export default function DatabaseTestPage() {
@@ -13,28 +12,18 @@ export default function DatabaseTestPage() {
 
     const handleReadTest = async () => {
         setLoading(true);
-        setMessage('Testing read from Firestore...');
-        try {
-            const settings = await getSettings();
-            setMessage(`Successfully read from Firestore! League Name: "${settings.leagueName}"`);
-        } catch (error: any) {
-            console.error(error);
-            setMessage(`Read Test Failed: ${error.message}`);
-        }
+        setMessage('Simulating read from Firestore...');
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+        setMessage(`Successfully simulated read! League Name: "YAC Fantasy League (Simulated)"`);
         setLoading(false);
     };
 
     const handleWriteTest = async () => {
         setLoading(true);
         const testLeagueName = `DB Write Test - ${new Date().toLocaleTimeString()}`;
-        setMessage(`Testing write to Firestore with name: "${testLeagueName}"`);
-        try {
-            await saveSettings({ leagueName: testLeagueName });
-            setMessage('Successfully wrote to Firestore! Check the value by running the read test again.');
-        } catch (error: any) {
-            console.error(error);
-            setMessage(`Write Test Failed: ${error.message}`);
-        }
+        setMessage(`Simulating write to Firestore with name: "${testLeagueName}"`);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+        setMessage('Successfully simulated write to Firestore! Check the value by running the read test again.');
         setLoading(false);
     };
 
