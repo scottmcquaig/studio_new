@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_LEAGUES, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -336,29 +336,31 @@ export function AdminPanel() {
     }
   };
 
-  const handleSaveChanges = async (section: string) => {
-     if (!leagueSettings) return;
-
-     try {
+  const handleSaveLeagueSettings = async () => {
+    if (!leagueSettings || !activeSeason) return;
+    try {
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
         const leagueDataToSave = {
             name: leagueSettings.name,
             maxTeams: leagueSettings.maxTeams,
             contestantTerm: leagueSettings.contestantTerm,
-            'settings.scoringBreakdownCategories': leagueSettings.settings.scoringBreakdownCategories,
         };
         await setDoc(leagueDocRef, leagueDataToSave, { merge: true });
 
-        if (activeSeason) {
-            const seasonDocRef = doc(db, 'seasons', activeSeason.id);
-            await setDoc(seasonDocRef, { title: activeSeason.title }, { merge: true });
-        }
+        const seasonDocRef = doc(db, 'seasons', activeSeason.id);
+        await setDoc(seasonDocRef, { title: activeSeason.title }, { merge: true });
         
-        if (scoringRuleSet) {
-            const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
-            await setDoc(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
-        }
+        toast({ title: "Changes Saved", description: `League settings have been saved.` });
+    } catch (error) {
+        console.error(`Error saving league settings: `, error);
+        toast({ title: "Error", description: `Could not save league settings.`, variant: "destructive" });
+    }
+  };
+  
+  const handleSaveTeamsAndUsers = async () => {
+     if (!leagueSettings) return;
 
+     try {
         const teamPromises = displayedTeams.map(team => {
             if(team.id.endsWith('_placeholder')) return null;
             const teamDocRef = doc(db, 'teams', team.id);
@@ -371,12 +373,31 @@ export function AdminPanel() {
 
         await Promise.all(teamPromises as Promise<void>[]);
         
-        toast({ title: "Changes Saved", description: `${section} have been saved to the database.` });
+        toast({ title: "Changes Saved", description: `Team and user settings have been saved.` });
     } catch (error) {
-        console.error(`Error saving ${section}: `, error);
-        toast({ title: "Error", description: `Could not save ${section}.`, variant: "destructive" });
+        console.error(`Error saving teams/users: `, error);
+        toast({ title: "Error", description: `Could not save teams and users.`, variant: "destructive" });
     }
   };
+
+  const handleSaveRules = async () => {
+      if (!scoringRuleSet || !leagueSettings) return;
+      try {
+          const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
+          await setDoc(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
+          
+          const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
+          await setDoc(leagueDocRef, {
+              'settings.scoringBreakdownCategories': leagueSettings.settings.scoringBreakdownCategories,
+          }, { merge: true });
+
+          toast({ title: "Changes Saved", description: `Scoring rules and breakdowns have been saved.` });
+      } catch (error) {
+          console.error(`Error saving rules: `, error);
+          toast({ title: "Error", description: `Could not save scoring rules.`, variant: "destructive" });
+      }
+  };
+
   
   const handleTeamNameChange = (teamId: string, newName: string) => {
     setTeamNames(prev => ({ ...prev, [teamId]: newName }));
@@ -418,7 +439,15 @@ export function AdminPanel() {
   const handleBreakdownCategoryChange = (index: number, field: keyof LeagueScoringBreakdownCategory, value: string | string[]) => {
       if (!leagueSettings) return;
       const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
-      (updatedCategories[index] as any)[field] = value;
+      
+      let finalValue = value;
+      if (field === 'displayName' && typeof value === 'string' && value.length > 12) {
+          finalValue = value.substring(0, 12);
+          toast({ title: "Character Limit", description: "Display names are limited to 12 characters.", variant: "destructive"});
+      }
+
+      (updatedCategories[index] as any)[field] = finalValue;
+      
       setLeagueSettings({
           ...leagueSettings,
           settings: {
@@ -523,10 +552,11 @@ export function AdminPanel() {
       
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="scoring">Events</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="scoring">Scoring</TabsTrigger>
                 <TabsTrigger value="contestants">Contestants</TabsTrigger>
-                <TabsTrigger value="league">Settings</TabsTrigger>
+                <TabsTrigger value="rules">Rules</TabsTrigger>
+                <TabsTrigger value="league">League Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="scoring" className="mt-6 space-y-6">
@@ -718,7 +748,7 @@ export function AdminPanel() {
                     </CardContent>
                     <CardFooter className="justify-end gap-2">
                         <Button variant="outline">Reset Week {selectedWeek}</Button>
-                       <Button onClick={() => handleSaveChanges('Event')}><Save className="mr-2"/>Save All Event Changes</Button>
+                       <Button><Save className="mr-2"/>Save All Event Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -816,8 +846,143 @@ export function AdminPanel() {
                 </Card>
             </TabsContent>
 
+            <TabsContent value="rules" className="mt-6 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><BookCopy /> Scoring Rules</CardTitle>
+                        <CardDescription>Manage the point values for all events in the league.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-medium">Point Values</h3>
+                                <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
+                                    <DialogTrigger asChild><Button size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Rule</Button></DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Add New Scoring Rule</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Event Code</Label>
+                                                <Input value={newRuleData.code} onChange={(e) => setNewRuleData({...newRuleData, code: e.target.value.toUpperCase()})} placeholder="e.g., HOH_WIN" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Label</Label>
+                                                <Input value={newRuleData.label} onChange={(e) => setNewRuleData({...newRuleData, label: e.target.value})} placeholder="e.g., Wins Head of Household" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Points</Label>
+                                                <Input type="number" value={newRuleData.points} onChange={(e) => setNewRuleData({...newRuleData, points: Number(e.target.value)})} placeholder="e.g., 10" />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleAddRule}>Add Rule</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Event Code</TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead className="text-right">Score</TableHead>
+                                        <TableHead className="w-[50px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {scoringRuleSet?.rules.map((rule, index) => (
+                                        <TableRow key={rule.code}>
+                                            <TableCell>
+                                                <Input value={rule.code} onChange={(e) => handleUpdateRule(index, 'code', e.target.value.toUpperCase())} className="h-8" />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input value={rule.label} onChange={(e) => handleUpdateRule(index, 'label', e.target.value)} className="h-8" />
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Input type="number" value={rule.points} onChange={(e) => handleUpdateRule(index, 'points', Number(e.target.value))} className="h-8 w-20 text-right" />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveRule(rule.code)}>
+                                                    <Trash2 className="h-4 w-4 text-red-500"/>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                        <Separator/>
+                        <div>
+                            <h3 className="text-lg font-medium mb-2">Scoring Breakdown Categories</h3>
+                            <p className="text-sm text-muted-foreground mb-4">Customize how scores are displayed on team cards. Define up to 6 categories.</p>
+                            <div className="space-y-4">
+                                {leagueSettings.settings.scoringBreakdownCategories.map((category, index) => (
+                                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md">
+                                        <div>
+                                            <Label>Display Name</Label>
+                                            <Input 
+                                                value={category.displayName} 
+                                                onChange={(e) => handleBreakdownCategoryChange(index, 'displayName', e.target.value)}
+                                                maxLength={12}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Associated Rule Codes</Label>
+                                            {/* This should be a multi-select component in a real app */}
+                                            <Input 
+                                                value={category.ruleCodes.join(', ')} 
+                                                onChange={(e) => handleBreakdownCategoryChange(index, 'ruleCodes', e.target.value.split(',').map(s => s.trim()))}
+                                                placeholder="e.g., HOH_WIN, VETO_WIN"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-end">
+                        <Button onClick={handleSaveRules}><Save className="mr-2"/>Save Rules</Button>
+                    </CardFooter>
+                </Card>
+            </TabsContent>
+
             <TabsContent value="league" className="mt-6 space-y-6">
-                <Accordion type="multiple" defaultValue={['item-1']} className="w-full space-y-6">
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Settings /> General Settings</CardTitle>
+                        <CardDescription>Manage league name, season, and terminology.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="leagueName">League Name</Label>
+                                <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="seasonName">Season Name</Label>
+                                <Input id="seasonName" value={activeSeason.title} onChange={(e) => setActiveSeason({...activeSeason, title: e.target.value})} />
+                            </div>
+                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                               <Label htmlFor="termSingular">Contestant (Singular)</Label>
+                               <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, singular: e.target.value}})} />
+                           </div>
+                           <div className="space-y-2">
+                               <Label htmlFor="termPlural">Contestant (Plural)</Label>
+                               <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
+                           </div>
+                       </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-end">
+                        <Button onClick={handleSaveLeagueSettings}><Save className="mr-2"/>Save Settings</Button>
+                    </CardFooter>
+                </Card>
+
+                <Accordion type="single" collapsible defaultValue="item-1">
                      <AccordionItem value="item-1">
                          <Card>
                             <AccordionTrigger className="w-full">
@@ -846,7 +1011,6 @@ export function AdminPanel() {
                                             }}
                                          />
                                     </div>
-
                                     <div className="flex gap-2">
                                         <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
                                             <DialogTrigger asChild>
@@ -942,7 +1106,6 @@ export function AdminPanel() {
                                                                     <div className="flex items-center gap-2">
                                                                         <span>{user.displayName}</span>
                                                                          <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className={cn(
-                                                                            'border',
                                                                             user.status === 'active' && 'text-green-600 border-green-600',
                                                                             user.status === 'pending' && 'bg-background text-amber-600 border-amber-600'
                                                                         )}>
@@ -974,45 +1137,18 @@ export function AdminPanel() {
                                         </div>
                                     </div>
                                 </CardContent>
+                                <CardFooter className="flex justify-end">
+                                    <Button onClick={handleSaveTeamsAndUsers}><Save className="mr-2"/>Save Teams &amp; Users</Button>
+                                </CardFooter>
                             </AccordionContent>
                          </Card>
                     </AccordionItem>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Settings /> General Settings</CardTitle>
-                            <CardDescription>Manage league name, season, and terminology.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="leagueName">League Name</Label>
-                                    <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="seasonName">Season Name</Label>
-                                    <Input id="seasonName" value={activeSeason.title} onChange={(e) => setActiveSeason({...activeSeason, title: e.target.value})} />
-                                </div>
-                            </div>
-                            <Separator />
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                               <div className="space-y-2">
-                                   <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                   <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, singular: e.target.value}})} />
-                               </div>
-                               <div className="space-y-2">
-                                   <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                   <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
-                               </div>
-                           </div>
-                        </CardContent>
-                    </Card>
                 </Accordion>
-                 <div className="flex justify-end">
-                     <Button onClick={() => handleSaveChanges('League Settings and Users')}><Save className="mr-2"/>Save All Settings</Button>
-                 </div>
             </TabsContent>
         </Tabs>
       </main>
     </div>
   );
 }
+
+    
