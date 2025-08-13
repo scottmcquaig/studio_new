@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion } from "lucide-react";
 import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, SiteSettings } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
@@ -27,24 +27,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 export default function AdminPage() {
   const { toast } = useToast();
   
-  const [siteSettings, setSiteSettings] = useState<SiteSettings>({ leagueName: 'YAC Fantasy League' });
+  const [leagueSettings, setLeagueSettings] = useState(MOCK_LEAGUES[0]);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
 
   const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
-
-  useEffect(() => {
-    async function fetchSettings() {
-      try {
-        // const settings = await getSettings();
-        // setSiteSettings(settings);
-      } catch (error) {
-        console.error(error);
-        toast({ title: "Error", description: "Failed to load league settings.", variant: 'destructive' });
-      }
-    }
-    // fetchSettings(); // Removed to prevent crash on load
-  }, [toast]);
-
 
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
   const activeSeason = MOCK_SEASONS[0];
@@ -101,19 +87,8 @@ export default function AdminPage() {
     }
   };
 
-  const handleSaveChanges = async (section?: string) => {
-    if (!siteSettings) return;
-
-    try {
-      // if (section === 'League Settings' && siteSettings) {
-      //   await saveSettings({ leagueName: siteSettings.leagueName });
-      // }
-      // Add other section saving logic here if needed
-      toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Error", description: `Failed to save ${section}.`, variant: 'destructive' });
-    }
+  const handleSaveChanges = (section?: string) => {
+    toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
   };
   
   const handleTeamNameChange = (teamId: string, newName: string) => {
@@ -145,13 +120,11 @@ export default function AdminPage() {
   };
   
   const handleAssignTeam = (userId: string, teamId: string) => {
-     // In a real app, this would update the user's teamId in the database.
     console.log(`Assigning user ${userId} to team ${teamId}`);
-    // For mock data, we might not need to update state here unless we re-fetch or derive it.
     toast({ title: "Team Assigned", description: `User has been assigned to a new team.` });
   };
   
-  if (!league || !siteSettings) {
+  if (!league || !leagueSettings) {
     return <div>Loading...</div>;
   }
 
@@ -189,7 +162,7 @@ export default function AdminPage() {
                        <p>Event management UI goes here.</p>
                     </CardContent>
                     <CardFooter className="justify-end">
-                       <Button><Save className="mr-2"/>Save Event Changes</Button>
+                       <Button onClick={() => handleSaveChanges('Event')}><Save className="mr-2"/>Save Event Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -205,7 +178,7 @@ export default function AdminPage() {
                        <p>{contestantTerm.plural} roster management UI goes here.</p>
                     </CardContent>
                     <CardFooter className="justify-end">
-                       <Button><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
+                       <Button onClick={() => handleSaveChanges('Contestant')}><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -221,7 +194,7 @@ export default function AdminPage() {
                             <h3 className="text-lg font-medium">General</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="leagueName">League Name</Label>
-                                <Input id="leagueName" value={siteSettings.leagueName} onChange={(e) => setSiteSettings({...siteSettings, leagueName: e.target.value})} />
+                                <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
                             </div>
                         </div>
                         <Separator/>
@@ -325,7 +298,7 @@ export default function AdminPage() {
                         ))}
                     </CardContent>
                      <CardFooter className="justify-end">
-                        <Button><Save className="mr-2"/>Save Scoring Rules</Button>
+                        <Button onClick={() => handleSaveChanges('Scoring Rules')}><Save className="mr-2"/>Save Scoring Rules</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -442,7 +415,7 @@ export default function AdminPage() {
                         </div>
                     </CardContent>
                      <CardFooter className="justify-end">
-                        <Button><Save className="mr-2"/>Save User & Team Changes</Button>
+                        <Button onClick={() => handleSaveChanges('User & Team')}><Save className="mr-2"/>Save User & Team Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
