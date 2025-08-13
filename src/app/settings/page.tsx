@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw } from "lucide-react";
-import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
@@ -19,16 +19,13 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-import { getLeagues, getTeams } from '@/lib/firestore';
-import { saveSettings } from '@/app/actions';
-
 
 export default function SettingsPage() {
   const { toast } = useToast();
   const [isAdminView, setIsAdminView] = useState(false);
   
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [leagues, setLeagues] = useState<League[]>(MOCK_LEAGUES);
+  const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
   
   // This state will hold the names of the teams for the input fields.
   const [teamNames, setTeamNames] = useState<string[]>([]);
@@ -36,21 +33,14 @@ export default function SettingsPage() {
   const league = leagues.length > 0 ? leagues[0] : null;
 
   useEffect(() => {
-    async function fetchData() {
-      const fetchedLeagues = await getLeagues();
-      const currentLeague = fetchedLeagues.length > 0 ? fetchedLeagues[0] : MOCK_LEAGUES[0];
-      setLeagues(fetchedLeagues.length > 0 ? fetchedLeagues : [currentLeague]);
-
-      const fetchedTeams = await getTeams();
-      setTeams(fetchedTeams);
+      const currentLeague = MOCK_LEAGUES[0];
+      const fetchedTeams = MOCK_TEAMS;
       
       const names = fetchedTeams.map(t => t.name);
       const maxTeams = currentLeague.maxTeams || 0;
       // Pad the array with empty strings up to the max number of teams
       const paddedNames = Array(maxTeams).fill('').map((_, i) => names[i] || '');
       setTeamNames(paddedNames);
-    }
-    fetchData();
   }, []);
   
   // Update team names when league.maxTeams changes
@@ -144,21 +134,9 @@ export default function SettingsPage() {
   };
 
   const handleSaveChanges = async (section?: string) => {
-    if (section === 'League Settings' && league) {
-        try {
-            // Filter out empty names before saving
-            const validTeamNames = teamNames.filter(name => name.trim() !== '');
-            await saveSettings(league, validTeamNames);
-            toast({ title: "Changes Saved", description: "League settings and team names have been saved." });
-        } catch (error) {
-            console.error("Failed to save settings:", error);
-            toast({ title: "Error", description: "Could not save settings to the database.", variant: "destructive" });
-        }
-    } else {
-        const message = section ? `${section} changes saved.` : "All updates have been saved.";
-        console.log("Saving changes for:", section || "All sections");
-        toast({ title: "Changes Saved", description: message });
-    }
+    const message = section ? `${section} changes saved.` : "All updates have been saved.";
+    console.log("Saving changes for:", section || "All sections");
+    toast({ title: "Changes Saved", description: message });
   };
 
   const handleAssignTeam = (userId: string, teamId: string) => {
