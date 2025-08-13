@@ -12,8 +12,7 @@ import Link from 'next/link';
 
 export default function SettingsPage() {
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
-  const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
-
+  
   return (
     <div className="flex flex-col">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
@@ -21,11 +20,6 @@ export default function SettingsPage() {
           <Settings className="h-5 w-5" />
           Settings
         </h1>
-        {canShowAdminView && (
-            <Button variant="outline" asChild>
-              <Link href="/admin"><Building className="mr-2"/> Admin Panel</Link>
-            </Button>
-        )}
       </header>
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
         <div className="space-y-6">

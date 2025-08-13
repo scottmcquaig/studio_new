@@ -196,7 +196,7 @@ export const MOCK_COMPETITIONS: Competition[] = [
 export const MOCK_LEAGUES: League[] = [
     {
       "id":"yac_bb27_public",
-      "name":"YAC Fantasy League - BB27",
+      "name":"YAC Fantasy League",
       "seasonId":"bb27",
       "visibility":"private",
       "maxTeams":4,

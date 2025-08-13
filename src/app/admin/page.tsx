@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion } from "lucide-react";
 import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES, MOCK_TEAMS } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule } from "@/lib/data";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -20,13 +21,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function AdminPage() {
   const { toast } = useToast();
   
   const [leagues, setLeagues] = useState<League[]>(MOCK_LEAGUES);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
-  const [teamNames, setTeamNames] = useState<string[]>(MOCK_TEAMS.map(t => t.name));
 
   const league = leagues.length > 0 ? leagues[0] : null;
 
@@ -51,6 +52,13 @@ export default function AdminPage() {
   const [newUserData, setNewUserData] = useState({ displayName: '', email: '', role: 'player' as UserRole, teamId: 'unassigned' });
   const [newRuleData, setNewRuleData] = useState({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
+  
+  const [teamNames, setTeamNames] = useState<{[id: string]: string}>(
+    teams.reduce((acc, team) => {
+        acc[team.id] = team.name;
+        return acc;
+    }, {} as {[id: string]: string})
+  );
 
   const activeContestants = contestants.filter(hg => hg.status === 'active');
   const weekEvents = competitions.filter(c => c.week === selectedWeek);
@@ -63,7 +71,19 @@ export default function AdminPage() {
   const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => i + 1);
 
   const handleAddUser = () => {
-    // ... (logic from settings page)
+    toast({ title: "Invitation Sent", description: `An invitation has been sent to ${newUserData.email}.` });
+    setUsers([...users, { id: `user_${Math.random()}`, ...newUserData, createdAt: new Date().toISOString(), status: 'pending' }]);
+    setIsAddUserDialogOpen(false);
+    setNewUserData({ displayName: '', email: '', role: 'player' as UserRole, teamId: 'unassigned' });
+  };
+  
+  const handleUserAction = (action: 'resend' | 'reset', user: UserType) => {
+    if (action === 'resend') {
+        toast({ title: "Invitation Resent", description: `Invitation has been resent to ${user.email}.` });
+    }
+    if (action === 'reset') {
+        toast({ title: "Password Reset Sent", description: `A password reset link has been sent to ${user.email}.` });
+    }
   };
 
   const handleSaveChanges = (section?: string) => {
@@ -71,10 +91,8 @@ export default function AdminPage() {
     toast({ title: "Changes Saved", description: message });
   };
   
-  const handleTeamNameChange = (index: number, newName: string) => {
-    const newTeamNames = [...teamNames];
-    newTeamNames[index] = newName;
-    setTeamNames(newTeamNames);
+  const handleTeamNameChange = (teamId: string, newName: string) => {
+    setTeamNames(prev => ({ ...prev, [teamId]: newName }));
   };
 
   const handleUpdateRule = (code: string, field: 'label' | 'points', value: string | number) => {
@@ -86,15 +104,26 @@ export default function AdminPage() {
   };
 
   const handleAddRule = () => {
-    // ... (logic from settings page)
+    if (!newRuleData.code || !newRuleData.label) {
+        toast({ title: "Error", description: "Rule code and label are required.", variant: 'destructive' });
+        return;
+    }
+    setScoringRules([...scoringRules, newRuleData]);
+    setIsAddRuleDialogOpen(false);
+    setNewRuleData({ code: '', label: '', points: 0 });
+    toast({ title: "Rule Added", description: "The new scoring rule has been added." });
   };
 
   const handleRemoveRule = (codeToRemove: string) => {
     setScoringRules(currentRules => currentRules.filter(rule => rule.code !== codeToRemove));
+    toast({ title: "Rule Removed", description: "The scoring rule has been removed." });
   };
   
   const handleAssignTeam = (userId: string, teamId: string) => {
-    // ... (logic from settings page)
+     // In a real app, this would update the user's teamId in the database.
+    console.log(`Assigning user ${userId} to team ${teamId}`);
+    // For mock data, we might not need to update state here unless we re-fetch or derive it.
+    toast({ title: "Team Assigned", description: `User has been assigned to a new team.` });
   };
   
   // ... (all other handler functions from settings page) ...
@@ -103,16 +132,18 @@ export default function AdminPage() {
     return <div>Loading...</div>;
   }
 
+  const getTeamForUser = (user: UserType): Team | undefined => {
+    return teams.find(team => team.ownerUserIds.includes(user.id));
+  };
+
+
   return (
     <div className="flex flex-col">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
         <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
-          <Settings className="h-5 w-5" />
+          <Building className="h-5 w-5" />
           Admin Panel
         </h1>
-        <Button variant="outline" asChild>
-            <Link href="/settings"><ArrowLeft className="mr-2"/> Back to Settings</Link>
-        </Button>
       </header>
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
         <Tabs defaultValue="events" className="w-full">
@@ -291,9 +322,34 @@ export default function AdminPage() {
                                 <DialogContent>
                                     <DialogHeader>
                                         <DialogTitle>Add New League Member</DialogTitle>
-                                        <CardDescription>Invite a new user and assign them to a team.</CardDescription>
+                                        <DialogDescription>Invite a new user by email and assign them to a team.</DialogDescription>
                                     </DialogHeader>
-                                    {/* Add User Dialog Content */}
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="new-name">Name</Label>
+                                            <Input id="new-name" value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="new-email">Email</Label>
+                                            <Input id="new-email" type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Team Assignment</Label>
+                                            <Select value={newUserData.teamId} onValueChange={(value) => setNewUserData({...newUserData, teamId: value})}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a team" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                                    {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsAddUserDialogOpen(false)}>Cancel</Button>
+                                        <Button onClick={handleAddUser}><Send className="mr-2" /> Send Invite</Button>
+                                    </DialogFooter>
                                 </DialogContent>
                             </Dialog>
                         </div>
@@ -301,19 +357,14 @@ export default function AdminPage() {
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
                              <h3 className="text-lg font-medium">Teams</h3>
-                             <div className="space-y-2">
-                                <Label htmlFor="maxTeams">Number of Teams</Label>
-                                <Input id="maxTeams" type="number" value={league.maxTeams} onChange={(e) => setLeagues(leagues.map(l => l.id === league.id ? {...l, maxTeams: Number(e.target.value)} : l))} />
-                             </div>
                              <Label>Team Names</Label>
                              <div className="space-y-2">
-                                {teamNames.slice(0, league.maxTeams).map((name, index) => (
-                                    <div key={index} className="flex items-center gap-2">
-                                        <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
+                                {teams.map((team) => (
+                                    <div key={team.id} className="flex items-center gap-2">
                                         <Input 
-                                            value={name} 
-                                            placeholder={`Team ${index + 1} Name`}
-                                            onChange={(e) => handleTeamNameChange(index, e.target.value)} 
+                                            value={teamNames[team.id] || ''} 
+                                            placeholder={`Team Name`}
+                                            onChange={(e) => handleTeamNameChange(team.id, e.target.value)} 
                                         />
                                     </div>
                                 ))}
@@ -322,13 +373,48 @@ export default function AdminPage() {
                         <Separator/>
                         <div className="space-y-4">
                             <h3 className="text-lg font-medium">League Members</h3>
-                            <div className="space-y-3">
-                                {users.map(user => (
-                                    <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
-                                       {/* User management UI goes here */}
-                                       <p>{user.displayName}</p>
-                                    </div>
-                                ))}
+                            <div className="space-y-2">
+                                {users.map(user => {
+                                    const userTeam = getTeamForUser(user);
+                                    return (
+                                        <div key={user.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-2 rounded-lg border">
+                                            <div className="flex items-center gap-3">
+                                                <Avatar>
+                                                    <AvatarImage src={user.photoURL} alt={user.displayName} />
+                                                    <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <p className="font-medium">{user.displayName}</p>
+                                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                                </div>
+                                                <Badge variant={user.status === 'active' ? 'default' : 'secondary'} className={cn(user.status === 'active' && 'bg-green-100 text-green-800')}>{user.status}</Badge>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                 <div className="w-48">
+                                                    <Select defaultValue={userTeam?.id || 'unassigned'} onValueChange={(teamId) => handleAssignTeam(user.id, teamId)}>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Assign team..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                                                            {teams.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        {user.status === 'pending' && <DropdownMenuItem onClick={() => handleUserAction('resend', user)}><MailQuestion className="mr-2" /> Resend Invite</DropdownMenuItem>}
+                                                        {user.status === 'active' && <DropdownMenuItem onClick={() => handleUserAction('reset', user)}><KeyRound className="mr-2" /> Send Password Reset</DropdownMenuItem>}
+                                                        <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50"><Trash2 className="mr-2" /> Remove User</DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     </CardContent>
@@ -338,9 +424,6 @@ export default function AdminPage() {
                 </Card>
             </TabsContent>
         </Tabs>
-        <div className="flex justify-end">
-            <Button onClick={() => handleSaveChanges()}><Save className="mr-2 h-4 w-4"/>Save All Admin Changes</Button>
-        </div>
       </main>
     </div>
   );
