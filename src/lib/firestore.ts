@@ -63,10 +63,13 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
   // Update each team document
   teams.forEach(team => {
-    // If the team has a real ID (not a temporary one), update it.
-    // New teams will have IDs like 'new_team_0' and should get real IDs on creation.
-    // For now, this logic will update existing teams and newly named teams.
-    const teamRef = doc(db, 'teams', team.id);
+    let teamRef;
+    // If the team is new (has a temporary ID), create a new document reference with a unique ID.
+    if (team.id.startsWith('new_team_')) {
+        teamRef = doc(collection(db, 'teams'));
+    } else {
+        teamRef = doc(db, 'teams', team.id);
+    }
     const { id: teamId, ...teamData } = team;
     batch.set(teamRef, teamData, { merge: true });
   });
