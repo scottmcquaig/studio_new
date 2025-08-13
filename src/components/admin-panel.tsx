@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion } from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season } from "@/lib/data";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown } from "lucide-react";
+import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_LEAGUES } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc } from 'firebase/firestore';
 import { SheetHeader, SheetTitle } from './ui/sheet';
 
 
@@ -38,7 +39,7 @@ export function AdminPanel() {
 
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
-  const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
+  const [scoringRules, setScoringRules] = useState<ScoringRule[]>([]);
 
   const specialEventRules = scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
   
@@ -132,7 +133,18 @@ export function AdminPanel() {
     const unsubscribeLeagues = onSnapshot(leaguesCol, (querySnapshot) => {
         if (!querySnapshot.empty) {
             const firstLeagueDoc = querySnapshot.docs[0];
-            setLeagueSettings({ ...firstLeagueDoc.data(), id: firstLeagueDoc.id } as League);
+            const leagueData = { ...firstLeagueDoc.data(), id: firstLeagueDoc.id } as League;
+            setLeagueSettings(leagueData);
+
+            if (leagueData.settings.scoringRuleSetId) {
+                const ruleSetDocRef = doc(db, 'scoring_rules', leagueData.settings.scoringRuleSetId);
+                getDoc(ruleSetDocRef).then(docSnap => {
+                    if (docSnap.exists()) {
+                        setScoringRules((docSnap.data() as ScoringRuleSet).rules || []);
+                    }
+                });
+            }
+
         } else {
             console.log("No league documents found, using mock data.");
             setLeagueSettings(MOCK_LEAGUES[0] || null);
@@ -458,7 +470,7 @@ export function AdminPanel() {
             <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="events">Events</TabsTrigger>
                 <TabsTrigger value="contestants">Contestants</TabsTrigger>
-                <TabsTrigger value="league">Settings & Users</TabsTrigger>
+                <TabsTrigger value="league">League Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="events" className="mt-6">
@@ -757,9 +769,9 @@ export function AdminPanel() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
-                        <CardDescription>Manage core settings for the league and its scoring rules.</CardDescription>
+                        <CardDescription>Manage core settings for the league.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6">
+                    <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="leagueName">League Name</Label>
@@ -784,230 +796,250 @@ export function AdminPanel() {
                                  />
                             </div>
                         </div>
-                        <Separator />
-                         <div>
-                            <div className="flex justify-between items-center mb-4">
-                                <div>
-                                    <h3 className="text-lg font-medium flex items-center gap-2"><ListChecks/> Scoring Rules</h3>
-                                    <p className="text-sm text-muted-foreground">Manage points for all scoring events.</p>
-                                </div>
-                                <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" size="sm"><PlusCircle className="mr-2"/>Add Rule</Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Add New Scoring Rule</DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="space-y-2">
-                                                <Label>Event Code</Label>
-                                                <Input 
-                                                    value={newRuleData.code}
-                                                    onChange={(e) => setNewRuleData({...newRuleData, code: e.target.value.toUpperCase().replace(/\s/g, '_')})}
-                                                    placeholder="e.g., CUSTOM_EVENT"
-                                                />
-                                                <p className="text-xs text-muted-foreground">A unique, uppercase identifier for the rule.</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Label</Label>
-                                                <Input
-                                                    value={newRuleData.label}
-                                                    onChange={(e) => setNewRuleData({...newRuleData, label: e.target.value})}
-                                                    placeholder="e.g., Wins a secret power"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Points</Label>
-                                                <Input
-                                                    type="number"
-                                                    value={newRuleData.points}
-                                                    onChange={(e) => setNewRuleData({...newRuleData, points: Number(e.target.value)})}
-                                                />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
-                                            <Button onClick={handleAddRule}>Add Rule</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
-                            <div className="space-y-2">
-                                {scoringRules.map(rule => (
-                                    <div key={rule.code} className="grid grid-cols-12 gap-2 items-center">
-                                        <div className="col-span-8 space-y-1">
-                                            <Label htmlFor={`rule-label-${rule.code}`}>Label</Label>
-                                            <Input
-                                                id={`rule-label-${rule.code}`}
-                                                value={rule.label}
-                                                onChange={(e) => handleUpdateRule(rule.code, 'label', e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="col-span-3 space-y-1">
-                                            <Label htmlFor={`rule-points-${rule.code}`}>Points</Label>
-                                            <Input
-                                                id={`rule-points-${rule.code}`}
-                                                type="number"
-                                                value={rule.points}
-                                                onChange={(e) => handleUpdateRule(rule.code, 'points', Number(e.target.value))}
-                                            />
-                                        </div>
-                                        <div className="col-span-1 self-end">
-                                             <Button variant="ghost" size="icon" onClick={() => handleRemoveRule(rule.code)} className="h-9 w-9">
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
                     </CardContent>
                     <CardFooter className="justify-end">
                         <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save Settings</Button>
                     </CardFooter>
                 </Card>
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle className="flex items-center gap-2"><UserCog /> Users & Teams</CardTitle>
-                                <CardDescription>Manage user roles, team names, assignments, and invitations.</CardDescription>
-                            </div>
-                             <div className="flex gap-2">
-                                <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Create New User</DialogTitle>
-                                        </DialogHeader>
-                                        <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
-                                        <div className="space-y-4 py-4">
-                                            <div className="space-y-2">
-                                                <Label>Name</Label>
-                                                <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                
+                <Accordion type="multiple" defaultValue={['item-1']} className="w-full space-y-6">
+                    <AccordionItem value="item-1">
+                         <Card>
+                            <AccordionTrigger className="w-full">
+                               <CardHeader className="flex-row items-center justify-between w-full p-4">
+                                 <div>
+                                   <CardTitle className="flex items-center gap-2 text-lg"><UserCog /> Users & Teams</CardTitle>
+                                   <CardDescription className="text-left">Manage user roles, team names, assignments, and invitations.</CardDescription>
+                                 </div>
+                                 <ChevronsUpDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                               </CardHeader>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <CardContent className="space-y-6 p-4 pt-0">
+                                  <div className="flex justify-end gap-2">
+                                    <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Create New User</DialogTitle>
+                                                <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <Label>Name</Label>
+                                                    <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Email</Label>
+                                                    <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Email</Label>
-                                                <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                                            <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create User</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                                                <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create User</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
 
-                                <Dialog open={isAddUserToLeagueDialogOpen} onOpenChange={setIsAddUserToLeagueDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm"><UserPlus2 className="mr-2 h-4 w-4" /> Add User to League</Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Add User to League</DialogTitle>
-                                            <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
-                                        </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="space-y-2">
-                                                <Label>User</Label>
-                                                <Select value={addUserToLeagueData.userId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, userId: value})}>
-                                                    <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
-                                                    <SelectContent>
-                                                        {unassignedUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
+                                    <Dialog open={isAddUserToLeagueDialogOpen} onOpenChange={setIsAddUserToLeagueDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm"><UserPlus2 className="mr-2 h-4 w-4" /> Add User to League</Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Add User to League</DialogTitle>
+                                                <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
+                                            </DialogHeader>
+                                            <div className="space-y-4 py-4">
+                                                <div className="space-y-2">
+                                                    <Label>User</Label>
+                                                    <Select value={addUserToLeagueData.userId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, userId: value})}>
+                                                        <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {unassignedUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Team Assignment</Label>
+                                                    <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
+                                                        <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {displayedTeams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Team Assignment</Label>
-                                                <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
-                                                    <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
-                                                    <SelectContent>
-                                                        {displayedTeams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button variant="outline" onClick={() => setIsAddUserToLeagueDialogOpen(false)}>Cancel</Button>
-                                            <Button onClick={handleAddUserToLeague}><Send className="mr-2" /> Add to League</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-medium">Teams</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {displayedTeams.map((team, index) => (
-                                    <Card key={team.id}>
-                                        <CardHeader className="p-4 flex-row items-center justify-between">
-                                            <CardTitle className="text-base flex-grow mr-2">
-                                                <Input 
-                                                    value={teamNames[team.id] || `Team ${index + 1}`} 
-                                                    placeholder={`Team ${index + 1}`}
-                                                    onChange={(e) => handleTeamNameChange(team.id, e.target.value)}
-                                                    className="border-0 shadow-none focus-visible:ring-0 p-0 text-base font-semibold"
-                                                />
-                                            </CardTitle>
-                                            <div className="flex items-center gap-2">
-                                                <Label htmlFor={`draft-order-${team.id}`} className="text-xs text-muted-foreground"><SortAsc className="h-3 w-3 inline-block mr-1"/>Draft</Label>
-                                                <Input 
-                                                    id={`draft-order-${team.id}`}
-                                                    type="number"
-                                                    value={teamDraftOrders[team.id] || ''}
-                                                    onChange={(e) => handleDraftOrderChange(team.id, e.target.value)}
-                                                    className="w-14 h-8 text-center"
-                                                />
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="p-4 pt-0">
-                                            {getUsersForTeam(team.id).length > 0 ? (
-                                                getUsersForTeam(team.id).map(user => (
-                                                    <div key={user.id} className="flex items-center justify-between text-sm py-1">
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setIsAddUserToLeagueDialogOpen(false)}>Cancel</Button>
+                                                <Button onClick={handleAddUserToLeague}><Send className="mr-2" /> Add to League</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {displayedTeams.map((team, index) => (
+                                                <Card key={team.id}>
+                                                    <CardHeader className="p-4 flex-row items-center justify-between">
+                                                        <CardTitle className="text-base flex-grow mr-2">
+                                                            <Input 
+                                                                value={teamNames[team.id] || `Team ${index + 1}`} 
+                                                                placeholder={`Team ${index + 1}`}
+                                                                onChange={(e) => handleTeamNameChange(team.id, e.target.value)}
+                                                                className="border-0 shadow-none focus-visible:ring-0 p-0 text-base font-semibold"
+                                                            />
+                                                        </CardTitle>
                                                         <div className="flex items-center gap-2">
-                                                            <span>{user.displayName}</span>
-                                                            <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className={cn(
-                                                                user.status === 'active' && 'text-green-600 border-green-600',
-                                                                user.status === 'pending' && 'text-amber-600 border-amber-600'
-                                                            )}>
-                                                                {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                                                            </Badge>
+                                                            <Label htmlFor={`draft-order-${team.id}`} className="text-xs text-muted-foreground"><SortAsc className="h-3 w-3 inline-block mr-1"/>Draft</Label>
+                                                            <Input 
+                                                                id={`draft-order-${team.id}`}
+                                                                type="number"
+                                                                value={teamDraftOrders[team.id] || ''}
+                                                                onChange={(e) => handleDraftOrderChange(team.id, e.target.value)}
+                                                                className="w-14 h-8 text-center"
+                                                            />
                                                         </div>
-                                                        <div className="flex items-center">
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                                        <MoreHorizontal className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent>
-                                                                    {user.status === 'pending' && <DropdownMenuItem onClick={() => handleUserAction('resend', user)}><MailQuestion className="mr-2" /> Resend Invitation</DropdownMenuItem>}
-                                                                    <DropdownMenuItem onClick={() => handleUserAction('reset', user)}><KeyRound className="mr-2" /> Send Password Reset</DropdownMenuItem>
-                                                                    <DropdownMenuItem className="text-red-600" onClick={() => handleRemoveUserFromTeam(user.id, team.id)}><UserX className="mr-2"/> Unassign Team</DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </div>
+                                                    </CardHeader>
+                                                    <CardContent className="p-4 pt-0">
+                                                        {getUsersForTeam(team.id).length > 0 ? (
+                                                            getUsersForTeam(team.id).map(user => (
+                                                                <div key={user.id} className="flex items-center justify-between text-sm py-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span>{user.displayName}</span>
+                                                                        <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className={cn(
+                                                                            user.status === 'active' && 'text-green-600 border-green-600',
+                                                                            user.status === 'pending' && 'text-amber-600 border-amber-600'
+                                                                        )}>
+                                                                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <div className="flex items-center">
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent>
+                                                                                {user.status === 'pending' && <DropdownMenuItem onClick={() => handleUserAction('resend', user)}><MailQuestion className="mr-2" /> Resend Invitation</DropdownMenuItem>}
+                                                                                <DropdownMenuItem onClick={() => handleUserAction('reset', user)}><KeyRound className="mr-2" /> Send Password Reset</DropdownMenuItem>
+                                                                                <DropdownMenuItem className="text-red-600" onClick={() => handleRemoveUserFromTeam(user.id, team.id)}><UserX className="mr-2"/> Unassign Team</DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <p className="text-sm text-muted-foreground">No members assigned.</p>
+                                                        )}
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                         <div className="flex justify-end gap-2">
+                                            <Button onClick={handleSaveTeams}><Save className="mr-2"/>Save Team Changes</Button>
+                                            <Button onClick={handleSaveUserAndTeamChanges}><Save className="mr-2"/>Save User Assignments</Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </AccordionContent>
+                         </Card>
+                    </AccordionItem>
+                    <AccordionItem value="item-2">
+                        <Card>
+                             <AccordionTrigger className="w-full">
+                               <CardHeader className="flex-row items-center justify-between w-full p-4">
+                                 <div>
+                                   <CardTitle className="flex items-center gap-2 text-lg"><ListChecks/> Scoring Rules</CardTitle>
+                                   <CardDescription className="text-left">Manage points for all scoring events.</CardDescription>
+                                 </div>
+                                 <ChevronsUpDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                               </CardHeader>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <CardContent className="p-4 pt-0">
+                                    <div className="flex justify-end mb-4">
+                                        <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="sm"><PlusCircle className="mr-2"/>Add Rule</Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Add New Scoring Rule</DialogTitle>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <Label>Event Code</Label>
+                                                        <Input 
+                                                            value={newRuleData.code}
+                                                            onChange={(e) => setNewRuleData({...newRuleData, code: e.target.value.toUpperCase().replace(/\s/g, '_')})}
+                                                            placeholder="e.g., CUSTOM_EVENT"
+                                                        />
+                                                        <p className="text-xs text-muted-foreground">A unique, uppercase identifier for the rule.</p>
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-sm text-muted-foreground">No members assigned.</p>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                             <div className="flex justify-end gap-2">
-                                <Button onClick={handleSaveTeams}><Save className="mr-2"/>Save Team Changes</Button>
-                                <Button onClick={handleSaveUserAndTeamChanges}><Save className="mr-2"/>Save User Assignments</Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                                                    <div className="space-y-2">
+                                                        <Label>Label</Label>
+                                                        <Input
+                                                            value={newRuleData.label}
+                                                            onChange={(e) => setNewRuleData({...newRuleData, label: e.target.value})}
+                                                            placeholder="e.g., Wins a secret power"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Points</Label>
+                                                        <Input
+                                                            type="number"
+                                                            value={newRuleData.points}
+                                                            onChange={(e) => setNewRuleData({...newRuleData, points: Number(e.target.value)})}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
+                                                    <Button onClick={handleAddRule}>Add Rule</Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {scoringRules.map(rule => (
+                                            <div key={rule.code} className="grid grid-cols-12 gap-2 items-center">
+                                                <div className="col-span-8">
+                                                    <Input
+                                                        id={`rule-label-${rule.code}`}
+                                                        value={rule.label}
+                                                        onChange={(e) => handleUpdateRule(rule.code, 'label', e.target.value)}
+                                                        placeholder="Rule Label"
+                                                    />
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <Input
+                                                        id={`rule-points-${rule.code}`}
+                                                        type="number"
+                                                        value={rule.points}
+                                                        onChange={(e) => handleUpdateRule(rule.code, 'points', Number(e.target.value))}
+                                                        placeholder="Points"
+                                                    />
+                                                </div>
+                                                <div className="col-span-1 self-center">
+                                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveRule(rule.code)} className="h-9 w-9">
+                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="justify-end">
+                                    <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save Scoring Rules</Button>
+                                </CardFooter>
+                            </AccordionContent>
+                        </Card>
+                    </AccordionItem>
+                </Accordion>
             </TabsContent>
         </Tabs>
       </main>
