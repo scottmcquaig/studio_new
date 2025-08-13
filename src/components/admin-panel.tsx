@@ -415,8 +415,8 @@ export function AdminPanel() {
     }
   };
   
-  const handleSaveTeams = async () => {
-    const promises = displayedTeams.map(team => {
+  const handleSaveTeamAndUserChanges = async () => {
+    const teamPromises = displayedTeams.map(team => {
         if(team.id.endsWith('_placeholder')) return;
         const teamDocRef = doc(db, 'teams', team.id);
         const dataToSave = {
@@ -429,27 +429,13 @@ export function AdminPanel() {
         };
         return setDoc(teamDocRef, dataToSave, { merge: true });
     }).filter(Boolean);
-    try {
-        await Promise.all(promises);
-        toast({ title: "Team Changes Saved", description: "Team names and draft order have been updated." });
-    } catch (error) {
-        console.error("Error saving team changes: ", error);
-        toast({ title: "Error", description: "Could not save team changes.", variant: "destructive" });
-    }
-  };
-  
-  const handleSaveUserAndTeamChanges = async () => {
-    const teamPromises = teams.map(team => {
-        const teamDocRef = doc(db, 'teams', team.id);
-        return setDoc(teamDocRef, { ownerUserIds: team.ownerUserIds }, { merge: true });
-    });
 
     try {
         await Promise.all(teamPromises);
-        toast({ title: "User & Team Changes Saved", description: "User assignments have been updated." });
+        toast({ title: "Team & User Changes Saved", description: "Team details and user assignments have been updated." });
     } catch (error) {
-        console.error("Error saving user and team changes: ", error);
-        toast({ title: "Error", description: "Could not save user assignments.", variant: "destructive" });
+        console.error("Error saving team and user changes: ", error);
+        toast({ title: "Error", description: "Could not save team and user changes.", variant: "destructive" });
     }
   };
 
@@ -468,12 +454,12 @@ export function AdminPanel() {
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
         <Tabs defaultValue="events" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="events">Events</TabsTrigger>
+                <TabsTrigger value="scoring">Scoring</TabsTrigger>
                 <TabsTrigger value="contestants">Contestants</TabsTrigger>
                 <TabsTrigger value="league">League Settings</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="events" className="mt-6">
+            <TabsContent value="scoring" className="mt-6">
                 <Card>
                     <CardHeader>
                        <div className="flex justify-between items-center">
@@ -802,13 +788,13 @@ export function AdminPanel() {
                     </CardFooter>
                 </Card>
                 
-                <Accordion type="multiple" defaultValue={['item-1']} className="w-full space-y-6">
+                <Accordion type="multiple" defaultValue={[]} className="w-full space-y-6">
                     <AccordionItem value="item-1">
                          <Card>
                             <AccordionTrigger className="w-full">
                                <CardHeader className="flex-row items-center justify-between w-full p-4">
                                  <div>
-                                   <CardTitle className="flex items-center gap-2 text-lg"><UserCog /> Users & Teams</CardTitle>
+                                   <CardTitle className="flex items-center gap-2 text-lg"><UserCog /> Users &amp; Teams</CardTitle>
                                    <CardDescription className="text-left">Manage user roles, team names, assignments, and invitations.</CardDescription>
                                  </div>
                                  <ChevronsUpDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
@@ -911,7 +897,7 @@ export function AdminPanel() {
                                                                         <span>{user.displayName}</span>
                                                                         <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className={cn(
                                                                             user.status === 'active' && 'text-green-600 border-green-600',
-                                                                            user.status === 'pending' && 'text-amber-600 border-amber-600'
+                                                                            user.status === 'pending' && 'bg-background text-amber-600 border-amber-600'
                                                                         )}>
                                                                             {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                                                                         </Badge>
@@ -940,8 +926,7 @@ export function AdminPanel() {
                                             ))}
                                         </div>
                                          <div className="flex justify-end gap-2">
-                                            <Button onClick={handleSaveTeams}><Save className="mr-2"/>Save Team Changes</Button>
-                                            <Button onClick={handleSaveUserAndTeamChanges}><Save className="mr-2"/>Save User Assignments</Button>
+                                            <Button onClick={handleSaveTeamAndUserChanges}><Save className="mr-2"/>Save Changes</Button>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -1046,3 +1031,4 @@ export function AdminPanel() {
     </div>
   );
 }
+
