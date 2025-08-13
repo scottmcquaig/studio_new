@@ -1,3 +1,4 @@
+require('dotenv').config();
 import { initializeApp, getApps, getApp, cert, type App } from 'firebase-admin/app';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
@@ -13,7 +14,7 @@ try {
   const hasEnvVars = !!(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY);
 
   if (!hasServiceAccount && !hasEnvVars) {
-    initializationError = new Error("Firebase Admin SDK credentials not found. Please provide FIREBASE_SERVICE_ACCOUNT or individual Firebase environment variables in your .env.local file.");
+    initializationError = new Error("Firebase Admin SDK credentials not found. Please provide FIREBASE_SERVICE_ACCOUNT or individual Firebase environment variables in your .env file.");
   } else {
     if (getApps().length === 0) {
       app = initializeApp({
