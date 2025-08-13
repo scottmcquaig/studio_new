@@ -28,9 +28,10 @@ const calculateKpis = (team) => {
     };
     
     let totalPoints = 0;
+    const teamContestantIds = team.contestantIds || [];
 
     MOCK_COMPETITIONS.forEach(comp => {
-        if (team.contestantIds.includes(comp.winnerId)) {
+        if (teamContestantIds.includes(comp.winnerId)) {
             if (comp.type === 'HOH') {
                 const rule = rules.find(r => r.code === 'HOH_WIN');
                 if(rule) kpis.HOH_WIN += rule.points;
@@ -45,7 +46,7 @@ const calculateKpis = (team) => {
         if (comp.type === 'NOMINATIONS' && comp.nominees) {
             const rule = rules.find(r => r.code === 'NOMINATED');
             if(rule){
-                const nomCount = comp.nominees.filter(id => team.contestantIds.includes(id)).length;
+                const nomCount = comp.nominees.filter(id => teamContestantIds.includes(id)).length;
                 kpis.NOMINATED += nomCount * rule.points;
             }
         }
@@ -117,7 +118,7 @@ export default function TeamsPage() {
             {sortedTeams.map((team) => {
                 const owners = team.ownerUserIds.map(getOwner);
                 const kpis = calculateKpis(team);
-                const teamContestants = MOCK_CONTESTANTS.filter(hg => team.contestantIds.includes(hg.id));
+                const teamContestants = MOCK_CONTESTANTS.filter(hg => (team.contestantIds || []).includes(hg.id));
 
                 return (
                     <Card key={team.id}>
