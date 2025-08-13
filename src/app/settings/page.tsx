@@ -30,40 +30,41 @@ export default function SettingsPage() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   
+  // This state will hold the names of the teams for the input fields.
+  const [teamNames, setTeamNames] = useState<string[]>([]);
+  
   const league = leagues.length > 0 ? leagues[0] : null;
 
   useEffect(() => {
     async function fetchData() {
       const fetchedLeagues = await getLeagues();
       const currentLeague = fetchedLeagues.length > 0 ? fetchedLeagues[0] : MOCK_LEAGUES[0];
-      setLeagues(fetchedLeagues.length > 0 ? fetchedLeagues : MOCK_LEAGUES);
+      setLeagues(fetchedLeagues.length > 0 ? fetchedLeagues : [currentLeague]);
 
       const fetchedTeams = await getTeams();
+      setTeams(fetchedTeams);
       
-      const teamsToSet = [...fetchedTeams];
+      const names = fetchedTeams.map(t => t.name);
       const maxTeams = currentLeague.maxTeams || 0;
-
-      if (teamsToSet.length < maxTeams) {
-        for (let i = teamsToSet.length; i < maxTeams; i++) {
-          teamsToSet.push({
-            id: `new_team_${i}`,
-            leagueId: currentLeague.id,
-            name: '',
-            ownerUserIds: [],
-            contestantIds: [],
-            faab: 100,
-            createdAt: new Date().toISOString(),
-            total_score: 0,
-            weekly_score: 0,
-            weekly_score_breakdown: { week4: [] }
-          });
-        }
-      }
-      setTeams(teamsToSet);
+      // Pad the array with empty strings up to the max number of teams
+      const paddedNames = Array(maxTeams).fill('').map((_, i) => names[i] || '');
+      setTeamNames(paddedNames);
     }
     fetchData();
   }, []);
   
+  // Update team names when league.maxTeams changes
+  useEffect(() => {
+    if (league) {
+      const currentSize = teamNames.length;
+      const newSize = league.maxTeams || 0;
+      if (currentSize !== newSize) {
+        const newTeamNames = Array(newSize).fill('').map((_, i) => teamNames[i] || '');
+        setTeamNames(newTeamNames);
+      }
+    }
+  }, [league?.maxTeams, teamNames]);
+
 
   // For this prototype, we'll assume the logged-in user is the first site admin found.
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
@@ -72,8 +73,6 @@ export default function SettingsPage() {
 
   // Admin state
   const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
-  // const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
-  // const [league, setLeague] = useState<League>(MOCK_LEAGUES[0]);
   const [contestants, setContestants] = useState<Contestant[]>(MOCK_CONTESTANTS);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
@@ -147,7 +146,9 @@ export default function SettingsPage() {
   const handleSaveChanges = async (section?: string) => {
     if (section === 'League Settings' && league) {
         try {
-            await saveSettings(league, teams);
+            // Filter out empty names before saving
+            const validTeamNames = teamNames.filter(name => name.trim() !== '');
+            await saveSettings(league, validTeamNames);
             toast({ title: "Changes Saved", description: "League settings and team names have been saved." });
         } catch (error) {
             console.error("Failed to save settings:", error);
@@ -313,15 +314,12 @@ export default function SettingsPage() {
     toast({ title: "Special Event Added", description: `Event logged for week ${selectedWeek}.` });
   }
 
-  const handleTeamNameChange = (teamIndex: number, newName: string) => {
-    setTeams(currentTeams => {
-        const updatedTeams = [...currentTeams];
-        if (updatedTeams[teamIndex]) {
-            updatedTeams[teamIndex] = { ...updatedTeams[teamIndex], name: newName };
-        }
-        return updatedTeams;
-    });
-  }
+  const handleTeamNameChange = (index: number, newName: string) => {
+    const newTeamNames = [...teamNames];
+    newTeamNames[index] = newName;
+    setTeamNames(newTeamNames);
+  };
+
 
   const handleUpdateRule = (code: string, field: 'label' | 'points', value: string) => {
     setScoringRules(currentRules =>
@@ -631,11 +629,11 @@ export default function SettingsPage() {
                                 </div>
                                 <Label>Team Names</Label>
                                 <div className="space-y-2">
-                                {Array.from({ length: league.maxTeams }).map((_, index) => (
-                                    <div key={teams[index]?.id || `new_team_${index}`} className="flex items-center gap-2">
+                                {teamNames.map((name, index) => (
+                                    <div key={index} className="flex items-center gap-2">
                                         <Label className="w-8 text-right text-muted-foreground">{index + 1}:</Label>
                                         <Input 
-                                            value={teams[index]?.name || ''} 
+                                            value={name} 
                                             placeholder={`Team ${index + 1} Name`}
                                             onChange={(e) => handleTeamNameChange(index, e.target.value)} 
                                         />
