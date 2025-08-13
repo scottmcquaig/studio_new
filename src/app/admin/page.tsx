@@ -87,6 +87,7 @@ export default function AdminPage() {
     const teamsCol = collection(db, "teams");
     const q = query(teamsCol);
     const unsubscribeTeams = onSnapshot(q, (querySnapshot) => {
+      if (!querySnapshot.empty) {
         const teamsData: Team[] = [];
         const teamNamesData: {[id: string]: string} = {};
         const draftOrderData: {[id: string]: number} = {};
@@ -101,6 +102,18 @@ export default function AdminPage() {
         setTeams(teamsData.sort((a,b) => a.draftOrder - b.draftOrder));
         setTeamNames(teamNamesData);
         setTeamDraftOrders(draftOrderData);
+      } else {
+        console.log("No teams documents found, using mock data.");
+        setTeams(MOCK_TEAMS);
+        const mockTeamNames: {[id: string]: string} = {};
+        const mockDraftOrders: {[id: string]: number} = {};
+        MOCK_TEAMS.forEach(team => {
+            mockTeamNames[team.id] = team.name;
+            mockDraftOrders[team.id] = team.draftOrder;
+        });
+        setTeamNames(mockTeamNames);
+        setTeamDraftOrders(mockDraftOrders);
+      }
     });
 
     const leaguesCol = collection(db, "leagues");
@@ -770,3 +783,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
