@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Send } from "lucide-react";
+import { FileText, Send, History } from "lucide-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, Timestamp } from 'firebase/firestore';
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -20,23 +22,47 @@ const formSchema = z.object({
   favNumber: z.coerce.number().optional(),
 });
 
+type Submission = {
+  id: string;
+  name: string;
+  favNumber?: number | null;
+  submittedAt: Timestamp;
+};
+
 export default function FormsPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      favNumber: "" as any, // Use empty string for controlled component
+      favNumber: "" as any,
     },
   });
 
   const { isSubmitting } = form.formState;
 
+  useEffect(() => {
+    const submissionsCol = collection(db, "submissions");
+    const q = query(submissionsCol, orderBy("submittedAt", "desc"), limit(5));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const subs: Submission[] = [];
+      querySnapshot.forEach((doc) => {
+        subs.push({ id: doc.id, ...doc.data() } as Submission);
+      });
+      setSubmissions(subs);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [db]);
+
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      // Ensure favNumber is a number or null if not provided
       const submissionData = {
         ...values,
         favNumber: values.favNumber ? Number(values.favNumber) : null,
@@ -112,6 +138,38 @@ export default function FormsPage() {
               </CardFooter>
             </form>
           </Form>
+        </Card>
+
+        <Card className="w-full max-w-md">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Recent Submissions
+                </CardTitle>
+                <CardDescription>Showing the last 5 entries.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {submissions.length > 0 ? (
+                    <ul className="space-y-4">
+                        {submissions.map((sub, index) => (
+                           <React.Fragment key={sub.id}>
+                             <li className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-medium">{sub.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {sub.submittedAt.toDate().toLocaleString()}
+                                    </p>
+                                </div>
+                                <p className="font-mono text-lg">{sub.favNumber ?? 'N/A'}</p>
+                            </li>
+                            {index < submissions.length - 1 && <Separator />}
+                           </React.Fragment>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center">No submissions yet.</p>
+                )}
+            </CardContent>
         </Card>
       </main>
     </div>
