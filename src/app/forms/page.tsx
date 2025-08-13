@@ -1,39 +1,57 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Send } from "lucide-react";
+import { saveFormSubmission } from "./actions";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "Name must be at least 2 characters.",
+  }),
+  favNumber: z.coerce.number().min(0, {
+    message: "Favorite number must be a positive number.",
+  }),
+});
 
 export default function FormsPage() {
   const { toast } = useToast();
-  const [name, setName] = useState('');
-  const [favNumber, setFavNumber] = useState('');
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      favNumber: undefined,
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !favNumber) {
+  const { isSubmitting } = form.formState;
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    const result = await saveFormSubmission(values);
+
+    if (result.success) {
+      toast({
+        title: "Form Submitted!",
+        description: `Your submission has been saved.`,
+      });
+      form.reset();
+    } else {
       toast({
         title: "Submission Failed",
-        description: "Please fill out all fields.",
+        description: result.error || "An unknown error occurred.",
         variant: "destructive",
       });
-      return;
     }
-    
-    toast({
-      title: "Form Submitted!",
-      description: `Name: ${name}, Favorite Number: ${favNumber}`,
-    });
-
-    // Reset form
-    setName('');
-    setFavNumber('');
-  };
+  }
 
   return (
     <div className="flex flex-col">
@@ -45,39 +63,48 @@ export default function FormsPage() {
       </header>
       <main className="flex flex-1 flex-col items-center gap-6 p-4 md:gap-8 md:p-8">
         <Card className="w-full max-w-md">
-          <form onSubmit={handleSubmit}>
-            <CardHeader>
-              <CardTitle>Simple Form</CardTitle>
-              <CardDescription>Enter your name and favorite number.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input 
-                  id="name" 
-                  placeholder="e.g., Jane Doe" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardHeader>
+                <CardTitle>Simple Form</CardTitle>
+                <CardDescription>Enter your name and favorite number. This will be saved to Firestore.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Jane Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="favNumber">Favorite Number</Label>
-                <Input 
-                  id="favNumber" 
-                  type="number" 
-                  placeholder="e.g., 42" 
-                  value={favNumber}
-                  onChange={(e) => setFavNumber(e.target.value)}
+                <FormField
+                  control={form.control}
+                  name="favNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Favorite Number</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g., 42" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full">
-                <Send className="mr-2 h-4 w-4" />
-                Submit
-              </Button>
-            </CardFooter>
-          </form>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  <Send className="mr-2 h-4 w-4" />
+                  {isSubmitting ? 'Submitting...' : 'Submit'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
         </Card>
       </main>
     </div>
