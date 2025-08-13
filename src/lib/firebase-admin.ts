@@ -1,11 +1,20 @@
 import * as admin from 'firebase-admin';
+import 'dotenv/config';
 
 if (!admin.apps.length) {
   try {
     if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
       throw new Error('Firebase Admin SDK credentials not found. Please provide FIREBASE_SERVICE_ACCOUNT in your .env file.');
     }
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT as string);
+    const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT as string;
+    
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(serviceAccountString);
+    } catch (e: any) {
+      throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT. Make sure it is a valid JSON string. Raw parsing error: ${e.message}`);
+    }
+
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
