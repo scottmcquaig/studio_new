@@ -42,7 +42,6 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
   const { id: leagueId, ...leagueData } = league;
   batch.set(leagueRef, leagueData, { merge: true });
 
-  // Filter out any placeholder teams without a name
   const validTeams = teams.filter(team => team && team.name);
   
   validTeams.forEach(team => {
@@ -53,11 +52,9 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     delete (teamData as any).weekly_score_breakdown;
 
     if (teamId && teamId.startsWith('new_team_')) {
-        // This is a new team, create a new document reference
         const newTeamRef = doc(collection(db, 'teams'));
         batch.set(newTeamRef, teamData);
     } else if (teamId) {
-        // This is an existing team, update it
         const teamRef = doc(db, 'teams', teamId);
         batch.set(teamRef, teamData, { merge: true });
     }
@@ -66,7 +63,7 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
   try {
     await batch.commit();
   } catch (error) {
-    console.error("Error committing batch save for league and teams:", error);
+    console.error("Error committing batch save for league and teams. The raw error is:", error);
     throw new Error("Failed to save data to Firestore.");
   }
 }
@@ -79,8 +76,8 @@ export async function testWrite(): Promise<void> {
             timestamp: new Date(),
         });
         console.log("Document written with ID: ", docRef.id);
-    } catch (e) {
-        console.error("Error adding document: ", e);
-        throw new Error("Firestore test write failed.");
+    } catch (e: any) {
+        console.error("Firestore test write failed. The specific error is:", e.message);
+        throw new Error(`Firestore test write failed: ${e.message}`);
     }
 }

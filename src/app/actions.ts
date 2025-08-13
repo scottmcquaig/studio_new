@@ -17,17 +17,17 @@ export async function getLeagueDescription(input: GenerateLeagueDescriptionInput
 export async function saveSettings(league: League, teams: Team[]): Promise<void> {
     try {
         await saveLeagueAndTeams(league, teams);
-    } catch (error) {
-        console.error("Error saving settings:", error);
-        throw new Error("Failed to save settings.");
+    } catch (error: any) {
+        console.error("Error saving settings. The raw error is:", error);
+        throw new Error(`Failed to save settings: ${error.message}`);
     }
 }
 
 export async function testFirestoreWrite(): Promise<void> {
     try {
         await testWrite();
-    } catch (error) {
-        console.error("Error during test write:", error);
-        throw new Error("Failed to perform test write to Firestore.");
+    } catch (error: any) {
+        console.error("Error during test write. The raw error is:", error);
+        throw new Error(`Failed to perform test write to Firestore: ${error.message}`);
     }
 }
