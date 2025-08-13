@@ -30,7 +30,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
   
-  const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
+  const [leagueSettings, setLeagueSettings] = useState<League | null>(MOCK_LEAGUES[0] || null);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
 
   const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
@@ -80,7 +80,8 @@ export default function AdminPage() {
             const firstLeagueDoc = querySnapshot.docs[0];
             setLeagueSettings({ ...firstLeagueDoc.data(), id: firstLeagueDoc.id } as League);
         } else {
-            console.error("No league documents found!");
+            console.log("No league documents found, using mock data.");
+            // Keep using the mock data if the collection is empty
         }
     });
 
