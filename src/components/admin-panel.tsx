@@ -591,6 +591,7 @@ export function AdminPanel() {
                                         <DialogContent>
                                             <DialogHeader>
                                                 <DialogTitle>Log Special Event / Penalty</DialogTitle>
+                                                <DialogDescription>Apply a special scoring rule to a contestant for this week.</DialogDescription>
                                             </DialogHeader>
                                             <div className="space-y-4 py-4">
                                                 <div>
