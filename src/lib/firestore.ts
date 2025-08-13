@@ -61,7 +61,7 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
   batch.set(leagueRef, leagueData, { merge: true });
 
   // Filter out any placeholder teams that don't have a name.
-  const validTeams = teams.filter(team => team && team.name);
+  const validTeams = teams.filter(team => team && team.name && team.id);
 
   // Update or create each valid team document
   validTeams.forEach(team => {
