@@ -30,7 +30,7 @@ export default function AdminPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
   
-  const [leagueSettings, setLeagueSettings] = useState(MOCK_LEAGUES[0]);
+  const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
 
   const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
@@ -66,15 +66,29 @@ export default function AdminPage() {
 
   useEffect(() => {
     const contestantsCol = collection(db, "contestants");
-    const unsubscribe = onSnapshot(contestantsCol, (querySnapshot) => {
+    const unsubscribeContestants = onSnapshot(contestantsCol, (querySnapshot) => {
         const contestantData: Contestant[] = [];
         querySnapshot.forEach((doc) => {
             contestantData.push({ ...doc.data(), id: doc.id } as Contestant);
         });
         setContestants(contestantData);
     });
-    return () => unsubscribe();
-}, [db]);
+
+    // There's only one league, so we'll listen to it directly.
+    const leagueDocRef = doc(db, "leagues", MOCK_LEAGUES[0].id);
+    const unsubscribeLeague = onSnapshot(leagueDocRef, (doc) => {
+        if (doc.exists()) {
+            setLeagueSettings({ ...doc.data(), id: doc.id } as League);
+        } else {
+            console.error("League document not found!");
+        }
+    });
+
+    return () => {
+        unsubscribeContestants();
+        unsubscribeLeague();
+    };
+  }, [db]);
 
 
   const activeContestants = contestants.filter(hg => hg.status === 'active');
@@ -182,16 +196,15 @@ export default function AdminPage() {
       if (!editingContestant || editingContestant === 'new') return;
   
       const contestantData = { ...editingContestant };
-      // The id is part of the doc path, so it shouldn't be in the data itself
+      const isNew = !contestants.some(c => c.id === editingContestant.id);
+      
+      // The id is part of the doc path, so it shouldn't be in the data itself for updates
+      // but for adds, we might be using a temp ID. Let's create from a specific new object instead.
       delete (contestantData as any).id;
   
       try {
-          const contestantsCol = collection(db, 'contestants');
-          
-          const isNew = !contestants.some(c => c.id === editingContestant.id);
-  
           if (isNew) {
-              await addDoc(contestantsCol, contestantData);
+              await addDoc(collection(db, 'contestants'), contestantData);
               toast({ title: "Contestant Added", description: `${editingContestant.fullName} has been added.` });
           } else {
               const contestantDoc = doc(db, 'contestants', editingContestant.id);
@@ -220,6 +233,20 @@ export default function AdminPage() {
       }
   };
 
+  const handleSaveTerminology = async () => {
+    if (!leagueSettings) return;
+
+    try {
+        const leagueDoc = doc(db, 'leagues', leagueSettings.id);
+        await updateDoc(leagueDoc, {
+            contestantTerm: leagueSettings.contestantTerm
+        });
+        toast({ title: "Terminology Updated", description: "Your changes have been saved." });
+    } catch (error) {
+        console.error("Error saving terminology: ", error);
+        toast({ title: "Error", description: "Could not save terminology.", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="flex flex-col">
@@ -274,6 +301,9 @@ export default function AdminPage() {
                                    <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
                                </div>
                            </div>
+                           <div className="flex justify-end mt-2">
+                            <Button onClick={handleSaveTerminology}><Save className="mr-2"/>Save Terminology</Button>
+                           </div>
                         </div>
                         <Separator />
                         <div className="space-y-4">
@@ -303,9 +333,9 @@ export default function AdminPage() {
                         <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                            <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>{editingContestant && editingContestant !== 'new' && !contestants.some(c => c.id === editingContestant.id) ? 'Add New Contestant' : `Edit ${editingContestant?.fullName}`}</DialogTitle>
+                                    <DialogTitle>{editingContestant === 'new' ? 'Add New Contestant' : `Edit ${editingContestant?.fullName}`}</DialogTitle>
                                 </DialogHeader>
-                                {editingContestant && editingContestant !== 'new' && (
+                                {editingContestant && (
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
                                         <Label>Full Name</Label>
@@ -344,7 +374,7 @@ export default function AdminPage() {
                                 )}
                                 <DialogFooter className="justify-between">
                                     <div>
-                                        {!contestants.some(c => c.id === editingContestant?.id) ? null : (
+                                        {editingContestant !== 'new' && (
                                             <Button variant="destructive" onClick={handleDeleteContestant}>Delete</Button>
                                         )}
                                     </div>
@@ -357,9 +387,6 @@ export default function AdminPage() {
                         </Dialog>
 
                     </CardContent>
-                    <CardFooter className="justify-end">
-                       <Button onClick={() => handleSaveChanges('Contestant')}><Save className="mr-2"/>Save Changes</Button>
-                    </CardFooter>
                 </Card>
             </TabsContent>
 
@@ -590,3 +617,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
