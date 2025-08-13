@@ -1,4 +1,6 @@
 
+"use client";
+
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { MOCK_LEAGUES, MOCK_SEASONS, MOCK_USERS } from "@/lib/data";
@@ -11,14 +13,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 import { Button } from "./ui/button";
 import { ChevronDown, Settings } from "lucide-react";
+import { AdminPanel } from "./admin-panel";
 
 
 export function AppHeader() {
@@ -39,20 +44,16 @@ export function AppHeader() {
       </Link>
       
       {canShowAdminView && (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="ml-2" asChild>
-                        <Link href="/admin">
-                            <Settings className="h-5 w-5"/>
-                        </Link>
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>Admin Panel</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="ml-2">
+                <Settings className="h-5 w-5"/>
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+            <AdminPanel />
+          </SheetContent>
+        </Sheet>
       )}
 
       <div className="ml-auto">

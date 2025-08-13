@@ -20,13 +20,12 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
 import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query } from 'firebase/firestore';
 
 
-export default function AdminPage() {
+export function AdminPanel() {
   const { toast } = useToast();
   const db = getFirestore(app);
   
@@ -435,14 +434,14 @@ export default function AdminPage() {
   const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
 
   return (
-    <div className="flex flex-col">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
+    <div className="flex flex-col h-full">
+      <header className="flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
         <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
           <Building className="h-5 w-5" />
           Admin Panel
         </h1>
       </header>
-      <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
+      <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
         <Tabs defaultValue="events" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                 <TabsTrigger value="events">Events</TabsTrigger>
