@@ -179,7 +179,7 @@ export default function AdminPage() {
         ...newUserData,
         createdAt: new Date().toISOString(),
         role: 'player',
-        status: 'active' // Or 'pending' if you have an invitation flow
+        status: 'pending'
       });
       toast({ title: "User Created", description: `A new user profile has been created for ${newUserData.displayName}.` });
       setIsNewUserDialogOpen(false);
@@ -803,11 +803,27 @@ export default function AdminPage() {
                                                     <div key={user.id} className="flex items-center justify-between text-sm py-1">
                                                         <div className="flex items-center gap-2">
                                                             <span>{user.displayName}</span>
-                                                            <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
+                                                            <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className={cn(
+                                                                user.status === 'active' && 'text-green-600 border-green-600',
+                                                                user.status === 'pending' && 'text-amber-600 border-amber-600'
+                                                            )}>
+                                                                {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                                                            </Badge>
                                                         </div>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveUserFromTeam(user.id, team.id)}>
-                                                            <Trash2 className="h-3 w-3 text-red-500"/>
-                                                        </Button>
+                                                        <div className="flex items-center">
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                                        <MoreHorizontal className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent>
+                                                                    {user.status === 'pending' && <DropdownMenuItem onClick={() => handleUserAction('resend', user)}><MailQuestion className="mr-2" /> Resend Invitation</DropdownMenuItem>}
+                                                                    <DropdownMenuItem onClick={() => handleUserAction('reset', user)}><KeyRound className="mr-2" /> Send Password Reset</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-red-600" onClick={() => handleRemoveUserFromTeam(user.id, team.id)}><UserX className="mr-2"/> Unassign Team</DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
                                                     </div>
                                                 ))
                                             ) : (

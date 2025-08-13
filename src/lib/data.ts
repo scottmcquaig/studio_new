@@ -231,14 +231,14 @@ export const MOCK_TEAMS: Team[] = [
 
 export const MOCK_USERS: User[] = [
     {"id":"user_admin","displayName":"YAC Admin","email":"admin@yac.com","photoURL":"","createdAt":"2025-07-31T12:00:00Z", "role": "site_admin", "status": "active"},
-    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z", "role": "player", "status": "active"},
-    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z", "role": "player", "status": "active"},
-    {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z", "role": "player", "status": "active"},
+    {"id":"user_scott","displayName":"Scott","email":"scott@example.com","photoURL":"","createdAt":"2025-08-01T12:00:00Z", "role": "player", "status": "pending"},
+    {"id":"user_molly","displayName":"Molly","email":"molly@example.com","photoURL":"","createdAt":"2025-08-01T12:01:10Z", "role": "player", "status": "pending"},
+    {"id":"user_hank","displayName":"Hank","email":"hank@example.com","photoURL":"","createdAt":"2025-08-01T12:00:10Z", "role": "player", "status": "pending"},
     {"id":"user_alicia","displayName":"Alicia","email":"alicia@example.com","photoURL":"","createdAt":"2025-08-01T12:00:20Z", "role": "player", "status": "pending"},
     {"id":"user_stone","displayName":"Stone","email":"stone@example.com","photoURL":"","createdAt":"2025-08-01T12:00:30Z", "role": "league_admin", "managedLeagueIds": ["yac_bb27_public"], "status": "active"},
-    {"id":"user_liz","displayName":"Liz","email":"liz@example.com","photoURL":"","createdAt":"2025-08-01T12:00:40Z", "role": "player", "status": "active"},
-    {"id":"user_jess","displayName":"Jess","email":"jess@example.com","photoURL":"","createdAt":"2025-08-01T12:00:50Z", "role": "player", "status": "active"},
-    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z", "role": "player", "status": "active"}
+    {"id":"user_liz","displayName":"Liz","email":"liz@example.com","photoURL":"","createdAt":"2025-08-01T12:00:40Z", "role": "player", "status": "pending"},
+    {"id":"user_jess","displayName":"Jess","email":"jess@example.com","photoURL":"","createdAt":"2025-08-01T12:00:50Z", "role": "player", "status": "pending"},
+    {"id":"user_will","displayName":"Will","email":"will@example.com","photoURL":"","createdAt":"2025-08-01T12:01:00Z", "role": "player", "status": "pending"}
 ];
 
 export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
@@ -280,4 +280,3 @@ export const MOCK_PICKS: Pick[] = [
   {"id":"pick_15","leagueId":"yac_bb27_public","teamId":"team_stone_liz","contestantId":"amy_bingham","round":4,"pick":15,"createdAt":"2025-08-01T12:24:00Z"},
   {"id":"pick_16","leagueId":"yac_bb27_public","teamId":"team_hank_alicia","contestantId":"mickey_lee","round":4,"pick":16,"createdAt":"2025-08-01T12:25:00Z"}
 ];
-
