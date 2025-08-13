@@ -28,7 +28,7 @@ export default function FormsPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      favNumber: undefined,
+      favNumber: "" as any, // Use empty string for controlled component
     },
   });
 
@@ -36,10 +36,14 @@ export default function FormsPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await addDoc(collection(db, "submissions"), {
+      // Ensure favNumber is a number or null if not provided
+      const submissionData = {
         ...values,
+        favNumber: values.favNumber ? Number(values.favNumber) : null,
         submittedAt: new Date(),
-      });
+      };
+
+      await addDoc(collection(db, "submissions"), submissionData);
 
       toast({
         title: "Form Submitted!",
@@ -93,7 +97,7 @@ export default function FormsPage() {
                     <FormItem>
                       <FormLabel>Favorite Number</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="e.g., 42" {...field} />
+                        <Input type="number" placeholder="e.g., 42" {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
