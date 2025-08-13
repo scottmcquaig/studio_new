@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion } from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -397,6 +397,7 @@ export function AdminPanel() {
   
   const handleSaveTeams = async () => {
     const promises = displayedTeams.map(team => {
+        if(team.id.endsWith('_placeholder')) return;
         const teamDocRef = doc(db, 'teams', team.id);
         const dataToSave = {
             id: team.id,
@@ -404,9 +405,10 @@ export function AdminPanel() {
             name: teamNames[team.id] || team.name,
             draftOrder: teamDraftOrders[team.id] || team.draftOrder,
             ownerUserIds: team.ownerUserIds,
+            contestantIds: team.contestantIds || [],
         };
         return setDoc(teamDocRef, dataToSave, { merge: true });
-    });
+    }).filter(Boolean);
     try {
         await Promise.all(promises);
         toast({ title: "Team Changes Saved", description: "Team names and draft order have been updated." });
@@ -456,14 +458,176 @@ export function AdminPanel() {
             <TabsContent value="events" className="mt-6">
                 <Card>
                     <CardHeader>
-                       <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
-                       <CardDescription>Update results for the selected week.</CardDescription>
+                       <div className="flex justify-between items-center">
+                         <div>
+                           <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
+                           <CardDescription>Update results for the selected week.</CardDescription>
+                         </div>
+                         <div className="w-32">
+                             <Select value={String(selectedWeek)} onValueChange={(val) => setSelectedWeek(Number(val))}>
+                               <SelectTrigger><SelectValue/></SelectTrigger>
+                               <SelectContent>
+                                 {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
+                               </SelectContent>
+                             </Select>
+                         </div>
+                       </div>
                     </CardHeader>
-                    <CardContent>
-                       {/* Content from Weekly Event Management Accordion */}
-                       <p>Event management UI goes here.</p>
+                    <CardContent className="space-y-6">
+                         {/* Weekly Event Forms will go here, using state derived from selectedWeek */}
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base text-purple-600"><Crown className="h-4 w-4" /> Head of Household</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Label>HOH Winner</Label>
+                                    <Select value={hoh?.winnerId}>
+                                        <SelectTrigger><SelectValue placeholder="Select HOH..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base text-red-500"><Users className="h-4 w-4" /> Nominations</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Label>Nominees</Label>
+                                    <div className="space-y-2 mt-2">
+                                    {activeContestants.map(hg => (
+                                        <div key={hg.id} className="flex items-center gap-2">
+                                            <Checkbox id={`nom-${hg.id}`} checked={noms?.nominees?.includes(hg.id)} />
+                                            <Label htmlFor={`nom-${hg.id}`}>{hg.fullName}</Label>
+                                        </div>
+                                    ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base text-amber-500"><Shield className="h-4 w-4" /> Power of Veto</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                     <div>
+                                        <Label>Veto Winner</Label>
+                                        <Select value={pov?.winnerId}>
+                                            <SelectTrigger><SelectValue placeholder="Select Veto Winner..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="veto-used" checked={pov?.used} />
+                                        <Label htmlFor="veto-used">Veto was used</Label>
+                                    </div>
+                                    {pov?.used && (
+                                        <>
+                                            <div>
+                                                <Label>Used On</Label>
+                                                <Select value={pov?.usedOnId}>
+                                                    <SelectTrigger><SelectValue placeholder="Select Player Saved..." /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {noms?.nominees?.map(nomId => {
+                                                            const nom = contestants.find(c => c.id === nomId);
+                                                            return nom ? <SelectItem key={nom.id} value={nom.id}>{nom.fullName}</SelectItem> : null;
+                                                        })}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div>
+                                                <Label>Replacement Nominee</Label>
+                                                <Select value={pov?.replacementNomId}>
+                                                    <SelectTrigger><SelectValue placeholder="Select Replacement..." /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {activeContestants.filter(c => !noms?.nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </>
+                                    )}
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base text-sky-500"><ShieldCheck className="h-4 w-4" /> Block Buster</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Label>Winner (Safe)</Label>
+                                     <Select value={blockBuster?.winnerId}>
+                                        <SelectTrigger><SelectValue placeholder="Select Winner..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base text-muted-foreground"><UserX className="h-4 w-4" /> Eviction</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Label>Evicted Player</Label>
+                                     <Select value={eviction?.evictedId}>
+                                        <SelectTrigger><SelectValue placeholder="Select Evictee..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {contestants.filter(c => c.status === 'active').map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                 <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</CardTitle>
+                                </CardHeader>
+                                <CardContent className="flex h-[calc(100%-4rem)] items-center justify-center">
+                                     <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline"><PlusCircle className="mr-2" /> Add Event</Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Log Special Event / Penalty</DialogTitle>
+                                            </DialogHeader>
+                                            <div className="space-y-4 py-4">
+                                                <div>
+                                                    <Label>Contestant</Label>
+                                                     <Select value={specialEventData.contestantId} onValueChange={(val) => setSpecialEventData({...specialEventData, contestantId: val})}>
+                                                        <SelectTrigger><SelectValue placeholder="Select Contestant..." /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div>
+                                                    <Label>Event/Rule</Label>
+                                                     <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
+                                                        <SelectTrigger><SelectValue placeholder="Select Rule..." /></SelectTrigger>
+                                                        <SelectContent>
+                                                          {specialEventRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label} ({rule.points > 0 ? '+': ''}{rule.points})</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                 <div>
+                                                    <Label>Notes (optional)</Label>
+                                                    <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} />
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+                                                <Button>Log Event</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </CardContent>
+                            </Card>
+                         </div>
                     </CardContent>
-                    <CardFooter className="justify-end">
+                    <CardFooter className="justify-end gap-2">
+                        <Button variant="outline">Reset Week {selectedWeek}</Button>
                        <Button onClick={() => handleSaveChanges('Event')}><Save className="mr-2"/>Save Event Changes</Button>
                     </CardFooter>
                 </Card>
@@ -521,8 +685,11 @@ export function AdminPanel() {
                            <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>{editingContestant === 'new' ? 'Add New Contestant' : `Edit ${editingContestant?.fullName}`}</DialogTitle>
+                                    <DialogDescription>
+                                        Update the details for this contestant. Changes will be saved to the database.
+                                    </DialogDescription>
                                 </DialogHeader>
-                                {editingContestant && (
+                                {editingContestant && editingContestant !== 'new' && (
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
                                         <Label>Full Name</Label>
@@ -847,5 +1014,3 @@ export function AdminPanel() {
     </div>
   );
 }
-
-    
