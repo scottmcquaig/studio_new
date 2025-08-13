@@ -198,20 +198,20 @@ export function AdminPanel() {
     const user = users.find(u => u.id === addUserToLeagueData.userId);
     const team = teams.find(t => t.id === addUserToLeagueData.teamId);
     
-    // Optimistically update the UI
     setTeams(currentTeams => 
         currentTeams.map(t => {
+            let ownerIds = t.ownerUserIds || [];
+            // Remove user from any other team
+            ownerIds = ownerIds.filter(uid => uid !== user!.id);
+            // Add user to the new team
             if (t.id === team?.id) {
-                // Add user to the new team
-                return { ...t, ownerUserIds: [...t.ownerUserIds, user!.id] };
-            } else {
-                // Remove user from any other team they might have been on
-                return { ...t, ownerUserIds: t.ownerUserIds.filter(uid => uid !== user!.id) };
+                ownerIds.push(user!.id);
             }
+            return { ...t, ownerUserIds: ownerIds };
         })
     );
     
-    toast({ title: "User Added to League", description: `${user?.displayName} has been added to ${team?.name}.` });
+    toast({ title: "User Assigned", description: `${user?.displayName} has been assigned to ${team?.name}. Remember to save changes.` });
     setIsAddUserToLeagueDialogOpen(false);
     setAddUserToLeagueData({ userId: '', teamId: '' });
   };
@@ -226,7 +226,7 @@ export function AdminPanel() {
         })
     );
     const user = users.find(u => u.id === userId);
-    toast({ title: "User Removed", description: `${user?.displayName} has been unassigned from the team.` });
+    toast({ title: "User Unassigned", description: `${user?.displayName} has been unassigned. Remember to save changes.` });
   };
 
 
@@ -246,7 +246,11 @@ export function AdminPanel() {
         try {
             const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
             await setDoc(leagueDocRef, leagueSettings, { merge: true });
-            toast({ title: "League Settings Saved", description: "Your changes have been saved to the database." });
+            
+            const rulesetDocRef = doc(db, 'scoring_rules', leagueSettings.settings.scoringRuleSetId);
+            await setDoc(rulesetDocRef, { rules: scoringRules }, { merge: true });
+            
+            toast({ title: "League & Scoring Saved", description: "Your changes have been saved to the database." });
         } catch (error) {
             console.error("Error saving league settings: ", error);
             toast({ title: "Error", description: "Could not save league settings.", variant: "destructive" });
@@ -287,12 +291,12 @@ export function AdminPanel() {
     setScoringRules([...scoringRules, newRuleData]);
     setIsAddRuleDialogOpen(false);
     setNewRuleData({ code: '', label: '', points: 0 });
-    toast({ title: "Rule Added", description: "The new scoring rule has been added." });
+    toast({ title: "Rule Added", description: "The new scoring rule has been added. Remember to save changes." });
   };
 
   const handleRemoveRule = (codeToRemove: string) => {
     setScoringRules(currentRules => currentRules.filter(rule => rule.code !== codeToRemove));
-    toast({ title: "Rule Removed", description: "The scoring rule has been removed." });
+    toast({ title: "Rule Removed", description: "The scoring rule has been removed. Remember to save changes." });
   };
   
   const handleAssignTeam = (userId: string, teamId: string) => {
@@ -447,11 +451,10 @@ export function AdminPanel() {
       
       <main className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
         <Tabs defaultValue="events" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                 <TabsTrigger value="events">Events</TabsTrigger>
                 <TabsTrigger value="contestants">Contestants</TabsTrigger>
                 <TabsTrigger value="league">League Settings</TabsTrigger>
-                <TabsTrigger value="scoring">Scoring Rules</TabsTrigger>
                 <TabsTrigger value="users">Users & Teams</TabsTrigger>
             </TabsList>
 
@@ -581,7 +584,9 @@ export function AdminPanel() {
                             </Card>
                             <Card>
                                  <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</CardTitle>
+                                    <DialogHeader>
+                                        <CardTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</CardTitle>
+                                    </DialogHeader>
                                 </CardHeader>
                                 <CardContent className="flex h-[calc(100%-4rem)] items-center justify-center">
                                      <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
@@ -745,7 +750,7 @@ export function AdminPanel() {
                 </Card>
             </TabsContent>
 
-            <TabsContent value="league" className="mt-6">
+            <TabsContent value="league" className="mt-6 space-y-6">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
@@ -753,11 +758,14 @@ export function AdminPanel() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
-                            <h3 className="text-lg font-medium">General</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="leagueName">League Name</Label>
                                     <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="seasonName">Season Name</Label>
+                                    <Input id="seasonName" value={activeSeason.title} readOnly disabled />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="maxTeams">Number of Teams</Label>
@@ -780,9 +788,6 @@ export function AdminPanel() {
                         <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save League Settings</Button>
                     </CardFooter>
                 </Card>
-            </TabsContent>
-            
-            <TabsContent value="scoring" className="mt-6">
                 <Card>
                     <CardHeader>
                         <div className="flex justify-between items-center">
@@ -861,12 +866,9 @@ export function AdminPanel() {
                             </div>
                         ))}
                     </CardContent>
-                     <CardFooter className="justify-end">
-                        <Button onClick={() => handleSaveChanges('Scoring Rules')}><Save className="mr-2"/>Save Scoring Rules</Button>
-                    </CardFooter>
                 </Card>
             </TabsContent>
-
+            
             <TabsContent value="users" className="mt-6">
                 <Card>
                     <CardHeader>
