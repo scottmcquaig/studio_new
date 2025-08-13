@@ -215,6 +215,20 @@ export default function AdminPage() {
     setIsAddUserToLeagueDialogOpen(false);
     setAddUserToLeagueData({ userId: '', teamId: '' });
   };
+  
+  const handleRemoveUserFromTeam = (userId: string, teamId: string) => {
+    setTeams(currentTeams => 
+        currentTeams.map(t => {
+            if (t.id === teamId) {
+                return { ...t, ownerUserIds: t.ownerUserIds.filter(uid => uid !== userId) };
+            }
+            return t;
+        })
+    );
+    const user = users.find(u => u.id === userId);
+    toast({ title: "User Removed", description: `${user?.displayName} has been unassigned from the team.` });
+  };
+
 
   const handleUserAction = (action: 'resend' | 'reset', user: UserType) => {
     if (action === 'resend') {
@@ -416,6 +430,9 @@ export default function AdminPage() {
         toast({ title: "Error", description: "Could not save user assignments.", variant: "destructive" });
     }
   };
+
+  const allAssignedUserIds = teams.flatMap(t => t.ownerUserIds);
+  const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
 
   return (
     <div className="flex flex-col">
@@ -731,7 +748,7 @@ export default function AdminPage() {
                                                 <Select value={addUserToLeagueData.userId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, userId: value})}>
                                                     <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
                                                     <SelectContent>
-                                                        {users.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
+                                                        {unassignedUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -784,8 +801,13 @@ export default function AdminPage() {
                                             {getUsersForTeam(team.id).length > 0 ? (
                                                 getUsersForTeam(team.id).map(user => (
                                                     <div key={user.id} className="flex items-center justify-between text-sm py-1">
-                                                        <span>{user.displayName}</span>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-3 w-3 text-red-500"/></Button>
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{user.displayName}</span>
+                                                            <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
+                                                        </div>
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveUserFromTeam(user.id, team.id)}>
+                                                            <Trash2 className="h-3 w-3 text-red-500"/>
+                                                        </Button>
                                                     </div>
                                                 ))
                                             ) : (
@@ -795,8 +817,9 @@ export default function AdminPage() {
                                     </Card>
                                 ))}
                             </div>
-                             <div className="flex justify-end">
+                             <div className="flex justify-end gap-2">
                                 <Button onClick={handleSaveTeams}><Save className="mr-2"/>Save Team Changes</Button>
+                                <Button onClick={handleSaveUserAndTeamChanges}><Save className="mr-2"/>Save User Assignments</Button>
                             </div>
                         </div>
                     </CardContent>
@@ -807,9 +830,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
-
-    
-
-    
