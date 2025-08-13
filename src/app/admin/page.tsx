@@ -28,7 +28,7 @@ import type { SiteSettings } from '@/lib/firestore';
 export default function AdminPage() {
   const { toast } = useToast();
   
-  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({ leagueName: 'YAC Fantasy League' });
   const [teams, setTeams] = useState<Team[]>(MOCK_TEAMS);
 
   const league = MOCK_LEAGUES.length > 0 ? MOCK_LEAGUES[0] : null;
@@ -43,7 +43,7 @@ export default function AdminPage() {
         toast({ title: "Error", description: "Failed to load league settings.", variant: 'destructive' });
       }
     }
-    fetchSettings();
+    // fetchSettings(); // Removed to prevent crash on load
   }, [toast]);
 
 
