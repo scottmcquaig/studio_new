@@ -17,9 +17,7 @@ const formSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
   }),
-  favNumber: z.coerce.number().min(0, {
-    message: "Favorite number must be a positive number.",
-  }),
+  favNumber: z.coerce.number().optional(),
 });
 
 export default function FormsPage() {
@@ -36,7 +34,7 @@ export default function FormsPage() {
   const { isSubmitting } = form.formState;
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const result = await saveFormSubmission(values);
+    const result = await saveFormSubmission(values as { name: string; favNumber: number });
 
     if (result.success) {
       toast({
