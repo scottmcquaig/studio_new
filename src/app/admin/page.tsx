@@ -42,9 +42,9 @@ export default function AdminPage() {
 
   const specialEventRules = scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [];
   
-  const contestantTerm = leagueSettings?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
+  const [editingContestant, setEditingContestant] = useState<Contestant | null | 'new'>(null);
+  
   const [selectedWeek, setSelectedWeek] = useState(activeSeason.currentWeek);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -89,6 +89,9 @@ export default function AdminPage() {
 
   const handleSaveChanges = (section?: string) => {
     toast({ title: "Changes Saved", description: `${section || 'All updates'} have been saved.` });
+    if(editingContestant) {
+        setEditingContestant(null);
+    }
   };
   
   const handleTeamNameChange = (teamId: string, newName: string) => {
@@ -132,6 +135,51 @@ export default function AdminPage() {
     return teams.find(team => team.ownerUserIds.includes(user.id));
   };
 
+  const contestantTerm = leagueSettings.contestantTerm;
+
+  const handleOpenContestantDialog = (contestant: Contestant | 'new') => {
+    if (contestant === 'new') {
+        const newContestant: Contestant = {
+            id: `contestant_${Date.now()}`,
+            seasonId: activeSeason.id,
+            fullName: '',
+            age: 0,
+            hometown: '',
+            occupation: '',
+            status: 'active',
+            enteredDay: 1,
+            photoUrl: 'https://placehold.co/100x100.png'
+        };
+        setEditingContestant(newContestant);
+    } else {
+        setEditingContestant(contestant);
+    }
+  };
+  
+  const handleUpdateContestant = (field: keyof Contestant, value: string | number | boolean) => {
+    if (editingContestant && editingContestant !== 'new') {
+      setEditingContestant({ ...editingContestant, [field]: value });
+    }
+  };
+
+  const handleSaveContestant = () => {
+    if (editingContestant && editingContestant !== 'new') {
+        const existingIndex = contestants.findIndex(c => c.id === editingContestant.id);
+        if (existingIndex > -1) {
+            // It's an existing contestant, update it
+            const updatedContestants = [...contestants];
+            updatedContestants[existingIndex] = editingContestant;
+            setContestants(updatedContestants);
+            toast({ title: "Contestant Updated", description: `${editingContestant.fullName} has been updated.` });
+        } else {
+            // It's a new contestant, add it
+            setContestants([...contestants, editingContestant]);
+            toast({ title: "Contestant Added", description: `${editingContestant.fullName} has been added.` });
+        }
+        setEditingContestant(null);
+    }
+  };
+
 
   return (
     <div className="flex flex-col">
@@ -145,7 +193,7 @@ export default function AdminPage() {
         <Tabs defaultValue="events" className="w-full">
             <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
                 <TabsTrigger value="events">Events</TabsTrigger>
-                <TabsTrigger value="contestants">{contestantTerm.plural}</TabsTrigger>
+                <TabsTrigger value="contestants">Contestants</TabsTrigger>
                 <TabsTrigger value="league">League Settings</TabsTrigger>
                 <TabsTrigger value="scoring">Scoring Rules</TabsTrigger>
                 <TabsTrigger value="users">Users & Teams</TabsTrigger>
@@ -170,15 +218,100 @@ export default function AdminPage() {
             <TabsContent value="contestants" className="mt-6">
                 <Card>
                     <CardHeader>
-                       <CardTitle className="flex items-center gap-2"><UserSquare/> {contestantTerm.plural} Roster</CardTitle>
-                       <CardDescription>Edit {contestantTerm.plural.toLowerCase()} information and photos.</CardDescription>
+                       <CardTitle className="flex items-center gap-2"><UserSquare/> Contestant Management</CardTitle>
+                       <CardDescription>Manage contestant details, status, and terminology for the league.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                       {/* Content from Contestants Roster Accordion */}
-                       <p>{contestantTerm.plural} roster management UI goes here.</p>
+                    <CardContent className="space-y-6">
+                       <div className="space-y-4">
+                           <h3 className="text-lg font-medium flex items-center gap-2"><MessageSquareQuote/> Terminology</h3>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div className="space-y-2">
+                                   <Label htmlFor="termSingular">Contestant (Singular)</Label>
+                                   <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, singular: e.target.value}})} />
+                               </div>
+                               <div className="space-y-2">
+                                   <Label htmlFor="termPlural">Contestant (Plural)</Label>
+                                   <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
+                               </div>
+                           </div>
+                        </div>
+                        <Separator />
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-lg font-medium">Contestant Roster</h3>
+                                <Button size="sm" variant="outline" onClick={() => handleOpenContestantDialog('new')}><PlusCircle className="mr-2"/> Add Contestant</Button>
+                            </div>
+                            <div className="space-y-2">
+                                {contestants.map(c => (
+                                    <div key={c.id} className="flex items-center justify-between p-2 border rounded-md">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={c.photoUrl} alt={c.fullName} />
+                                                <AvatarFallback>{c.fullName.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{c.fullName}</p>
+                                                <p className="text-sm text-muted-foreground">{c.hometown}</p>
+                                            </div>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => handleOpenContestantDialog(c)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
+                           <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>{editingContestant !== 'new' && editingContestant ? `Edit ${editingContestant.fullName}` : `Add New Contestant`}</DialogTitle>
+                                </DialogHeader>
+                                {editingContestant && editingContestant !== 'new' && (
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Full Name</Label>
+                                        <Input value={editingContestant.fullName} onChange={(e) => handleUpdateContestant('fullName', e.target.value)} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Age</Label>
+                                            <Input type="number" value={editingContestant.age} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Status</Label>
+                                            <Select value={editingContestant.status} onValueChange={(val) => handleUpdateContestant('status', val)}>
+                                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="active">Active</SelectItem>
+                                                    <SelectItem value="evicted">Evicted</SelectItem>
+                                                    <SelectItem value="jury">Jury</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Hometown</Label>
+                                        <Input value={editingContestant.hometown} onChange={(e) => handleUpdateContestant('hometown', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Occupation</Label>
+                                        <Input value={editingContestant.occupation} onChange={(e) => handleUpdateContestant('occupation', e.target.value)} />
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label>Photo URL</Label>
+                                        <Input value={editingContestant.photoUrl} onChange={(e) => handleUpdateContestant('photoUrl', e.target.value)} />
+                                    </div>
+                                </div>
+                                )}
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setEditingContestant(null)}>Cancel</Button>
+                                    <Button onClick={handleSaveContestant}>Save Changes</Button>
+                                </DialogFooter>
+                           </DialogContent>
+                        </Dialog>
+
                     </CardContent>
                     <CardFooter className="justify-end">
-                       <Button onClick={() => handleSaveChanges('Contestant')}><Save className="mr-2"/>Save {contestantTerm.plural} Changes</Button>
+                       <Button onClick={() => handleSaveChanges('Contestant')}><Save className="mr-2"/>Save Changes</Button>
                     </CardFooter>
                 </Card>
             </TabsContent>
@@ -187,7 +320,7 @@ export default function AdminPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><ShieldCheck /> League Settings</CardTitle>
-                        <CardDescription>Manage core settings and terminology for the league.</CardDescription>
+                        <CardDescription>Manage core settings for the league.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-4">
@@ -197,20 +330,6 @@ export default function AdminPage() {
                                 <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
                             </div>
                         </div>
-                        <Separator/>
-                         <div className="space-y-4">
-                            <h3 className="text-lg font-medium flex items-center gap-2"><MessageSquareQuote/> Terminology</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                    <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, singular: e.target.value}})} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                    <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
-                                </div>
-                            </div>
-                         </div>
                     </CardContent>
                     <CardFooter className="justify-end">
                         <Button onClick={() => handleSaveChanges('League Settings')}><Save className="mr-2"/>Save League Settings</Button>
