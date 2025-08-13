@@ -216,7 +216,7 @@ export const MOCK_LEAGUES: League[] = [
       },
       "settings":{
         "allowMidSeasonDraft":true,
-        "scoringRuleSetId":"std_bb_rules_v1",
+        "scoringRuleSetId":"bb27_ruleset",
         "transactionLockDuringEpisodes":true
       }
     }
@@ -243,7 +243,7 @@ export const MOCK_USERS: User[] = [
 
 export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
     {
-      "id":"std_bb_rules_v1",
+      "id":"bb27_ruleset",
       "name":"Standard BB Rules v1",
       "seasonId":"bb27",
       "rules":[
