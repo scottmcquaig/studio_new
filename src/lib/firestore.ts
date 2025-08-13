@@ -1,8 +1,7 @@
 
-
 'use server';
 
-import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import { collection, getDocs, doc, writeBatch, type DocumentData, type QueryDocumentSnapshot, addDoc } from 'firebase-admin/firestore';
 import { db } from './firebase-admin'; // Use the server-side admin instance
 import type { League, Team } from './data';
 
@@ -56,31 +55,23 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
   const batch = writeBatch(db);
 
-  // Update the league document
   const leagueRef = doc(db, 'leagues', league.id);
   const { id: leagueId, ...leagueData } = league;
   batch.set(leagueRef, leagueData, { merge: true });
 
-  // Filter out any placeholder teams that don't have a name.
-  const validTeams = teams.filter(team => team && team.name && team.id);
+  const validTeams = teams.filter(team => team && team.name);
   
-  // Update or create each valid team document
   validTeams.forEach(team => {
-    // Exclude the ID from the data being written to Firestore
     const { id: teamId, ...teamData } = team;
-
-    // The Firestore Admin SDK cannot serialize the nested weekly_score_breakdown object.
-    // We must remove it before saving.
     const dataToSave: DocumentData = { ...teamData };
     delete dataToSave.weekly_score_breakdown;
-    
-    // If the team is new (has a temporary ID), create a new document reference with a unique ID.
+
     if (teamId && teamId.startsWith('new_team_')) {
-        const teamRef = doc(collection(db, 'teams')); // Creates a new ref with a new ID
-        batch.set(teamRef, dataToSave); // Use set for new documents
-    } else if (teamId) { // All other valid teams are existing ones to be updated.
-        const teamRef = doc(db, 'teams', teamId); // Gets a ref to the existing document
-        batch.set(teamRef, dataToSave, { merge: true }); // Use set with merge for existing documents
+        const teamRef = doc(collection(db, 'teams'));
+        batch.set(teamRef, dataToSave);
+    } else if (teamId) {
+        const teamRef = doc(db, 'teams', teamId);
+        batch.set(teamRef, dataToSave, { merge: true });
     }
   });
 
@@ -90,4 +81,20 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     console.error("Error committing batch save for league and teams:", error);
     throw new Error("Failed to save data to Firestore.");
   }
+}
+
+export async function testWrite(): Promise<void> {
+    if (!db || typeof db.collection !== 'function') {
+        throw new Error("Firestore is not initialized. Cannot perform test write.");
+    }
+    try {
+        const docRef = await addDoc(collection(db, "test_logs"), {
+            test: "success",
+            timestamp: new Date(),
+        });
+        console.log("Document written with ID: ", docRef.id);
+    } catch (e) {
+        console.error("Error adding document: ", e);
+        throw new Error("Firestore test write failed.");
+    }
 }
