@@ -346,9 +346,9 @@ export default function AdminPage() {
 
     try {
         const leagueDoc = doc(db, 'leagues', leagueSettings.id);
-        await updateDoc(leagueDoc, {
+        await setDoc(leagueDoc, {
             contestantTerm: leagueSettings.contestantTerm
-        });
+        }, { merge: true });
         toast({ title: "Terminology Updated", description: "Your changes have been saved." });
     } catch (error) {
         console.error("Error saving terminology: ", error);
@@ -357,12 +357,16 @@ export default function AdminPage() {
   };
   
   const handleSaveTeams = async () => {
-    const promises = teams.map(team => {
+    const promises = displayedTeams.map(team => {
         const teamDocRef = doc(db, 'teams', team.id);
-        return updateDoc(teamDocRef, {
-            name: teamNames[team.id],
-            draftOrder: teamDraftOrders[team.id]
-        });
+        const dataToSave = {
+            id: team.id,
+            leagueId: team.leagueId,
+            name: teamNames[team.id] || team.name,
+            draftOrder: teamDraftOrders[team.id] || team.draftOrder,
+            ownerUserIds: team.ownerUserIds,
+        };
+        return setDoc(teamDocRef, dataToSave, { merge: true });
     });
     try {
         await Promise.all(promises);
@@ -376,7 +380,7 @@ export default function AdminPage() {
   const handleSaveUserAndTeamChanges = async () => {
     const teamPromises = teams.map(team => {
         const teamDocRef = doc(db, 'teams', team.id);
-        return updateDoc(teamDocRef, { ownerUserIds: team.ownerUserIds });
+        return setDoc(teamDocRef, { ownerUserIds: team.ownerUserIds }, { merge: true });
     });
 
     try {
@@ -824,6 +828,8 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
 
     
 
