@@ -9,15 +9,27 @@ import type { League, Team } from './data';
 // Helper function to convert a Firestore document to our data types
 function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
     const data = doc.data();
-    // Reconstruct the nested contestantTerm object when reading from Firestore
-    if (data.contestantTermSingular && data.contestantTermPlural) {
+
+    // Reconstruct the nested objects when reading from Firestore
+    if (data.contestantTermSingular || data.scoringRuleSetId) { // Check if it's a league object
         data.contestantTerm = {
             singular: data.contestantTermSingular,
             plural: data.contestantTermPlural,
         };
+        data.settings = {
+            allowMidSeasonDraft: data.allowMidSeasonDraft,
+            scoringRuleSetId: data.scoringRuleSetId,
+            transactionLockDuringEpisodes: data.transactionLockDuringEpisodes,
+        };
+
+        // Clean up the flat properties
         delete data.contestantTermSingular;
         delete data.contestantTermPlural;
+        delete data.allowMidSeasonDraft;
+        delete data.scoringRuleSetId;
+        delete data.transactionLockDuringEpisodes;
     }
+
     return {
         id: doc.id,
         ...data,
@@ -49,22 +61,23 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
   // Save the league document
   const leagueRef = db.collection('leagues').doc(league.id);
-  // Destructure and flatten the league object to remove nested objects before saving.
-  const { id: leagueId, contestantTerm, ...restOfLeagueData } = league;
+  
+  // Destructure and flatten the league object to remove ALL nested objects before saving.
+  const { id: leagueId, contestantTerm, settings, ...restOfLeagueData } = league;
   const leagueData = {
       ...restOfLeagueData,
       contestantTermSingular: contestantTerm.singular,
       contestantTermPlural: contestantTerm.plural,
+      ...settings, // Flatten the settings object
   };
+
   batch.set(leagueRef, leagueData, { merge: true });
 
   const validTeams = teams.filter(team => team && team.name);
   
   validTeams.forEach(team => {
-    const { id: teamId, ...teamData } = team;
-    
-    // Explicitly delete the complex nested object that the Admin SDK cannot serialize.
-    delete (teamData as any).weekly_score_breakdown;
+    // Create a copy to avoid mutating the original object, and remove complex fields
+    const { id: teamId, weekly_score_breakdown, ...teamData } = team;
 
     if (teamId && teamId.startsWith('new_team_')) {
         const newTeamRef = db.collection('teams').doc();
