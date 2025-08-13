@@ -32,11 +32,11 @@ export default function AdminPage() {
   
   const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
 
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
   const activeSeason = MOCK_SEASONS[0];
 
-  const [users, setUsers] = useState<UserType[]>(MOCK_USERS);
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
   const [scoringRules, setScoringRules] = useState<ScoringRule[]>(MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || []);
@@ -98,8 +98,8 @@ export default function AdminPage() {
     });
     
     const teamsCol = collection(db, "teams");
-    const q = query(teamsCol);
-    const unsubscribeTeams = onSnapshot(q, (querySnapshot) => {
+    const qTeams = query(teamsCol);
+    const unsubscribeTeams = onSnapshot(qTeams, (querySnapshot) => {
       if (!querySnapshot.empty) {
         const teamsData: Team[] = [];
         const teamNamesData: {[id: string]: string} = {};
@@ -140,10 +140,21 @@ export default function AdminPage() {
         }
     });
 
+    const usersCol = collection(db, "users");
+    const qUsers = query(usersCol);
+    const unsubscribeUsers = onSnapshot(qUsers, (querySnapshot) => {
+        const usersData: UserType[] = [];
+        querySnapshot.forEach((doc) => {
+            usersData.push({ ...doc.data(), id: doc.id } as UserType);
+        });
+        setUsers(usersData);
+    });
+
     return () => {
         unsubscribeContestants();
         unsubscribeLeagues();
         unsubscribeTeams();
+        unsubscribeUsers();
     };
   }, [db]);
 
@@ -158,11 +169,25 @@ export default function AdminPage() {
   const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
   const weekOptions = Array.from({ length: activeSeason.totalWeeks || activeSeason.currentWeek }, (_, i) => i + 1);
 
-  const handleAddNewUser = () => {
-    toast({ title: "User Created", description: `A new user profile has been created for ${newUserData.displayName}.` });
-    setUsers([...users, { id: `user_${Math.random()}`, ...newUserData, createdAt: new Date().toISOString(), role: 'player', status: 'active' }]);
-    setIsNewUserDialogOpen(false);
-    setNewUserData({ displayName: '', email: '' });
+  const handleAddNewUser = async () => {
+    if (!newUserData.displayName || !newUserData.email) {
+      toast({ title: "Error", description: "Display Name and Email are required.", variant: 'destructive' });
+      return;
+    }
+    try {
+      await addDoc(collection(db, "users"), {
+        ...newUserData,
+        createdAt: new Date().toISOString(),
+        role: 'player',
+        status: 'active' // Or 'pending' if you have an invitation flow
+      });
+      toast({ title: "User Created", description: `A new user profile has been created for ${newUserData.displayName}.` });
+      setIsNewUserDialogOpen(false);
+      setNewUserData({ displayName: '', email: '' });
+    } catch (error) {
+      console.error("Error creating user: ", error);
+      toast({ title: "Error", description: "Could not create new user.", variant: "destructive" });
+    }
   };
   
   const handleAddUserToLeague = () => {
