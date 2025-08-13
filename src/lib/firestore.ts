@@ -2,12 +2,12 @@
 
 'use server';
 
-import * as admin from 'firebase-admin/firestore';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase-admin/firestore';
 import { db } from './firebase-admin'; // Use the server-side admin instance
 import type { League, Team } from './data';
 
 // Helper function to convert a Firestore document to our data types
-function fromFirestore<T>(doc: admin.QueryDocumentSnapshot<admin.DocumentData>): T {
+function fromFirestore<T>(doc: QueryDocumentSnapshot<DocumentData>): T {
     const data = doc.data();
     return {
         id: doc.id,
@@ -17,7 +17,7 @@ function fromFirestore<T>(doc: admin.QueryDocumentSnapshot<admin.DocumentData>):
 
 export async function getLeagues(): Promise<League[]> {
   try {
-    const querySnapshot = await admin.getDocs(admin.collection(db, 'leagues'));
+    const querySnapshot = await db.collection('leagues').get();
     return querySnapshot.docs.map(doc => fromFirestore<League>(doc));
   } catch (error) {
     console.error("Error fetching leagues from Firestore:", error);
@@ -27,7 +27,7 @@ export async function getLeagues(): Promise<League[]> {
 
 export async function getTeams(): Promise<Team[]> {
   try {
-    const querySnapshot = await admin.getDocs(admin.collection(db, 'teams'));
+    const querySnapshot = await db.collection('teams').get();
     return querySnapshot.docs.map(doc => fromFirestore<Team>(doc));
   } catch (error) {
     console.error("Error fetching teams from Firestore:", error);
@@ -36,10 +36,10 @@ export async function getTeams(): Promise<Team[]> {
 }
 
 export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise<void> {
-  const batch = admin.writeBatch(db);
+  const batch = db.batch();
 
   // Save the league document
-  const leagueRef = admin.doc(db, 'leagues', league.id);
+  const leagueRef = db.collection('leagues').doc(league.id);
   const { id: leagueId, ...leagueData } = league;
   batch.set(leagueRef, leagueData, { merge: true });
 
@@ -53,10 +53,10 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
     delete (teamData as any).weekly_score_breakdown;
 
     if (teamId && teamId.startsWith('new_team_')) {
-        const newTeamRef = admin.doc(admin.collection(db, 'teams'));
+        const newTeamRef = db.collection('teams').doc();
         batch.set(newTeamRef, teamData);
     } else if (teamId) {
-        const teamRef = admin.doc(db, 'teams', teamId);
+        const teamRef = db.collection('teams').doc(teamId);
         batch.set(teamRef, teamData, { merge: true });
     }
   });
@@ -72,7 +72,7 @@ export async function saveLeagueAndTeams(league: League, teams: Team[]): Promise
 
 export async function testWrite(): Promise<void> {
     try {
-        const docRef = await admin.addDoc(admin.collection(db, "test_logs"), {
+        const docRef = await db.collection("test_logs").add({
             test: "success",
             timestamp: new Date(),
         });
