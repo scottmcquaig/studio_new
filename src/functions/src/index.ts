@@ -29,7 +29,6 @@ export const createuserdocument = onUserCreate(async (event) => {
   const role = email === "admin@yac.com" ? "site_admin" : "player";
 
   const newUserDocument = {
-    id: uid,
     displayName: displayName || "New User",
     email: email,
     photoURL: photoURL || "",
