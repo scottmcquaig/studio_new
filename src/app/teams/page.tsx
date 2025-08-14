@@ -185,7 +185,7 @@ export default function TeamsPage() {
                                         Owned by {owners.map(o => o?.displayName).join(' & ')}
                                     </CardDescription>
                                 </div>
-                                <Badge variant="secondary" className="text-lg font-bold">{(kpis.total || 0).toLocaleString()} pts</Badge>
+                                <Badge variant="secondary" className="text-lg font-bold">{kpis.total.toLocaleString()} pts</Badge>
                             </div>
                         </CardHeader>
                         <CardContent>
