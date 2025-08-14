@@ -1,11 +1,9 @@
-
 "use client";
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
-import { auth, app } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +18,6 @@ export default function SignUpPage() {
   const [displayName, setDisplayName] = useState('');
   const router = useRouter();
   const { toast } = useToast();
-  const db = getFirestore(app);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,26 +26,16 @@ export default function SignUpPage() {
       return;
     }
     try {
-      // 1. Create the user with Firebase Auth
+      // 1. Create the user with Firebase Auth. The Cloud Function will handle creating the Firestore document.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      
+      // 2. Update the user's display name in their Auth profile.
+      await updateProfile(userCredential.user, { displayName });
 
-      // 2. Create the user document in Firestore with a default 'player' role.
-      // This is a secure operation as the client is not assigning a privileged role.
-      await setDoc(doc(db, "users", user.uid), {
-          id: user.uid,
-          displayName: displayName,
-          email: user.email,
-          createdAt: new Date().toISOString(), // Use client time for consistency here
-          role: 'player', // Always assign 'player' role on client-side sign-up
-          status: 'active'
-      });
-
-      toast({ title: "Success", description: "Account created successfully!" });
-      router.push('/');
+      toast({ title: "Success", description: "Account created successfully! Please log in." });
+      router.push('/login');
 
     } catch (error: any) {
-      // Catch specific Firebase errors for better user feedback
       let description = "An unexpected error occurred. Please try again.";
       if (error.code === 'auth/email-already-in-use') {
         description = "This email is already registered. Please try logging in.";
@@ -79,7 +66,7 @@ export default function SignUpPage() {
           <CardTitle className="text-2xl">Sign Up</CardTitle>
           <CardDescription>
             Enter your information to create an account.
-          </CardDescription>
+          </Description>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp} className="grid gap-4">
