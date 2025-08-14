@@ -63,6 +63,7 @@ export default function AdminPage() {
   
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
+  const [contestantToDelete, setContestantToDelete] = useState<Contestant | null>(null);
   
   const [selectedWeek, setSelectedWeek] = useState(activeSeason?.currentWeek || 1);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
@@ -482,10 +483,22 @@ export default function AdminPage() {
 
   const handleUpdateRule = (index: number, field: keyof ScoringRule, value: string | number) => {
     if (!scoringRuleSet) return;
+    
+    if (field === 'code' && typeof value === 'string') {
+        const otherCodes = scoringRuleSet.rules.filter((_, i) => i !== index).map(r => r.code);
+        if (otherCodes.includes(value)) {
+            toast({
+                title: "Duplicate Code",
+                description: `The event code "${value}" is already in use. Please choose a unique code.`,
+                variant: "destructive",
+            });
+        }
+    }
+    
     const updatedRules = [...scoringRuleSet.rules];
-    updatedRules[index] = { ...updatedRules[index], [field]: value };
+    (updatedRules[index] as any)[field] = value;
     setScoringRuleSet({ ...scoringRuleSet, rules: updatedRules });
-  };
+};
 
   const handleAddRule = () => {
     if (!newRuleData.code || !newRuleData.label || !scoringRuleSet) {
@@ -686,8 +699,7 @@ export default function AdminPage() {
       }
   };
   
-  const handleDeleteContestant = async (contestantId: string) => {
-    const contestantToDelete = contestants.find(c => c.id === contestantId);
+  const handleDeleteContestant = async () => {
     if (!contestantToDelete) return;
     
     try {
@@ -698,15 +710,14 @@ export default function AdminPage() {
         }
         
         // Then, delete the document from Firestore
-        await deleteDoc(doc(db, 'contestants', contestantId));
-        
-        // Update local state for immediate UI feedback
-        setContestants(prev => prev.filter(c => c.id !== contestantId));
+        await deleteDoc(doc(db, 'contestants', contestantToDelete.id));
         
         toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(contestantToDelete, 'full')} has been permanently removed.` });
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
+    } finally {
+        setContestantToDelete(null);
     }
   };
 
@@ -1011,25 +1022,9 @@ export default function AdminPage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Button variant="outline" size="sm" onClick={() => handleOpenContestantDialog(c)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
-                                             <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="destructive" size="icon" className="h-9 w-9">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This will permanently delete {getContestantDisplayName(c, 'full')} and all their data. This action cannot be undone.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteContestant(c.id)}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
+                                            <Button variant="destructive" size="icon" className="h-9 w-9" onClick={() => setContestantToDelete(c)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                 ))}
@@ -1110,6 +1105,21 @@ export default function AdminPage() {
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
+                        
+                         <AlertDialog open={!!contestantToDelete} onOpenChange={(isOpen) => !isOpen && setContestantToDelete(null)}>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete {getContestantDisplayName(contestantToDelete, 'full')} and all their data.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setContestantToDelete(null)}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteContestant}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                         
                         <Dialog open={!!imageSrc} onOpenChange={(isOpen) => !isOpen && setImageSrc(null)}>
                             <DialogContent className="max-w-lg">
@@ -1201,7 +1211,7 @@ export default function AdminPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {scoringRuleSet?.rules.map((rule, index) => (
-                                        <TableRow key={rule.code}>
+                                        <TableRow key={`${rule.code}-${index}`}>
                                             <TableCell>
                                                 <Input value={rule.code} onChange={(e) => handleUpdateRule(index, 'code', e.target.value.toUpperCase())} className="h-8" />
                                             </TableCell>
@@ -1550,3 +1560,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
