@@ -372,13 +372,15 @@ function AdminPage() {
       return;
     }
     try {
-      await addDoc(collection(db, "users"), {
+      const newUserId = `pending_${new Date().getTime()}`;
+      await setDoc(doc(db, "users", newUserId), {
+        id: newUserId,
         ...newUserData,
         createdAt: new Date().toISOString(),
         role: 'player',
         status: 'pending'
       });
-      toast({ title: "User Created", description: `A new user profile has been created for ${newUserData.displayName}.` });
+      toast({ title: "User Created", description: `An invitation can be sent to ${newUserData.displayName}.` });
       setIsNewUserDialogOpen(false);
       setNewUserData({ displayName: '', email: '' });
     } catch (error) {

@@ -3,9 +3,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc, getFirestore, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,21 +25,52 @@ export default function SignUpPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Check if a user with this email already exists in the database
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+      
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      
-      // Create a user document in Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        id: user.uid,
-        displayName: displayName,
-        email: user.email,
-        createdAt: new Date().toISOString(),
-        role: 'player', // Default role
-        status: 'active'
-      });
 
-      toast({ title: "Success", description: "Account created successfully!" });
+      await updateProfile(user, { displayName: displayName });
+
+      if (!querySnapshot.empty) {
+        // User exists, link the auth account to the existing Firestore doc
+        const existingUserDoc = querySnapshot.docs[0];
+        const batch = writeBatch(db);
+        
+        // Create a new document with the auth UID
+        const newUserDocRef = doc(db, "users", user.uid);
+        const updatedData = {
+            ...existingUserDoc.data(),
+            id: user.uid, // Update ID to the new auth UID
+            status: 'active',
+            displayName: displayName || existingUserDoc.data().displayName, // Update display name if provided
+        };
+        batch.set(newUserDocRef, updatedData);
+        
+        // Delete the old document that used a placeholder ID
+        batch.delete(existingUserDoc.ref);
+
+        await batch.commit();
+        toast({ title: "Success", description: "Account claimed successfully!" });
+
+      } else {
+        // New user, create a new document in Firestore with the auth UID
+        await setDoc(doc(db, "users", user.uid), {
+            id: user.uid,
+            displayName: displayName,
+            email: user.email,
+            createdAt: new Date().toISOString(),
+            role: 'player', // Default role for new sign-ups
+            status: 'active'
+        });
+        toast({ title: "Success", description: "Account created successfully!" });
+      }
+
       router.push('/');
+
     } catch (error: any) {
       toast({
         title: "Sign Up Failed",
