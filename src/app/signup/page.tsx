@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getFirestore, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,10 @@ export default function SignUpPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!displayName || !email || !password) {
+      toast({ title: "Error", description: "All fields are required.", variant: "destructive" });
+      return;
+    }
     try {
       // Check if a user with this email already exists in the database (as a pending user)
       const usersRef = collection(db, "users");
@@ -32,8 +36,6 @@ export default function SignUpPage() {
       
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      await updateProfile(user, { displayName: displayName });
 
       if (!querySnapshot.empty) {
         // User exists (likely pending), link the auth account to the existing Firestore doc
@@ -46,7 +48,7 @@ export default function SignUpPage() {
             ...existingUserDoc.data(),
             id: user.uid, // Update ID to the new auth UID
             status: 'active',
-            displayName: displayName || existingUserDoc.data().displayName, // Update display name if provided during signup
+            displayName: displayName || existingUserDoc.data().displayName, // Use new display name
         };
         batch.set(newUserDocRef, updatedData);
         
