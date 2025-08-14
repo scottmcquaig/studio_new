@@ -864,6 +864,33 @@ export default function AdminPage() {
             toast({ title: "Error", description: "Could not finalize season.", variant: "destructive" });
         }
     };
+
+    const snakeDraftPicks = useMemo(() => {
+        const numTeams = teams.length;
+        const numContestants = contestants.length;
+        if (numTeams === 0 || numContestants === 0) return {};
+
+        const rounds = Math.ceil(numContestants / numTeams);
+        const picks: { [teamId: string]: number[] } = {};
+        const sortedTeams = [...teams].sort((a,b) => a.draftOrder - b.draftOrder);
+
+        sortedTeams.forEach(team => {
+            picks[team.id] = [];
+        });
+
+        for (let round = 0; round < rounds; round++) {
+            const pickOrder = (round % 2 === 1) ? [...sortedTeams].reverse() : sortedTeams;
+            for (let i = 0; i < pickOrder.length; i++) {
+                const team = pickOrder[i];
+                const pickNumber = round * numTeams + i + 1;
+                if(pickNumber <= numContestants) {
+                    picks[team.id].push(pickNumber);
+                }
+            }
+        }
+        return picks;
+
+    }, [teams, contestants]);
   
   if (!leagueSettings || !activeSeason) {
     return (
@@ -1440,7 +1467,14 @@ export default function AdminPage() {
                             {teams.map(team => (
                                 <Card key={team.id}>
                                     <CardHeader className="flex-row items-center justify-between p-4">
-                                        <CardTitle className="text-lg">{team.name}</CardTitle>
+                                        <div>
+                                            <CardTitle className="text-lg">{team.name}</CardTitle>
+                                            {snakeDraftPicks[team.id] && (
+                                                <CardDescription className="text-xs">
+                                                    Picks: {snakeDraftPicks[team.id].join(', ')}
+                                                </CardDescription>
+                                            )}
+                                        </div>
                                         <Button size="sm" onClick={() => handleOpenDraftDialog(team)}>
                                             <PlusCircle className="mr-2 h-4 w-4" /> Draft {contestantTerm.singular}
                                         </Button>
@@ -1465,14 +1499,24 @@ export default function AdminPage() {
                             ))}
                         </div>
                         <Card>
-                            <CardHeader>
+                             <CardHeader>
                                 <CardTitle>Undrafted {contestantTerm.plural}</CardTitle>
                             </CardHeader>
-                            <CardContent className="flex flex-wrap gap-2">
+                            <CardContent className="grid grid-cols-2 gap-x-4 gap-y-2">
                                 {undraftedContestants.map(c => (
-                                    <Badge key={c.id} variant="secondary">{getContestantDisplayName(c, 'short')}</Badge>
+                                    <div key={c.id} className="flex items-center gap-2 text-sm">
+                                        <Image
+                                          src={c.photoUrl || "https://placehold.co/100x100.png"}
+                                          alt={getContestantDisplayName(c, 'full')}
+                                          width={24}
+                                          height={24}
+                                          className="rounded-full"
+                                          data-ai-hint="portrait person"
+                                        />
+                                        <span>{getContestantDisplayName(c, 'short')}</span>
+                                    </div>
                                 ))}
-                                {undraftedContestants.length === 0 && <p className="text-sm text-muted-foreground">All {contestantTerm.plural} have been drafted.</p>}
+                                {undraftedContestants.length === 0 && <p className="text-sm text-muted-foreground col-span-2">All {contestantTerm.plural} have been drafted.</p>}
                             </CardContent>
                         </Card>
                     </CardContent>
@@ -1724,5 +1768,7 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
 
     
