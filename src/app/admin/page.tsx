@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
@@ -109,7 +109,11 @@ export default function AdminPage() {
   const db = getFirestore(app);
   const storage = getStorage(app);
   
-  const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [allLeagues, setAllLeagues] = useState<League[]>([]);
+  const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
+  const leagueSettings = useMemo(() => allLeagues.find(l => l.id === selectedLeagueId), [allLeagues, selectedLeagueId]);
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
@@ -146,7 +150,7 @@ export default function AdminPage() {
 
   const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
 
-  const [activeTab, setActiveTab] = useState('scoring');
+  const [activeTab, setActiveTab] = useState('siteAdmin'); // Default for site admins
 
   // State for weekly event management
   const [hohWinnerId, setHohWinnerId] = useState<string | undefined>();
@@ -176,6 +180,16 @@ export default function AdminPage() {
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
   const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
+
+  useEffect(() => {
+    // This would be replaced with actual auth state
+    const adminUser = MOCK_USERS.find(u => u.role === 'site_admin');
+    setCurrentUser(adminUser || null);
+
+    if (adminUser?.role !== 'site_admin') {
+      setActiveTab('scoring'); // Fallback for non-site-admins
+    }
+  }, []);
 
   useEffect(() => {
     const lastTab = sessionStorage.getItem('adminActiveTab');
@@ -260,29 +274,18 @@ export default function AdminPage() {
         setTeamDraftOrders(draftOrderData);
     });
 
-    const leagueDocRef = doc(db, "leagues", "bb27");
-    const unsubscribeLeagues = onSnapshot(leagueDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-            const currentCategories = leagueData.settings?.scoringBreakdownCategories || [];
-            const newCategories = Array.from({ length: 6 }, (_, i) => {
-                return currentCategories[i] || { icon: 'HelpCircle', color: 'text-gray-500', displayName: '', ruleCodes: [''] };
-            });
-            leagueData.settings.scoringBreakdownCategories = newCategories;
-
-            setLeagueSettings(leagueData);
-
-            if (leagueData.settings.scoringRuleSetId) {
-                const ruleSetDocRef = doc(db, 'scoring_rules', leagueData.settings.scoringRuleSetId);
-                const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
-                    if (ruleSnap.exists()) {
-                        setScoringRuleSet({ id: ruleSnap.id, ...ruleSnap.data() } as ScoringRuleSet);
-                    }
-                });
-            }
+    const leaguesCol = collection(db, "leagues");
+    const unsubscribeLeagues = onSnapshot(leaguesCol, (querySnapshot) => {
+        const leagueData: League[] = [];
+        querySnapshot.forEach((doc) => {
+            leagueData.push({ ...doc.data(), id: doc.id } as League);
+        });
+        setAllLeagues(leagueData);
+        if (!selectedLeagueId && leagueData.length > 0) {
+            setSelectedLeagueId(leagueData[0].id);
         }
     });
-
+    
     const usersCol = collection(db, "users");
     const qUsers = query(usersCol);
     const unsubscribeUsers = onSnapshot(qUsers, (querySnapshot) => {
@@ -301,7 +304,21 @@ export default function AdminPage() {
         unsubscribeUsers();
         unsubscribePicks();
     };
-  }, [db]);
+  }, [db, selectedLeagueId]);
+
+  useEffect(() => {
+      if (leagueSettings?.settings?.scoringRuleSetId) {
+          const ruleSetDocRef = doc(db, 'scoring_rules', leagueSettings.settings.scoringRuleSetId);
+          const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
+              if (ruleSnap.exists()) {
+                  setScoringRuleSet({ id: ruleSnap.id, ...ruleSnap.data() } as ScoringRuleSet);
+              }
+          });
+          return () => unsubscribeRules();
+      } else {
+          setScoringRuleSet(null);
+      }
+  }, [leagueSettings, db]);
 
 
   const activeContestants = useMemo(() => contestants.filter(hg => hg.status === 'active'), [contestants]);
@@ -942,13 +959,23 @@ export default function AdminPage() {
 
     }, [teams, totalDraftPicks, leagueSettings]);
   
-  if (!leagueSettings || !activeSeason) {
+  if (!activeSeason) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Admin Panel...</div>
         </div>
     );
   }
+
+  const leagueScopedTabs = (
+    <>
+      <TabsTrigger value="scoring">Scoring</TabsTrigger>
+      <TabsTrigger value="contestants">Contestants</TabsTrigger>
+      <TabsTrigger value="rules">Rules</TabsTrigger>
+      <TabsTrigger value="draft">Draft</TabsTrigger>
+      <TabsTrigger value="league">League Settings</TabsTrigger>
+    </>
+  );
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -963,21 +990,106 @@ export default function AdminPage() {
       </header>
       <main className="flex-1 p-4 md:p-8">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="scoring">Scoring</TabsTrigger>
-                <TabsTrigger value="contestants">Contestants</TabsTrigger>
-                <TabsTrigger value="rules">Rules</TabsTrigger>
-                <TabsTrigger value="draft">Draft</TabsTrigger>
-                <TabsTrigger value="league">League Settings</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-6">
+                {currentUser?.role === 'site_admin' && <TabsTrigger value="siteAdmin">Site Administration</TabsTrigger>}
+                {leagueSettings ? leagueScopedTabs : <TabsTrigger value="no_league" disabled>Select a League</TabsTrigger>}
             </TabsList>
+            
+            {currentUser?.role === 'site_admin' && (
+              <TabsContent value="siteAdmin" className="mt-6 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Globe /> Site Administration</CardTitle>
+                    <CardDescription>Manage global users and leagues across the entire application.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                     <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
+                                <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New League</Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                             <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>League Name</TableHead>
+                                        <TableHead>Season</TableHead>
+                                        <TableHead>Teams</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {allLeagues.map(l => (
+                                    <TableRow key={l.id} className={cn(l.id === selectedLeagueId && "bg-muted/50")}>
+                                        <TableCell className="font-medium">{l.name}</TableCell>
+                                        <TableCell>{MOCK_SEASONS.find(s=>s.id === l.seasonId)?.title}</TableCell>
+                                        <TableCell>{teams.filter(t=>t.leagueId === l.id).length} / {l.maxTeams}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="outline" size="sm" onClick={() => {setSelectedLeagueId(l.id); setActiveTab('scoring');}}>Manage</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                     </Card>
+                     <Card>
+                         <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle className="text-lg flex items-center gap-2"><Users/> Global Users</CardTitle>
+                                <Button size="sm" variant="outline" onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> New User</Button>
+                            </div>
+                        </CardHeader>
+                         <CardContent>
+                             <Table>
+                                 <TableHeader>
+                                     <TableRow>
+                                         <TableHead>Display Name</TableHead>
+                                         <TableHead>Email</TableHead>
+                                         <TableHead>Role</TableHead>
+                                         <TableHead>Status</TableHead>
+                                         <TableHead className="text-right">Actions</TableHead>
+                                     </TableRow>
+                                 </TableHeader>
+                                 <TableBody>
+                                     {users.map(u => (
+                                     <TableRow key={u.id}>
+                                         <TableCell className="font-medium">{u.displayName}</TableCell>
+                                         <TableCell>{u.email}</TableCell>
+                                         <TableCell>{u.role}</TableCell>
+                                         <TableCell>
+                                             <Badge variant={u.status === 'active' ? 'outline' : 'secondary'}>{u.status}</Badge>
+                                         </TableCell>
+                                         <TableCell className="text-right">
+                                             <Button variant="ghost" size="icon"><Pencil className="h-4 w-4"/></Button>
+                                             <Button variant="ghost" size="icon"><Trash2 className="h-4 w-4 text-red-500"/></Button>
+                                         </TableCell>
+                                     </TableRow>
+                                     ))}
+                                 </TableBody>
+                             </Table>
+                         </CardContent>
+                     </Card>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
 
+            {leagueSettings && (
+            <>
             <TabsContent value="scoring" className="mt-6 space-y-6">
                 <Card>
                     <CardHeader>
                         <div className="flex justify-between items-center">
                         <div>
                             <CardTitle className="flex items-center gap-2"><CalendarClock/> Weekly Event Management</CardTitle>
-                            <CardDescription>Update results for the selected week.</CardDescription>
+                            <CardDescription>Update results for the selected week for league: {leagueSettings.name}</CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="w-32">
@@ -1880,6 +1992,8 @@ export default function AdminPage() {
                     </CardFooter>
                 </Card>
             </TabsContent>
+            </>
+            )}
         </Tabs>
       </main>
     </div>

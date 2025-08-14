@@ -12,19 +12,16 @@ import {
 import {
   Home,
   Crown,
-  Shield,
   Users,
-  UserX,
   HelpCircle,
   TrendingUp,
-  TrendingDown,
-  Medal,
   ListOrdered,
-  ShieldCheck,
-  Minus,
   RotateCcw,
   UserCheck,
-  ShieldOff,
+  Ban,
+  Blocks,
+  Skull,
+  TriangleAlert,
 } from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -262,7 +259,7 @@ export default function DashboardPage() {
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
               <h3 className="font-semibold flex items-center gap-1 text-red-400">
-                <Users className="h-4 w-4" /> Noms
+                <TriangleAlert className="h-4 w-4" /> Noms
               </h3>
               <div className="flex items-center justify-center gap-2 min-h-[76px]">
                 {nomWinners.length > 0 ? (
@@ -303,7 +300,7 @@ export default function DashboardPage() {
             <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <div className="flex flex-col items-center flex-grow">
                 <h3 className="font-semibold flex items-center gap-1 text-amber-500">
-                  <Shield className="h-4 w-4" /> POV
+                  <Ban className="h-4 w-4" /> POV
                 </h3>
                 {povWinner ? (
                   <>
@@ -330,7 +327,7 @@ export default function DashboardPage() {
                <div className="flex flex-col items-center justify-center w-[35%] min-w-fit">
                 {pov?.used === false && (
                     <div className="flex flex-col items-center gap-1">
-                      <ShieldOff className="h-8 w-8 text-muted-foreground"/>
+                      <Ban className="h-8 w-8 text-muted-foreground"/>
                       <span className="text-xs text-muted-foreground">Not Used</span>
                     </div>
                   )}
@@ -357,7 +354,7 @@ export default function DashboardPage() {
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-sky-500">
-                <ShieldCheck className="h-4 w-4" /> Block Buster
+                <Blocks className="h-4 w-4" /> Block Buster
               </h3>
               {blockBusterWinner ? (
                 <>
@@ -384,7 +381,7 @@ export default function DashboardPage() {
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
-                <UserX className="h-4 w-4" /> Evicted
+                <Skull className="h-4 w-4" /> Evicted
               </h3>
               {evictedPlayer ? (
                 <>
