@@ -24,7 +24,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
 import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc } from 'firebase/firestore';
-import { SheetHeader, SheetTitle } from './ui/sheet';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 
@@ -911,7 +910,7 @@ export function AdminPanel() {
                           <h3 className="text-lg font-medium mb-2">Scoring Breakdown Categories</h3>
                           <p className="text-sm text-muted-foreground mb-4">Customize how scores are displayed on team cards. Define up to 6 categories.</p>
                           <div className="space-y-4">
-                              {leagueSettings.settings.scoringBreakdownCategories.map((category, index) => (
+                              {leagueSettings.settings?.scoringBreakdownCategories?.map((category, index) => (
                                   <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md">
                                       <div>
                                           <Label>Display Name</Label>
