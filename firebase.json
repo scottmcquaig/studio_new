@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "source": "src/functions",
-    "runtime": "nodejs20",
-    "codebase": "default"
-  },
   "hosting": {
     "source": ".",
     "ignore": [

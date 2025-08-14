@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot, getFirestore } from 'firebase/firestore';
+import { doc, onSnapshot, getFirestore, setDoc, getDocs, collection, query, where, limit } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import type { User as AppUser } from '@/lib/data';
 
@@ -23,28 +22,59 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// This function runs once to ensure the admin user record exists in the database.
+const seedAdminUser = async () => {
+  const db = getFirestore(app);
+  const adminEmail = "admin@yac.com";
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, where("email", "==", adminEmail), limit(1));
+  
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) {
+    console.log("Admin user not found, seeding database...");
+    // We use a placeholder ID; this user won't be able to log in
+    // until someone signs up with the matching email.
+    const adminDocRef = doc(usersRef, 'placeholder_admin');
+    try {
+      await setDoc(adminDocRef, {
+        displayName: "YAC Admin",
+        email: adminEmail,
+        role: "site_admin",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+      console.log("Admin user seeded successfully.");
+    } catch (error) {
+      console.error("Error seeding admin user:", error);
+    }
+  }
+};
+
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Run the seeder once on app startup
+    seedAdminUser();
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
-        setLoading(true); // Start loading when auth user is found, wait for firestore doc
+        setLoading(true);
         const db = getFirestore(app);
         const userDocRef = doc(db, 'users', user.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setAppUser({ ...docSnap.data(), id: docSnap.id } as AppUser);
-                setLoading(false); // Stop loading once firestore doc is found
             } else {
-                // User exists in Auth, but not in Firestore yet.
-                // The cloud function might still be running. We'll wait.
+                // If the doc doesn't exist yet, it might be due to a slight delay
+                // in the signup function creating it. We will treat as loading.
                 setAppUser(null);
-                // Keep loading until the document appears or user logs out.
             }
+            setLoading(false);
         }, (error) => {
             console.error("Error fetching user document:", error);
             setAppUser(null);
@@ -58,15 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-    };
+    return () => unsubscribeAuth();
   }, []);
 
   const value = {
     currentUser,
     appUser,
-    loading,
+    loading: loading || (!!currentUser && !appUser), // Remain in loading state if we have a firebase user but no app user yet
   };
 
   return (
