@@ -85,7 +85,7 @@ const DynamicIcon = ({ name, className }: { name: string; className?: string }) 
 const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
 
 const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[] }) => {
-    const owners = team.ownerUserIds.map(getOwner);
+    const owners = (team.ownerUserIds || []).map(getOwner).filter(Boolean);
     
     const kpis = useMemo(() => {
         if (!league || !rules.length) return { total: team.total_score || 0 };
@@ -93,7 +93,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Te
     }, [team, league, rules, competitions]);
     
     const teamContestants = contestants.filter(hg => (team.contestantIds || []).includes(hg.id));
-    const breakdownCategories = league.settings.scoringBreakdownCategories || [];
+    const breakdownCategories = (league.settings.scoringBreakdownCategories || []).filter(c => c.displayName);
 
     return (
         <Card>
@@ -102,7 +102,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Te
                     <div>
                         <CardTitle>{team.name}</CardTitle>
                         <CardDescription>
-                            Owned by {owners.map(o => o?.displayName).join(' & ')}
+                            Owned by {owners.length > 0 ? owners.map(o => o?.displayName).join(' & ') : 'Unassigned'}
                         </CardDescription>
                     </div>
                     <Badge variant="secondary" className="text-lg font-bold">{(kpis.total || 0).toLocaleString()} pts</Badge>

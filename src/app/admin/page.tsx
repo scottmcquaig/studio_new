@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, createElement, useMemo } from 'react';
+import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,20 +13,25 @@ import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { cn, getContestantDisplayName } from '@/lib/utils';
+import { cn, getContestantDisplayName, getCroppedImg } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
 import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch } from 'firebase/firestore';
+import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
+import Cropper, { Area } from 'react-easy-crop';
+import { Slider } from '@/components/ui/slider';
+
 
 const iconSelection = [
     'Crown', 'Shield', 'ShieldPlus', 'Trophy', 'Star', 'Swords', 'Handshake', 'Angry',
@@ -44,6 +49,7 @@ const colorSelection = [
 export default function AdminPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
+  const storage = getStorage(app);
   
   const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -90,6 +96,12 @@ export default function AdminPage() {
   const [vetoReplacementNomId, setVetoReplacementNomId] = useState<string | undefined>();
   const [blockBusterWinnerId, setBlockBusterWinnerId] = useState<string | undefined>();
   const [evictedId, setEvictedId] = useState<string | undefined>();
+
+  // Image Cropping State
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
@@ -288,7 +300,7 @@ export default function AdminPage() {
 
     // Remove user from any other team first
     teams.forEach(t => {
-        if (t.ownerUserIds.includes(user.id)) {
+        if ((t.ownerUserIds || []).includes(user.id)) {
             const teamDocRef = doc(db, 'teams', t.id);
             const updatedOwners = t.ownerUserIds.filter(id => id !== user.id);
             batch.update(teamDocRef, { ownerUserIds: updatedOwners });
@@ -315,7 +327,7 @@ export default function AdminPage() {
     const team = teams.find(t => t.id === teamId);
     if (!team) return;
 
-    const updatedOwnerIds = team.ownerUserIds.filter(id => id !== userId);
+    const updatedOwnerIds = (team.ownerUserIds || []).filter(id => id !== userId);
     try {
         const teamDocRef = doc(db, 'teams', teamId);
         await updateDoc(teamDocRef, { ownerUserIds: updatedOwnerIds });
@@ -393,10 +405,11 @@ export default function AdminPage() {
         batch.set(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
 
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
-        // Create a copy of settings to modify
-        const updatedSettings = { ...leagueSettings.settings };
-        updatedSettings.scoringBreakdownCategories = leagueSettings.settings.scoringBreakdownCategories.filter(c => c.displayName);
-
+        const updatedSettings = {
+          ...leagueSettings.settings,
+          scoringBreakdownCategories: leagueSettings.settings.scoringBreakdownCategories.filter(c => c.displayName)
+        };
+        
         batch.update(leagueDocRef, { settings: updatedSettings });
 
         await batch.commit();
@@ -567,7 +580,7 @@ export default function AdminPage() {
   const getUsersForTeam = (teamId: string): UserType[] => {
       const team = teams.find(t => t.id === teamId);
       if (!team || !team.ownerUserIds) return [];
-      return users.filter(u => team.ownerUserIds.includes(u.id));
+      return users.filter(u => (team.ownerUserIds || []).includes(u.id));
   };
   
   const getContestantsForTeam = (teamId: string): Contestant[] => {
@@ -635,7 +648,7 @@ export default function AdminPage() {
             occupation: '',
             status: 'active',
             enteredDay: 1,
-            photoUrl: 'https://placehold.co/100x100.png'
+            photoUrl: ''
         };
         setEditingContestant(newContestant);
     } else {
@@ -673,22 +686,24 @@ export default function AdminPage() {
       }
   };
   
-  const handleDeleteContestant = async () => {
-    if (!editingContestant || editingContestant.id.startsWith('new_contestant_')) return;
-
-    if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}? This action cannot be undone.`)) {
-        return;
-    }
+  const handleDeleteContestant = async (contestantId: string) => {
+    const contestantToDelete = contestants.find(c => c.id === contestantId);
+    if (!contestantToDelete) return;
     
     try {
-        const idToDelete = editingContestant.id;
-        await deleteDoc(doc(db, 'contestants', idToDelete));
+        // First, delete the photo from storage if it exists
+        if (contestantToDelete.photoUrl && contestantToDelete.photoUrl.includes('firebasestorage')) {
+            const photoRef = ref(storage, contestantToDelete.photoUrl);
+            await deleteObject(photoRef).catch(err => console.warn("Could not delete photo, it might not exist:", err));
+        }
         
-        // Manually filter out the deleted contestant from local state for immediate UI update.
-        setContestants(prev => prev.filter(c => c.id !== idToDelete));
-        setEditingContestant(null);
-
-        toast({ title: "Contestant Deleted", description: `The contestant has been permanently removed.` });
+        // Then, delete the document from Firestore
+        await deleteDoc(doc(db, 'contestants', contestantId));
+        
+        // Update local state for immediate UI feedback
+        setContestants(prev => prev.filter(c => c.id !== contestantId));
+        
+        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(contestantToDelete, 'full')} has been permanently removed.` });
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
@@ -696,9 +711,46 @@ export default function AdminPage() {
   };
 
   const allAssignedUserIds = useMemo(() => teams.flatMap(t => t.ownerUserIds || []), [teams]);
-  const unassignedUsers = useMemo(() => users.filter(u => !allAssignedUserIds.includes(u.id)), [users, allAssignedUserIds]);
+  const unassignedUsers = useMemo(() => users.filter(u => !(allAssignedUserIds || []).includes(u.id)), [users, allAssignedUserIds]);
   
   const isEditingNewContestant = editingContestant?.id.startsWith('new_contestant_');
+
+  // Image Cropping Handlers
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result as string);
+      });
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handlePhotoUpload = async () => {
+    if (!croppedAreaPixels || !imageSrc || !editingContestant) return;
+    try {
+        const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
+        if (!croppedImage) return;
+
+        const storageRef = ref(storage, `contestant_photos/${editingContestant.id}_${Date.now()}.jpeg`);
+        await uploadString(storageRef, croppedImage, 'data_url', {contentType: 'image/jpeg'});
+        const downloadURL = await getDownloadURL(storageRef);
+        
+        handleUpdateContestant('photoUrl', downloadURL);
+        
+        setImageSrc(null); // Close the cropper
+        setZoom(1);
+        toast({ title: "Photo Uploaded", description: "New photo is ready. Don't forget to save." });
+    } catch (e) {
+        console.error("Error uploading photo: ", e);
+        toast({ title: "Upload Failed", description: "Could not upload the photo.", variant: "destructive"});
+    }
+  };
   
   if (!leagueSettings || !activeSeason) {
     return (
@@ -949,7 +1001,7 @@ export default function AdminPage() {
                                     <div key={c.id} className="flex items-center justify-between p-2 border rounded-md">
                                         <div className="flex items-center gap-3">
                                             <Avatar>
-                                                <AvatarImage src={c.photoUrl} alt={getContestantDisplayName(c, 'full')} />
+                                                <AvatarImage src={c.photoUrl || undefined} alt={getContestantDisplayName(c, 'full')} />
                                                 <AvatarFallback>{getContestantDisplayName(c, 'full').charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div>
@@ -957,22 +1009,42 @@ export default function AdminPage() {
                                                 <p className="text-sm text-muted-foreground">{c.hometown}</p>
                                             </div>
                                         </div>
-                                        <Button variant="outline" size="sm" onClick={() => handleOpenContestantDialog(c)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="sm" onClick={() => handleOpenContestantDialog(c)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
+                                             <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="destructive" size="icon" className="h-9 w-9">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete {getContestantDisplayName(c, 'full')} and all their data. This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteContestant(c.id)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
-                            <DialogContent>
+                            <DialogContent className="max-w-3xl">
                                 <DialogHeader>
                                     <DialogTitle>{isEditingNewContestant ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</DialogTitle>
-                                    <DialogDescription>
-                                        Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
-                                    </DialogDescription>
                                 </DialogHeader>
                                 {editingContestant && (
-                                    <div className="space-y-4 py-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                                      {/* Left side: Form */}
+                                      <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label>First Name</Label>
@@ -993,7 +1065,6 @@ export default function AdminPage() {
                                                 <Input type="number" value={editingContestant.age || 0} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
                                             </div>
                                         </div>
-                                        
                                         <div className="space-y-2">
                                             <Label>Status</Label>
                                             <Select value={editingContestant.status} onValueChange={(val) => handleUpdateContestant('status', val)}>
@@ -1013,25 +1084,71 @@ export default function AdminPage() {
                                             <Label>Occupation</Label>
                                             <Input value={editingContestant.occupation || ''} onChange={(e) => handleUpdateContestant('occupation', e.target.value)} />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Photo URL</Label>
-                                            <Input value={editingContestant.photoUrl || ''} onChange={(e) => handleUpdateContestant('photoUrl', e.target.value)} />
-                                        </div>
+                                      </div>
+                                      {/* Right side: Photo */}
+                                      <div className="space-y-4">
+                                          <Label>Photo</Label>
+                                          <div className="p-4 border-2 border-dashed rounded-lg text-center">
+                                            <Avatar className="mx-auto h-32 w-32 mb-4">
+                                                <AvatarImage src={editingContestant.photoUrl || undefined} />
+                                                <AvatarFallback className="text-3xl">
+                                                    {getContestantDisplayName(editingContestant, 'full').charAt(0)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <Input id="photo-upload" type="file" accept="image/*" onChange={handleFileChange} className="hidden"/>
+                                            <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById('photo-upload')?.click()}>
+                                                <Upload className="mr-2 h-4 w-4"/> Change Photo
+                                            </Button>
+                                            <p className="text-xs text-muted-foreground mt-2">Upload a new photo for this contestant.</p>
+                                          </div>
+                                      </div>
                                     </div>
                                 )}
-                                <DialogFooter className="justify-between">
-                                    <div>
-                                        {!isEditingNewContestant && (
-                                            <Button variant="destructive" onClick={handleDeleteContestant}>Delete</Button>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button variant="outline" onClick={() => setEditingContestant(null)}>Cancel</Button>
-                                        <Button onClick={handleSaveContestant}>Save Changes</Button>
-                                    </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setEditingContestant(null)}>Cancel</Button>
+                                    <Button onClick={handleSaveContestant}>Save Changes</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
+                        
+                        <Dialog open={!!imageSrc} onOpenChange={(isOpen) => !isOpen && setImageSrc(null)}>
+                            <DialogContent className="max-w-lg">
+                                <DialogHeader>
+                                    <DialogTitle>Crop Photo</DialogTitle>
+                                    <DialogDescription>Adjust the image to fit the circle.</DialogDescription>
+                                </DialogHeader>
+                                <div className="relative h-96 w-full bg-muted">
+                                    {imageSrc && (
+                                        <Cropper
+                                            image={imageSrc}
+                                            crop={crop}
+                                            zoom={zoom}
+                                            aspect={1}
+                                            onCropChange={setCrop}
+                                            onZoomChange={setZoom}
+                                            onCropComplete={onCropComplete}
+                                            cropShape="round"
+                                            showGrid={false}
+                                        />
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <Label>Zoom</Label>
+                                    <Slider
+                                        value={[zoom]}
+                                        min={1}
+                                        max={3}
+                                        step={0.1}
+                                        onValueChange={(val) => setZoom(val[0])}
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setImageSrc(null)}>Cancel</Button>
+                                    <Button onClick={handlePhotoUpload}>Save Photo</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
                     </CardContent>
                 </Card>
             </TabsContent>
@@ -1433,10 +1550,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
-
-
-
-
-
