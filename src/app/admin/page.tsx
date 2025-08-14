@@ -34,8 +34,8 @@ import { Slider } from '@/components/ui/slider';
 
 
 const iconSelection = [
-    'Crown', 'Shield', 'Ban', 'ShieldPlus', 'Trophy', 'Star', 'Swords', 'Handshake', 'Angry',
-    'TrendingUp', 'TrendingDown', 'UserX', 'UserCheck', 'Pencil', 'BookCopy', 'Smile', 'Settings'
+    'Crown', 'Ban', 'Gem', 'Gift', 'HeartPulse', 'KeyRound', 'ShieldPlus', 'Trophy',
+    'Medal', 'DollarSign', 'Rocket', 'Cctv', 'Save', 'Skull', 'CloudSun', 'XCircle'
 ] as const;
 
 const colorSelection = [
@@ -942,7 +942,7 @@ export default function AdminPage() {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</CardTitle>
+                                    <DialogTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</DialogTitle>
                                 </CardHeader>
                                 <CardContent className="flex h-[calc(100%-4rem)] items-center justify-center">
                                     <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
