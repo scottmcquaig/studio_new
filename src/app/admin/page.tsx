@@ -33,6 +33,8 @@ import Cropper, { Area } from 'react-easy-crop';
 import { Slider } from '@/components/ui/slider';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import withAuth from '@/components/withAuth';
+import { useAuth } from '@/context/AuthContext';
 
 
 const iconSelection = [
@@ -104,12 +106,12 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
 };
 
 
-export default function AdminPage() {
+function AdminPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
   const storage = getStorage(app);
+  const { appUser: currentUser } = useAuth();
   
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const leagueSettings = useMemo(() => allLeagues.find(l => l.id === selectedLeagueId), [allLeagues, selectedLeagueId]);
@@ -182,18 +184,10 @@ export default function AdminPage() {
   const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
 
   useEffect(() => {
-    // This would be replaced with actual auth state
-    if (users.length > 0) {
-        // For demonstration, we'll set the current user to a known admin ID.
-        // In a real app, this would come from an authentication context.
-        const adminUser = users.find(u => u.id === 'user_admin');
-        setCurrentUser(adminUser || null);
-
-        if (adminUser?.role !== 'site_admin') {
-          setActiveTab('scoring'); // Fallback for non-site-admins
-        }
+    if (currentUser?.role !== 'site_admin') {
+      setActiveTab('scoring'); // Fallback for non-site-admins
     }
-  }, [users]);
+  }, [currentUser]);
 
   useEffect(() => {
     const lastTab = sessionStorage.getItem('adminActiveTab');
@@ -963,7 +957,7 @@ export default function AdminPage() {
 
     }, [teams, totalDraftPicks, leagueSettings]);
   
-  if (!activeSeason) {
+  if (!activeSeason || !currentUser) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Admin Panel...</div>
@@ -2003,3 +1997,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+export default withAuth(AdminPage);

@@ -32,9 +32,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, Competition, Contestant, Season, User, Pick, ScoringRule } from '@/lib/data';
-import { MOCK_SEASONS } from "@/lib/data"; // Keep for activeSeason until seasons are in Firestore
+import { MOCK_SEASONS } from "@/lib/data";
+import withAuth from "@/components/withAuth";
 
-export default function DashboardPage() {
+function DashboardPage() {
   const db = getFirestore(app);
 
   const [teams, setTeams] = useState<Team[]>([]);
@@ -488,3 +489,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+export default withAuth(DashboardPage);

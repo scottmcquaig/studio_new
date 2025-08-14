@@ -14,6 +14,7 @@ import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
+import withAuth from '@/components/withAuth';
 
 type ContestantWithStats = Contestant & {
   teamName: string;
@@ -23,7 +24,7 @@ type ContestantWithStats = Contestant & {
   evictionWeek?: number;
 };
 
-export default function ContestantsPage() {
+function ContestantsPage() {
   const [selectedContestant, setSelectedContestant] = useState<ContestantWithStats | null>(null);
   
   const db = getFirestore(app);
@@ -229,3 +230,5 @@ export default function ContestantsPage() {
     </>
   );
 }
+
+export default withAuth(ContestantsPage);

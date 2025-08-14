@@ -16,6 +16,7 @@ import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
+import withAuth from '@/components/withAuth';
 
 
 type ScoringEvent = {
@@ -29,7 +30,7 @@ type ScoringEvent = {
   points: number;
 };
 
-export default function ScoringPage() {
+function ScoringPage() {
   const db = getFirestore(app);
 
   const [contestants, setContestants] = useState<Contestant[]>([]);
@@ -482,3 +483,5 @@ export default function ScoringPage() {
     </>
   );
 }
+
+export default withAuth(ScoringPage);

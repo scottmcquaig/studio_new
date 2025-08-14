@@ -1,9 +1,8 @@
 
 import type { Metadata } from "next";
 import { Toaster } from "@/components/ui/toaster";
-import { BottomNavBar } from "@/components/bottom-nav-bar";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
-import { AppHeader } from "@/components/app-header";
 
 export const metadata: Metadata = {
   title: "YAC Fantasy League",
@@ -30,10 +29,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased bg-background">
-        <div className="flex flex-col min-h-screen">
-          {children}
-        </div>
-        <Toaster />
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen">
+            {children}
+          </div>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

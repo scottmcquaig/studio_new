@@ -12,17 +12,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "./ui/button";
-import { ChevronDown, Settings } from "lucide-react";
+import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getFirestore, doc, onSnapshot, Unsubscribe, collection, query } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
+import { app, auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 import type { User as UserType, League, Season } from '@/lib/data';
 import { MOCK_SEASONS } from "@/lib/data";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 
 export function AppHeader() {
   const db = getFirestore(app);
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const { appUser: currentUser, loading } = useAuth();
+  const router = useRouter();
+
   const [activeLeague, setActiveLeague] = useState<League | null>(null);
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   
@@ -31,14 +36,6 @@ export function AppHeader() {
 
   useEffect(() => {
     const unsubscribes: Unsubscribe[] = [];
-
-    // Simulate fetching the logged-in user
-    const adminUserId = 'user_admin';
-    unsubscribes.push(onSnapshot(doc(db, 'users', adminUserId), (docSnap) => {
-        if (docSnap.exists()) {
-            setCurrentUser({ ...docSnap.data(), id: docSnap.id } as UserType);
-        }
-    }));
     
     // Fetch all leagues for the dropdown
     unsubscribes.push(onSnapshot(query(collection(db, "leagues")), (snap) => {
@@ -53,9 +50,18 @@ export function AppHeader() {
     return () => unsubscribes.forEach(unsub => unsub());
   }, [db]);
 
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
+
   const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
 
-  if (!activeLeague || !activeSeason) {
+  if (loading || !activeLeague || !activeSeason) {
       return (
            <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
              <div className="flex items-center gap-2">
@@ -86,7 +92,7 @@ export function AppHeader() {
         </Button>
       )}
 
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
@@ -104,6 +110,38 @@ export function AppHeader() {
              <DropdownMenuSeparator />
              <DropdownMenuItem disabled>Past Leagues</DropdownMenuItem>
           </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                    <UserIcon className="h-5 w-5" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                {currentUser ? (
+                    <>
+                        <DropdownMenuLabel>{currentUser.email}</DropdownMenuLabel>
+                        <DropdownMenuSeparator/>
+                        <DropdownMenuItem onClick={() => router.push('/settings')}>
+                            <Settings className="mr-2"/> Settings
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleLogout}>
+                            <LogOut className="mr-2"/> Logout
+                        </DropdownMenuItem>
+                    </>
+                ) : (
+                    <>
+                        <DropdownMenuItem onClick={() => router.push('/login')}>
+                            <LogIn className="mr-2"/> Login
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => router.push('/signup')}>
+                            <UserPlus className="mr-2"/> Sign Up
+                        </DropdownMenuItem>
+                    </>
+                )}
+
+            </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>

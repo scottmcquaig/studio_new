@@ -14,6 +14,7 @@ import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User, Pick } from '@/lib/data';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
+import withAuth from '@/components/withAuth';
 
 const calculateKpis = (teamPicks: Pick[], league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
     const breakdownCategories = league.settings.scoringBreakdownCategories || [];
@@ -156,7 +157,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
 };
 
 
-export default function TeamsPage() {
+function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [league, setLeague] = useState<League | null>(null);
     const [scoringRules, setScoringRuleSet] = useState<ScoringRuleSet | null>(null);
@@ -323,3 +324,5 @@ export default function TeamsPage() {
     </>
   );
 }
+
+export default withAuth(TeamsPage);

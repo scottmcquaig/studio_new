@@ -10,33 +10,13 @@ import { Settings, User, Lock, Building } from "lucide-react";
 import Link from 'next/link';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
-import { getFirestore, collection, onSnapshot, query, doc } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
-import type { User as UserType } from '@/lib/data';
+import { useAuth } from '@/context/AuthContext';
+import withAuth from '@/components/withAuth';
 
-export default function SettingsPage() {
-  const db = getFirestore(app);
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
-  
-  useEffect(() => {
-    // This simulates fetching the currently logged-in user.
-    // In a real app, you'd get the user's ID from an auth context.
-    const adminUserId = 'user_admin'; // Hardcoded for demonstration
-    const userDocRef = doc(db, 'users', adminUserId);
-    
-    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            setCurrentUser({ ...docSnap.data(), id: docSnap.id } as UserType);
-        } else {
-            console.log("Admin user not found!");
-        }
-    });
+function SettingsPage() {
+  const { appUser } = useAuth();
 
-    return () => unsubscribe();
-  }, [db]);
-
-
-  if (!currentUser) {
+  if (!appUser) {
       return (
           <div className="flex flex-1 items-center justify-center">
               <div>Loading Settings...</div>
@@ -65,11 +45,11 @@ export default function SettingsPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="displayName">Display Name</Label>
-                    <Input id="displayName" defaultValue={currentUser?.displayName} />
+                    <Input id="displayName" defaultValue={appUser?.displayName} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" defaultValue={currentUser?.email} />
+                    <Input id="email" type="email" defaultValue={appUser?.email} />
                   </div>
                 </CardContent>
                 <CardFooter>
@@ -108,3 +88,5 @@ export default function SettingsPage() {
     </>
   );
 }
+
+export default withAuth(SettingsPage);
