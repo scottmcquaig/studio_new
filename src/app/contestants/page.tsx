@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick } from '@/lib/data';
-import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck } from "lucide-react";
+import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck, TriangleAlert, Ban, Blocks, Skull } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
@@ -144,7 +144,7 @@ export default function ContestantsPage() {
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedContestant(null)}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sortedContestants.map(hg => {
                   const isHoh = hg.id === hoh?.winnerId;
                   const isPov = hg.id === pov?.winnerId;
@@ -190,7 +190,7 @@ export default function ContestantsPage() {
                       </CardHeader>
                       <CardContent className="flex-grow flex items-center justify-around text-center gap-2 text-sm pt-2">
                           <div className="flex flex-col items-center">
-                              <Trophy className="h-5 w-5 text-accent" />
+                              <Trophy className="h-5 w-5 text-amber-400" />
                               <span className="font-bold">{hg.totalWins}</span>
                               <span className="text-xs text-muted-foreground">Wins</span>
                           </div>
@@ -229,5 +229,3 @@ export default function ContestantsPage() {
     </>
   );
 }
-
-    

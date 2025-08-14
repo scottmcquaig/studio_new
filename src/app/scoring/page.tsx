@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick, User } from '@/lib/data';
-import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff } from "lucide-react";
+import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff, TriangleAlert, Ban, Blocks, Skull } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AppHeader } from '@/components/app-header';
@@ -45,6 +45,7 @@ export default function ScoringPage() {
   const [selectedWeek, setSelectedWeek] = useState<string>(String(activeSeason.currentWeek));
   const [selectedContestant, setSelectedContestant] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
+  const [selectedEvent, setSelectedEvent] = useState<string>('all');
   
   const weekOptions = useMemo(() => Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1)).reverse(), [activeSeason.currentWeek]);
   const displayWeek = selectedWeek === 'all' ? activeSeason.currentWeek : Number(selectedWeek);
@@ -144,9 +145,18 @@ export default function ScoringPage() {
       const weekMatch = selectedWeek === 'all' || event.week === Number(selectedWeek);
       const contestantMatch = selectedContestant === 'all' || event.contestantId === selectedContestant;
       const teamMatch = selectedTeam === 'all' || event.teamId === selectedTeam;
-      return weekMatch && contestantMatch && teamMatch;
+      const eventMatch = selectedEvent === 'all' || event.eventCode === selectedEvent;
+      return weekMatch && contestantMatch && teamMatch && eventMatch;
     });
-  }, [scoringEvents, selectedWeek, selectedContestant, selectedTeam]);
+  }, [scoringEvents, selectedWeek, selectedContestant, selectedTeam, selectedEvent]);
+  
+  const eventCodeOptions = useMemo(() => {
+    if (!scoringRules?.rules) return [];
+    return scoringRules.rules.map(rule => ({
+        value: rule.code,
+        label: rule.label
+    }));
+  }, [scoringRules]);
 
   if (!league || !contestants.length) {
     return (
@@ -213,7 +223,7 @@ export default function ScoringPage() {
 
                 <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
                   <h3 className="font-semibold flex items-center gap-1 text-red-400">
-                    <Users className="h-4 w-4" /> Noms
+                    <TriangleAlert className="h-4 w-4" /> Noms
                   </h3>
                   <div className="flex items-center justify-center gap-2 min-h-[76px]">
                     {nomWinners.length > 0 ? (
@@ -254,7 +264,7 @@ export default function ScoringPage() {
                 <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                   <div className="flex flex-col items-center flex-grow">
                     <h3 className="font-semibold flex items-center gap-1 text-amber-500">
-                      <Shield className="h-4 w-4" /> POV
+                      <Ban className="h-4 w-4" /> POV
                     </h3>
                     {povWinner ? (
                       <>
@@ -308,7 +318,7 @@ export default function ScoringPage() {
 
                 <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                   <h3 className="font-semibold flex items-center gap-1 text-sky-500">
-                    <ShieldCheck className="h-4 w-4" /> Block Buster
+                    <Blocks className="h-4 w-4" /> Block Buster
                   </h3>
                   {blockBusterWinner ? (
                     <>
@@ -334,7 +344,7 @@ export default function ScoringPage() {
 
                 <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                   <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
-                    <UserX className="h-4 w-4" /> Evicted
+                    <Skull className="h-4 w-4" /> Evicted
                   </h3>
                   {evictedPlayer ? (
                     <>
@@ -367,8 +377,8 @@ export default function ScoringPage() {
                 <CardDescription>A log of all point-scoring events from the season. Use the filters to narrow your search.</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-4 mb-4">
-                  <div className="flex-1 min-w-[150px]">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="flex-1 min-w-[120px]">
                     <label className="text-sm font-medium">Filter Week</label>
                     <Select value={selectedWeek} onValueChange={val => setSelectedWeek(val)}>
                       <SelectTrigger><SelectValue/></SelectTrigger>
@@ -378,7 +388,17 @@ export default function ScoringPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex-1 min-w-[150px]">
+                   <div className="flex-1 min-w-[120px]">
+                    <label className="text-sm font-medium">Event</label>
+                    <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+                      <SelectTrigger><SelectValue/></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Events</SelectItem>
+                        {eventCodeOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1 min-w-[120px]">
                     <label className="text-sm font-medium">{contestantTerm.plural}</label>
                     <Select value={selectedContestant} onValueChange={setSelectedContestant}>
                       <SelectTrigger><SelectValue/></SelectTrigger>
@@ -388,7 +408,7 @@ export default function ScoringPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="flex-1 min-w-[150px]">
+                  <div className="flex-1 min-w-[120px]">
                     <label className="text-sm font-medium">Team</label>
                     <Select value={selectedTeam} onValueChange={setSelectedTeam}>
                       <SelectTrigger><SelectValue/></SelectTrigger>
@@ -462,5 +482,3 @@ export default function ScoringPage() {
     </>
   );
 }
-
-    
