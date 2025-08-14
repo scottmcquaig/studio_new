@@ -615,9 +615,13 @@ export function AdminPanel() {
     }
     
     try {
-        await deleteDoc(doc(db, 'contestants', editingContestant.id));
+        const idToDelete = editingContestant.id;
+        await deleteDoc(doc(db, 'contestants', idToDelete));
         toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been permanently removed.` });
-        setEditingContestant(null); // Close dialog, onSnapshot will update UI.
+        
+        // Manually update local state to reflect deletion immediately
+        setContestants(prevContestants => prevContestants.filter(c => c.id !== idToDelete));
+        setEditingContestant(null);
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
@@ -1106,20 +1110,7 @@ export function AdminPanel() {
                              <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
                          </div>
                      </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-end">
-                      <Button onClick={handleSaveLeagueSettings}><Save className="mr-2"/>Save Settings</Button>
-                  </CardFooter>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg"><UserCog /> Users &amp; Teams</CardTitle>
-                    <CardDescription className="text-left">Manage user roles, team names, assignments, and invitations.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-2 w-40">
+                      <div className="space-y-2 w-40">
                         <Label htmlFor="maxTeams">Number of Teams</Label>
                         <Input 
                             id="maxTeams" 
@@ -1133,70 +1124,81 @@ export function AdminPanel() {
                             }}
                           />
                     </div>
-                    <div className="flex gap-2">
-                        <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Create New User</DialogTitle>
-                                    <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Name</Label>
-                                        <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create User</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
+                  </CardContent>
+                  <CardFooter className="flex justify-end">
+                      <Button onClick={handleSaveLeagueSettings}><Save className="mr-2"/>Save Settings</Button>
+                  </CardFooter>
+              </Card>
 
-                        <Dialog open={isAddUserToLeagueDialogOpen} onOpenChange={setIsAddUserToLeagueDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm"><UserPlus2 className="mr-2 h-4 w-4" /> Add User to League</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Add User to League</DialogTitle>
-                                    <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>User</Label>
-                                        <Select value={addUserToLeagueData.userId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, userId: value})}>
-                                            <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
-                                            <SelectContent>
-                                                {unassignedUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Team Assignment</Label>
-                                        <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
-                                            <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
-                                            <SelectContent>
-                                                {displayedTeams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+              <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg"><UserCog /> Users &amp; Teams</CardTitle>
+                    <CardDescription className="text-left">Manage user roles, team names, assignments, and invitations.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex justify-end gap-2">
+                    <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Create New User</DialogTitle>
+                                <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>Name</Label>
+                                    <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
                                 </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsAddUserToLeagueDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddUserToLeague}><Send className="mr-2" /> Add to League</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                </div>
+                                <div className="space-y-2">
+                                    <Label>Email</Label>
+                                    <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create User</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isAddUserToLeagueDialogOpen} onOpenChange={setIsAddUserToLeagueDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button size="sm"><UserPlus2 className="mr-2 h-4 w-4" /> Add User to League</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Add User to League</DialogTitle>
+                                <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label>User</Label>
+                                    <Select value={addUserToLeagueData.userId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, userId: value})}>
+                                        <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
+                                        <SelectContent>
+                                            {unassignedUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.displayName} ({user.email})</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Team Assignment</Label>
+                                    <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
+                                        <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
+                                        <SelectContent>
+                                            {displayedTeams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => setIsAddUserToLeagueDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleAddUserToLeague}><Send className="mr-2" /> Add to League</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                  </div>
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {displayedTeams.map((team, index) => (
