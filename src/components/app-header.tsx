@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sheet"
 
 import { Button } from "./ui/button";
-import { ChevronDown, Settings } from "lucide-react";
+import { Building, ChevronDown, Settings } from "lucide-react";
 import { AdminPanel } from "./admin-panel";
 
 
@@ -50,7 +50,13 @@ export function AppHeader() {
                 <Settings className="h-5 w-5"/>
             </Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto p-0">
+             <SheetHeader className="px-4 sm:px-6 pt-6">
+                <SheetTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5" />
+                    Admin Panel
+                </SheetTitle>
+            </SheetHeader>
             <AdminPanel />
           </SheetContent>
         </Sheet>
