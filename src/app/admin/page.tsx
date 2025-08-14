@@ -46,6 +46,62 @@ const colorSelection = [
     'bg-pink-500', 'bg-rose-500'
 ];
 
+const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPECIAL_POWER'];
+
+
+// Component to manage a single rule row, preventing input focus loss
+const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index: number, onUpdate: (index: number, field: keyof ScoringRule, value: string | number) => void, onRemove: (code: string) => void }) => {
+    const [localRule, setLocalRule] = useState(rule);
+
+    useEffect(() => {
+        setLocalRule(rule);
+    }, [rule]);
+
+    const handleChange = (field: keyof ScoringRule, value: string | number) => {
+        setLocalRule(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleBlur = (field: keyof ScoringRule) => {
+        onUpdate(index, field, localRule[field]);
+    };
+
+    return (
+        <TableRow>
+            <TableCell>
+                <Input 
+                    value={localRule.code} 
+                    onChange={(e) => handleChange('code', e.target.value.toUpperCase())} 
+                    onBlur={() => handleBlur('code')}
+                    className="h-8" 
+                />
+            </TableCell>
+            <TableCell>
+                <Input 
+                    value={localRule.label} 
+                    onChange={(e) => handleChange('label', e.target.value)} 
+                    onBlur={() => handleBlur('label')}
+                    className="h-8" 
+                />
+            </TableCell>
+            <TableCell className="text-right">
+                <Input 
+                    type="number" 
+                    value={localRule.points} 
+                    onChange={(e) => handleChange('points', Number(e.target.value))} 
+                    onBlur={() => handleBlur('points')}
+                    className="h-8 w-20 text-right" 
+                />
+            </TableCell>
+            <TableCell>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(rule.code)}>
+                    <Trash2 className="h-4 w-4 text-red-500"/>
+                </Button>
+            </TableCell>
+        </TableRow>
+    );
+};
+
+
 export default function AdminPage() {
   const { toast } = useToast();
   const db = getFirestore(app);
@@ -79,8 +135,8 @@ export default function AdminPage() {
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: ''});
   const [addUserToLeagueData, setAddUserToLeagueData] = useState({ userId: '', teamId: '' });
-  const [newRuleData, setNewRuleData] = useState({ code: '', label: '', points: 0 });
-  const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
+  const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
+  const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
   
   const [teamNames, setTeamNames] = useState<{[id: string]: string}>({});
 
@@ -90,13 +146,18 @@ export default function AdminPage() {
 
   // State for weekly event management
   const [hohWinnerId, setHohWinnerId] = useState<string | undefined>();
+  const [hohDate, setHohDate] = useState(new Date());
   const [nominees, setNominees] = useState<string[]>(['', '']);
+  const [nomsDate, setNomsDate] = useState(new Date());
   const [vetoWinnerId, setVetoWinnerId] = useState<string | undefined>();
+  const [vetoDate, setVetoDate] = useState(new Date());
   const [vetoUsed, setVetoUsed] = useState(false);
   const [vetoUsedOnId, setVetoUsedOnId] = useState<string | undefined>();
   const [vetoReplacementNomId, setVetoReplacementNomId] = useState<string | undefined>();
   const [blockBusterWinnerId, setBlockBusterWinnerId] = useState<string | undefined>();
+  const [blockBusterDate, setBlockBusterDate] = useState(new Date());
   const [evictedId, setEvictedId] = useState<string | undefined>();
+  const [evictionDate, setEvictionDate] = useState(new Date());
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -104,9 +165,13 @@ export default function AdminPage() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
+  const [isFinishSeasonDialogOpen, setIsFinishSeasonDialogOpen] = useState(false);
+  const [winnerId, setWinnerId] = useState<string | undefined>();
+  const [runnerUpId, setRunnerUpId] = useState<string | undefined>();
+
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
-  const specialEventRules = useMemo(() => scoringRules.filter(r => ['PENALTY_RULE', 'SPECIAL_POWER'].includes(r.code)) || [], [scoringRules]);
+  const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
 
   useEffect(() => {
     const lastTab = sessionStorage.getItem('adminActiveTab');
@@ -356,17 +421,9 @@ export default function AdminPage() {
     try {
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
         const leagueDataToSave = {
-            name: leagueSettings.name,
-            maxTeams: leagueSettings.maxTeams,
-            contestantTerm: {
-                singular: leagueSettings.contestantTerm.singular,
-                plural: leagueSettings.contestantTerm.plural,
-            }
+            ...leagueSettings,
         };
         batch.set(leagueDocRef, leagueDataToSave, { merge: true });
-
-        const seasonDocRef = doc(db, 'seasons', activeSeason.id);
-        batch.set(seasonDocRef, { title: activeSeason.title }, { merge: true });
         
         await batch.commit();
         toast({ title: "Changes Saved", description: `League settings have been saved.` });
@@ -422,43 +479,44 @@ export default function AdminPage() {
   };
 
   const handleSaveWeeklyEvents = async () => {
+    if (!activeSeason || !leagueSettings) return;
     const batch = writeBatch(db);
 
-    // Delete existing events for the week to avoid duplicates
-    weekEvents.forEach(event => {
-        batch.delete(doc(db, 'competitions', event.id));
-    });
+    const createEvent = (type: Competition['type'], data: Omit<Competition, 'id' | 'seasonId' | 'type'>) => {
+        const id = `${leagueSettings.id}_wk${selectedWeek}_${type}_${Date.now()}`;
+        batch.set(doc(db, 'competitions', id), {
+            ...data,
+            id,
+            seasonId: activeSeason.id,
+            week: selectedWeek,
+            type,
+        });
+    };
 
-    // Create new events based on state
     if (hohWinnerId) {
-        const id = `bb27_wk${selectedWeek}_hoh`;
-        batch.set(doc(db, 'competitions', id), {
-            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'HOH', winnerId: hohWinnerId, airDate: new Date().toISOString()
-        });
+        createEvent('HOH', { winnerId: hohWinnerId, airDate: hohDate.toISOString() });
     }
-     if (nominees.some(n => n)) {
-        const id = `bb27_wk${selectedWeek}_noms`;
-        batch.set(doc(db, 'competitions', id), {
-            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'NOMINATIONS', nominees: nominees.filter(n => n), airDate: new Date().toISOString()
-        });
+    if (nominees.some(n => n)) {
+        createEvent('NOMINATIONS', { nominees: nominees.filter(n => n), airDate: nomsDate.toISOString() });
     }
     if (vetoWinnerId) {
-        const id = `bb27_wk${selectedWeek}_veto`;
-        batch.set(doc(db, 'competitions', id), {
-            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'VETO', winnerId: vetoWinnerId, used: vetoUsed, usedOnId: vetoUsedOnId, replacementNomId: vetoReplacementNomId, airDate: new Date().toISOString()
-        });
+        createEvent('VETO', { winnerId: vetoWinnerId, used: vetoUsed, usedOnId, replacementNomId, airDate: vetoDate.toISOString() });
+        if (vetoUsed && vetoUsedOnId) {
+             createEvent('SPECIAL_EVENT', {
+                specialEventCode: 'SAVED',
+                winnerId: vetoUsedOnId,
+                airDate: vetoDate.toISOString(),
+                notes: 'Saved by Power of Veto'
+            });
+        }
     }
     if (blockBusterWinnerId) {
-        const id = `bb27_wk${selectedWeek}_blockbuster`;
-        batch.set(doc(db, 'competitions', id), {
-            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'BLOCK_BUSTER', winnerId: blockBusterWinnerId, airDate: new Date().toISOString()
-        });
+        createEvent('BLOCK_BUSTER', { winnerId: blockBusterWinnerId, airDate: blockBusterDate.toISOString() });
     }
     if (evictedId) {
-        const id = `bb27_wk${selectedWeek}_eviction`;
-        batch.set(doc(db, 'competitions', id), {
-            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'EVICTION', evictedId: evictedId, airDate: new Date().toISOString()
-        });
+        const juryStartWeek = leagueSettings.settings.juryStartWeek;
+        const eventCode = juryStartWeek && selectedWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+        createEvent('EVICTION', { evictedId: evictedId, airDate: evictionDate.toISOString(), specialEventCode: eventCode });
     }
 
     try {
@@ -492,6 +550,8 @@ export default function AdminPage() {
                 description: `The event code "${value}" is already in use. Please choose a unique code.`,
                 variant: "destructive",
             });
+            // Revert the change locally if it's a duplicate
+            return;
         }
     }
     
@@ -701,18 +761,21 @@ export default function AdminPage() {
   
   const handleDeleteContestant = async () => {
     if (!contestantToDelete) return;
-    
+
     try {
-        // First, delete the photo from storage if it exists
-        if (contestantToDelete.photoUrl && contestantToDelete.photoUrl.includes('firebasestorage')) {
-            const photoRef = ref(storage, contestantToDelete.photoUrl);
-            await deleteObject(photoRef).catch(err => console.warn("Could not delete photo, it might not exist:", err));
-        }
-        
-        // Then, delete the document from Firestore
-        await deleteDoc(doc(db, 'contestants', contestantToDelete.id));
-        
-        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(contestantToDelete, 'full')} has been permanently removed.` });
+      // First, delete the photo from storage if it exists
+      if (contestantToDelete.photoUrl && contestantToDelete.photoUrl.includes('firebasestorage')) {
+          const photoRef = ref(storage, contestantToDelete.photoUrl);
+          await deleteObject(photoRef).catch(err => console.warn("Could not delete photo, it might not exist:", err));
+      }
+
+      // Then, delete the document from Firestore
+      await deleteDoc(doc(db, 'contestants', contestantToDelete.id));
+
+      // Finally, update local state
+      setContestants(prev => prev.filter(c => c.id !== contestantToDelete.id));
+      
+      toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(contestantToDelete, 'full')} has been permanently removed.` });
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
@@ -762,6 +825,45 @@ export default function AdminPage() {
         toast({ title: "Upload Failed", description: "Could not upload the photo.", variant: "destructive"});
     }
   };
+
+    const isSeasonFinished = useMemo(() => {
+        if (!leagueSettings || !leagueSettings.settings.seasonEndDate) return false;
+        const endDate = new Date(leagueSettings.settings.seasonEndDate);
+        const today = new Date();
+        return today > endDate;
+    }, [leagueSettings]);
+
+    const handleFinishSeason = async () => {
+        if (!winnerId || !runnerUpId || !leagueSettings || !activeSeason) {
+            toast({ title: "Error", description: "Please select a winner and a runner-up.", variant: "destructive" });
+            return;
+        }
+
+        const batch = writeBatch(db);
+        const createEvent = (type: Competition['type'], data: Partial<Competition>) => {
+            const id = `${leagueSettings.id}_wk${selectedWeek}_${type}_${Date.now()}`;
+            batch.set(doc(db, 'competitions', id), {
+                ...data,
+                id,
+                seasonId: activeSeason.id,
+                week: activeSeason.currentWeek, // Final week
+                type,
+                airDate: new Date().toISOString()
+            });
+        };
+
+        createEvent('SPECIAL_EVENT', { winnerId, specialEventCode: 'WINNER' });
+        createEvent('SPECIAL_EVENT', { winnerId: runnerUpId, specialEventCode: 'RUNNER_UP' });
+
+        try {
+            await batch.commit();
+            toast({ title: "Season Finished!", description: "Winner and runner-up have been recorded."});
+            setIsFinishSeasonDialogOpen(false);
+        } catch (error) {
+            console.error("Error finishing season:", error);
+            toast({ title: "Error", description: "Could not finalize season.", variant: "destructive" });
+        }
+    };
   
   if (!leagueSettings || !activeSeason) {
     return (
@@ -809,7 +911,45 @@ export default function AdminPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button variant="outline" size="sm" onClick={handleStartNewWeek}><Plus className="mr-2 h-4 w-4"/> New Week</Button>
+                            {isSeasonFinished ? (
+                                 <Dialog open={isFinishSeasonDialogOpen} onOpenChange={setIsFinishSeasonDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="destructive" size="sm"><Trophy className="mr-2 h-4 w-4"/> Finish Season</Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Finalize Season</DialogTitle>
+                                            <DialogDescription>Select the winner and runner-up to calculate final scores.</DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Winner</Label>
+                                                <Select value={winnerId} onValueChange={setWinnerId}>
+                                                    <SelectTrigger><SelectValue placeholder="Select Winner..."/></SelectTrigger>
+                                                    <SelectContent>
+                                                        {activeContestants.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Runner-up</Label>
+                                                <Select value={runnerUpId} onValueChange={setRunnerUpId}>
+                                                    <SelectTrigger><SelectValue placeholder="Select Runner-up..."/></SelectTrigger>
+                                                    <SelectContent>
+                                                         {activeContestants.filter(c => c.id !== winnerId).map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsFinishSeasonDialogOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleFinishSeason}>Finalize</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            ) : (
+                                <Button variant="outline" size="sm" onClick={handleStartNewWeek}><Plus className="mr-2 h-4 w-4"/> New Week</Button>
+                            )}
                         </div>
                         </div>
                     </CardHeader>
@@ -1211,22 +1351,13 @@ export default function AdminPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {scoringRuleSet?.rules.map((rule, index) => (
-                                        <TableRow key={`${rule.code}-${index}`}>
-                                            <TableCell>
-                                                <Input value={rule.code} onChange={(e) => handleUpdateRule(index, 'code', e.target.value.toUpperCase())} className="h-8" />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input value={rule.label} onChange={(e) => handleUpdateRule(index, 'label', e.target.value)} className="h-8" />
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Input type="number" value={rule.points} onChange={(e) => handleUpdateRule(index, 'points', Number(e.target.value))} className="h-8 w-20 text-right" />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveRule(rule.code)}>
-                                                    <Trash2 className="h-4 w-4 text-red-500"/>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
+                                        <RuleRow 
+                                            key={`${rule.code}-${index}`} 
+                                            rule={rule} 
+                                            index={index} 
+                                            onUpdate={handleUpdateRule} 
+                                            onRemove={handleRemoveRule} 
+                                        />
                                     ))}
                                 </TableBody>
                             </Table>
@@ -1387,6 +1518,39 @@ export default function AdminPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="seasonName">Season Name</Label>
                                 <Input id="seasonName" value={activeSeason.title} onChange={(e) => setActiveSeason({...activeSeason, title: e.target.value})} />
+                            </div>
+                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="seasonStart">Season Start Date</Label>
+                                <Input 
+                                    id="seasonStart" 
+                                    type="date"
+                                    value={leagueSettings.settings.seasonStartDate || ''}
+                                    onChange={(e) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonStartDate: e.target.value }})}
+                                />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="seasonEnd">Season End Date</Label>
+                                <Input 
+                                    id="seasonEnd" 
+                                    type="date"
+                                    value={leagueSettings.settings.seasonEndDate || ''}
+                                    onChange={(e) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonEndDate: e.target.value }})}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Jury Start Week</Label>
+                                <Select 
+                                    value={String(leagueSettings.settings.juryStartWeek || 'none')} 
+                                    onValueChange={(val) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, juryStartWeek: val === 'none' ? undefined : Number(val) }})}
+                                >
+                                    <SelectTrigger><SelectValue placeholder="Select week..."/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None</SelectItem>
+                                        {weekOptions.map(week => <SelectItem key={week} value={String(week)}>Week {week}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
