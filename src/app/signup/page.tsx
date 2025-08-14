@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getFirestore, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,54 +29,38 @@ export default function SignUpPage() {
       return;
     }
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-      
+      // 1. Create the user with Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      if (!querySnapshot.empty) {
-        const existingUserDoc = querySnapshot.docs[0];
-        const batch = writeBatch(db);
-        
-        const newUserDocRef = doc(db, "users", user.uid);
-        // Copy existing data, but don't touch the role. Update status and ID.
-        const { role, ...restOfData } = existingUserDoc.data();
-        const updatedData = {
-            ...restOfData,
-            role: role, // Preserve the existing role
-            id: user.uid,
-            status: 'active',
-            displayName: displayName || existingUserDoc.data().displayName,
-        };
-        batch.set(newUserDocRef, updatedData);
-        
-        batch.delete(existingUserDoc.ref);
+      // 2. Create the user document in Firestore with a default 'player' role.
+      // This is a secure operation as the client is not assigning a privileged role.
+      await setDoc(doc(db, "users", user.uid), {
+          id: user.uid,
+          displayName: displayName,
+          email: user.email,
+          createdAt: new Date().toISOString(), // Use client time for consistency here
+          role: 'player', // Always assign 'player' role on client-side sign-up
+          status: 'active'
+      });
 
-        await batch.commit();
-        toast({ title: "Success", description: "Account claimed successfully!" });
-
-      } else {
-        // New user, create a new document in Firestore with a default 'player' role
-        // This is safe because it's a new user, not an existing privileged one.
-        await setDoc(doc(db, "users", user.uid), {
-            id: user.uid,
-            displayName: displayName,
-            email: user.email,
-            createdAt: new Date().toISOString(),
-            role: 'player', // Assign a default, non-privileged role
-            status: 'active'
-        });
-        toast({ title: "Success", description: "Account created successfully!" });
-      }
-
+      toast({ title: "Success", description: "Account created successfully!" });
       router.push('/');
 
     } catch (error: any) {
+      // Catch specific Firebase errors for better user feedback
+      let description = "An unexpected error occurred. Please try again.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "This email is already registered. Please try logging in.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "The password is too weak. Please choose a stronger password.";
+      } else {
+        description = error.message;
+      }
+      
       toast({
         title: "Sign Up Failed",
-        description: error.message,
+        description: description,
         variant: "destructive",
       });
     }

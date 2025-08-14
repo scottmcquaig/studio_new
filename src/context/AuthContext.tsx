@@ -3,8 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc, getFirestore, collection, getDocs } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import type { User as AppUser } from '@/lib/data';
 
@@ -24,16 +23,16 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// One-time function to seed initial data if the database is empty
+// One-time function to seed initial data if the database is completely empty
 const seedInitialData = async () => {
     const db = getFirestore(app);
-    // Use a specific, predictable document ID for the initial admin user
-    const adminUserRef = doc(db, "users", "user_admin_placeholder");
-    const adminUserSnap = await getDoc(adminUserRef);
+    const usersRef = collection(db, "users");
+    const usersSnap = await getDocs(usersRef);
 
-    // Only seed if the placeholder admin user doesn't exist
-    if (!adminUserSnap.exists()) {
-        console.log("Admin user placeholder not found. Seeding initial admin user...");
+    // Only seed if the entire users collection is empty
+    if (usersSnap.empty) {
+        console.log("Users collection is empty. Seeding initial admin user...");
+        const adminUserRef = doc(db, "users", "user_admin_placeholder");
         const adminUser: AppUser = {
             id: 'user_admin_placeholder',
             displayName: "YAC Admin",
@@ -44,7 +43,7 @@ const seedInitialData = async () => {
             status: 'pending' // Status is pending until they sign up
         };
         await setDoc(adminUserRef, adminUser);
-        console.log("Admin user seeded.");
+        console.log("Admin user placeholder seeded.");
     }
 };
 
@@ -68,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (docSnap.exists()) {
                   setAppUser({ ...docSnap.data(), id: docSnap.id } as AppUser);
               } else {
+                  // This case can happen if the Firestore doc isn't created yet.
                   setAppUser(null);
               }
               setLoading(false);
