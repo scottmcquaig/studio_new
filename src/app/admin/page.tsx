@@ -70,9 +70,6 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
     return (
         <TableRow>
             <TableCell>
-                <GripVertical className="h-4 w-4 text-muted-foreground mr-2 cursor-grab" />
-            </TableCell>
-            <TableCell>
                 <Input 
                     value={localRule.code} 
                     onChange={(e) => handleChange('code', e.target.value.toUpperCase())} 
@@ -574,9 +571,9 @@ export default function AdminPage() {
                 description: `The event code "${value}" is already in use. Please choose a unique code.`,
                 variant: "destructive",
             });
-            // Revert the change locally if it's a duplicate
+            // This will revert the visual state if a duplicate is entered, as the onUpdate won't fully propagate
             const updatedRules = [...scoringRuleSet.rules];
-            setLocalRule(updatedRules[index]); // This needs to be defined in RuleRow, not here
+            setScoringRuleSet(prev => prev ? { ...prev, rules: updatedRules } : null);
             return;
         }
     }
@@ -815,17 +812,12 @@ export default function AdminPage() {
     if (!contestantToDelete) return;
 
     try {
-      // First, delete the photo from storage if it exists
       if (contestantToDelete.photoUrl && contestantToDelete.photoUrl.includes('firebasestorage')) {
           const photoRef = ref(storage, contestantToDelete.photoUrl);
           await deleteObject(photoRef).catch(err => console.warn("Could not delete photo, it might not exist:", err));
       }
 
-      // Then, delete the document from Firestore
       await deleteDoc(doc(db, 'contestants', contestantToDelete.id));
-
-      // Finally, update local state
-      setContestants(prev => prev.filter(c => c.id !== contestantToDelete.id));
       
       toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(contestantToDelete, 'full')} has been permanently removed.` });
     } catch (error) {
@@ -1271,7 +1263,7 @@ export default function AdminPage() {
                                             <Button variant="outline" size="sm" onClick={() => handleOpenContestantDialog(c)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button variant="destructive" size="icon" className="h-9 w-9">
+                                                     <Button variant="destructive" size="icon" className="h-9 w-9" onClick={() => setContestantToDelete(c)}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </AlertDialogTrigger>
@@ -1279,12 +1271,12 @@ export default function AdminPage() {
                                                     <AlertDialogHeader>
                                                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                                         <AlertDialogDescription>
-                                                            This action cannot be undone. This will permanently delete {getContestantDisplayName(c, 'full')} and all their data.
+                                                            This action cannot be undone. This will permanently delete {getContestantDisplayName(contestantToDelete, 'full')} and all their data.
                                                         </AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteContestant(c)}>Delete</AlertDialogAction>
+                                                        <AlertDialogCancel onClick={() => setContestantToDelete(null)}>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleDeleteContestant}>Delete</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
@@ -1451,7 +1443,6 @@ export default function AdminPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="w-10"></TableHead>
                                         <TableHead>Event Code</TableHead>
                                         <TableHead>Description</TableHead>
                                         <TableHead className="text-right">Score</TableHead>
@@ -1478,7 +1469,6 @@ export default function AdminPage() {
                             <div className="space-y-2">
                                 {leagueSettings.settings?.scoringBreakdownCategories?.map((category, catIndex) => (
                                     <div key={catIndex} className="flex items-center gap-2 p-3 border rounded-lg">
-                                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color ? category.color.replace('text-','bg-') : 'bg-gray-500' )}>
@@ -1873,5 +1863,7 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
 
     
