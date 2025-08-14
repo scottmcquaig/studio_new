@@ -12,7 +12,7 @@ import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX,
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, CardTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
@@ -573,7 +573,7 @@ export default function AdminPage() {
   const getContestantsForTeam = (teamId: string): Contestant[] => {
     const team = teams.find(t => t.id === teamId);
     if (!team || !team.contestantIds) return [];
-    return contestants.filter(c => team.contestantIds.includes(c.id));
+    return contestants.filter(c => (team.contestantIds || []).includes(c.id));
   };
 
   const handleOpenDraftDialog = (team: Team) => {
@@ -878,7 +878,7 @@ export default function AdminPage() {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <DialogTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</DialogTitle>
+                                    <CardTitle className="flex items-center gap-2 text-base text-green-500"><ShieldQuestion className="h-4 w-4" /> Special Event</CardTitle>
                                 </CardHeader>
                                 <CardContent className="flex h-[calc(100%-4rem)] items-center justify-center">
                                     <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
@@ -887,7 +887,7 @@ export default function AdminPage() {
                                         </DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
-                                                <DialogTitle>Log Special Event / Penalty</DialogTitle>
+                                                <CardTitle>Log Special Event / Penalty</CardTitle>
                                                 <DialogDescription>Apply a special scoring rule to a contestant for this week.</DialogDescription>
                                             </DialogHeader>
                                             <div className="space-y-4 py-4">
@@ -965,7 +965,7 @@ export default function AdminPage() {
                         <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>{isEditingNewContestant ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</DialogTitle>
+                                    <CardTitle>{isEditingNewContestant ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</CardTitle>
                                     <DialogDescription>
                                         Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
                                     </DialogDescription>
@@ -1049,7 +1049,7 @@ export default function AdminPage() {
                                     <DialogTrigger asChild><Button size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Rule</Button></DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Add New Scoring Rule</DialogTitle>
+                                            <CardTitle>Add New Scoring Rule</CardTitle>
                                         </DialogHeader>
                                         <div className="space-y-4 py-4">
                                             <div className="space-y-2">
@@ -1222,7 +1222,7 @@ export default function AdminPage() {
                 <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Drafting to {draftingTeam?.name}</DialogTitle>
+                            <CardTitle>Drafting to {draftingTeam?.name}</CardTitle>
                             <DialogDescription>Select a {contestantTerm.singular} to add to this team.</DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
@@ -1304,7 +1304,7 @@ export default function AdminPage() {
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Create New User</DialogTitle>
+                                    <CardTitle>Create New User</CardTitle>
                                     <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
@@ -1330,7 +1330,7 @@ export default function AdminPage() {
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Add User to League</DialogTitle>
+                                    <CardTitle>Add User to League</CardTitle>
                                     <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
@@ -1434,3 +1434,4 @@ export default function AdminPage() {
 }
 
     
+
