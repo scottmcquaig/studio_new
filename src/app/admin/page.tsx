@@ -12,7 +12,7 @@ import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX,
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
-import { Dialog, DialogContent, DialogHeader, CardTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
@@ -684,9 +684,10 @@ export default function AdminPage() {
         const idToDelete = editingContestant.id;
         await deleteDoc(doc(db, 'contestants', idToDelete));
         
-        // The onSnapshot listener will automatically update the state.
-        // We just need to close the dialog.
+        // Manually filter out the deleted contestant from local state for immediate UI update.
+        setContestants(prev => prev.filter(c => c.id !== idToDelete));
         setEditingContestant(null);
+
         toast({ title: "Contestant Deleted", description: `The contestant has been permanently removed.` });
     } catch (error) {
         console.error("Error deleting contestant: ", error);
@@ -887,7 +888,7 @@ export default function AdminPage() {
                                         </DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
-                                                <CardTitle>Log Special Event / Penalty</CardTitle>
+                                                <DialogTitle>Log Special Event / Penalty</DialogTitle>
                                                 <DialogDescription>Apply a special scoring rule to a contestant for this week.</DialogDescription>
                                             </DialogHeader>
                                             <div className="space-y-4 py-4">
@@ -965,7 +966,7 @@ export default function AdminPage() {
                         <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                             <DialogContent>
                                 <DialogHeader>
-                                    <CardTitle>{isEditingNewContestant ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</CardTitle>
+                                    <DialogTitle>{isEditingNewContestant ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</DialogTitle>
                                     <DialogDescription>
                                         Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
                                     </DialogDescription>
@@ -1049,7 +1050,7 @@ export default function AdminPage() {
                                     <DialogTrigger asChild><Button size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Rule</Button></DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <CardTitle>Add New Scoring Rule</CardTitle>
+                                            <DialogTitle>Add New Scoring Rule</DialogTitle>
                                         </DialogHeader>
                                         <div className="space-y-4 py-4">
                                             <div className="space-y-2">
@@ -1127,7 +1128,7 @@ export default function AdminPage() {
                                                 <Separator className="my-2" />
                                                 <div className="grid grid-cols-9 gap-1">
                                                     {colorSelection.map(colorClass => (
-                                                        <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass)}>
+                                                        <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass.replace('bg-','text-'))}>
                                                             <div className={cn("h-4 w-4 rounded-full", colorClass)} />
                                                         </Button>
                                                     ))}
@@ -1222,7 +1223,7 @@ export default function AdminPage() {
                 <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <CardTitle>Drafting to {draftingTeam?.name}</CardTitle>
+                            <DialogTitle>Drafting to {draftingTeam?.name}</DialogTitle>
                             <DialogDescription>Select a {contestantTerm.singular} to add to this team.</DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
@@ -1304,7 +1305,7 @@ export default function AdminPage() {
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <CardTitle>Create New User</CardTitle>
+                                    <DialogTitle>Create New User</DialogTitle>
                                     <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
@@ -1330,7 +1331,7 @@ export default function AdminPage() {
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <CardTitle>Add User to League</CardTitle>
+                                    <DialogTitle>Add User to League</DialogTitle>
                                     <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
@@ -1434,4 +1435,6 @@ export default function AdminPage() {
 }
 
     
+
+
 
