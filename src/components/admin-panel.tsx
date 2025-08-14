@@ -55,7 +55,7 @@ export function AdminPanel() {
   const [scoringRuleSet, setScoringRuleSet] = useState<ScoringRuleSet | null>(null);
   
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [editingContestant, setEditingContestant] = useState<Contestant | 'new' | null>(null);
+  const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
   
   const [selectedWeek, setSelectedWeek] = useState(activeSeason?.currentWeek || 1);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
@@ -558,13 +558,14 @@ export function AdminPanel() {
 
   const contestantTerm = leagueSettings.contestantTerm;
 
-  const handleOpenContestantDialog = (contestant: Contestant | 'new') => {
-    if (contestant === 'new') {
+  const handleOpenContestantDialog = (contestantOrNew: Contestant | 'new') => {
+    if (contestantOrNew === 'new') {
         const newContestant: Contestant = {
             id: `new_contestant_${Date.now()}`,
             seasonId: activeSeason.id,
             firstName: '',
             lastName: '',
+            nickname: '',
             age: 0,
             hometown: '',
             occupation: '',
@@ -574,33 +575,31 @@ export function AdminPanel() {
         };
         setEditingContestant(newContestant);
     } else {
-        setEditingContestant(contestant);
+        setEditingContestant(contestantOrNew);
     }
   };
   
   const handleUpdateContestant = (field: keyof Contestant, value: string | number | boolean) => {
-    if (editingContestant && editingContestant !== 'new') {
+    if (editingContestant) {
       setEditingContestant({ ...editingContestant, [field]: value });
-    } else if (editingContestant && typeof editingContestant === 'object') {
-        setEditingContestant({ ...editingContestant, [field]: value });
     }
   };
 
   const handleSaveContestant = async () => {
-      if (!editingContestant || editingContestant === 'new') return;
+      if (!editingContestant) return;
   
       const contestantData = { ...editingContestant };
-      const isNew = !contestants.some(c => c.id === editingContestant.id);
+      const isNew = contestantData.id.startsWith('new_contestant_');
       
-      delete (contestantData as any).id;
-  
       try {
           if (isNew) {
-              await addDoc(collection(db, 'contestants'), contestantData);
+              const { id, ...dataToSave } = contestantData;
+              await addDoc(collection(db, 'contestants'), dataToSave);
               toast({ title: "Contestant Added", description: `${getContestantDisplayName(editingContestant, 'full')} has been added.` });
           } else {
+              const { id, ...dataToSave } = contestantData;
               const contestantDoc = doc(db, 'contestants', editingContestant.id);
-              await updateDoc(contestantDoc, contestantData);
+              await updateDoc(contestantDoc, dataToSave);
               toast({ title: "Contestant Updated", description: `${getContestantDisplayName(editingContestant, 'full')} has been updated.` });
           }
           setEditingContestant(null);
@@ -611,29 +610,29 @@ export function AdminPanel() {
   };
   
   const handleDeleteContestant = async () => {
-    if (!editingContestant || editingContestant === 'new' || typeof editingContestant === 'string') return;
+    if (!editingContestant || editingContestant.id.startsWith('new_contestant_')) return;
     
-    if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}?`)) return;
+    if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}? This action cannot be undone.`)) return;
     
     try {
         const contestantId = editingContestant.id;
-        const contestantDoc = doc(db, 'contestants', contestantId);
-        await deleteDoc(contestantDoc);
+        await deleteDoc(doc(db, 'contestants', contestantId));
         
-        // No need to update local state `contestants` as onSnapshot will do it.
+        // Optimistically update local state for immediate UI feedback
+        setContestants(prev => prev.filter(c => c.id !== contestantId));
         
-        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been removed.` });
+        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been permanently removed.` });
         setEditingContestant(null);
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
     }
-};
+  };
 
   const allAssignedUserIds = teams.flatMap(t => t.ownerUserIds);
   const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
   
-  const isEditingExistingContestant = editingContestant && typeof editingContestant === 'object' && contestants.some(c => c.id === editingContestant.id);
+  const isEditingNewContestant = editingContestant?.id.startsWith('new_contestant_');
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
@@ -873,12 +872,12 @@ export function AdminPanel() {
                       <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                           <DialogContent>
                               <DialogHeader>
-                                  <DialogTitle>{typeof editingContestant === 'object' && editingContestant?.id.startsWith('new_') ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant as Contestant, 'full')}`}</DialogTitle>
+                                  <DialogTitle>{isEditingNewContestant ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</DialogTitle>
                                   <DialogDescription>
                                       Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
                                   </DialogDescription>
                               </DialogHeader>
-                              {editingContestant && typeof editingContestant === 'object' && (
+                              {editingContestant && (
                                 <div className="space-y-4 py-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -928,7 +927,7 @@ export function AdminPanel() {
                               )}
                               <DialogFooter className="justify-between">
                                   <div>
-                                      {isEditingExistingContestant && (
+                                      {!isEditingNewContestant && (
                                           <Button variant="destructive" onClick={handleDeleteContestant}>Delete</Button>
                                       )}
                                   </div>
@@ -1266,3 +1265,5 @@ export function AdminPanel() {
     </div>
   );
 }
+
+    
