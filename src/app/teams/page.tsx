@@ -1,22 +1,25 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createElement } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_TEAMS, MOCK_LEAGUES } from "@/lib/data";
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { getFirestore, collection, onSnapshot, doc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, LeagueScoringBreakdownCategory } from '@/lib/data';
 
 // Calculate KPIs for a team
 const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringRuleSet | null) => {
-    const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
+    if (!league) return { total: team.total_score || 0 };
+
+    const breakdownCategories = league.settings.scoringBreakdownCategories || [];
     const rules = scoringRules?.rules || [];
     
     const kpis: { [key: string]: number } = {};
@@ -56,7 +59,13 @@ const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringR
         }
         
         if (comp.type === 'NOMINATIONS' && comp.nominees) {
-            comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
+            comp.nominees.forEach(nomId => {
+                const isFinalNom = comp.finalNoms?.includes(nomId);
+                processEvent(nomId, 'NOMINATED');
+                if (isFinalNom) {
+                    processEvent(nomId, 'FINAL_NOM');
+                }
+            });
         }
         
         if (comp.type === 'EVICTION' && comp.evictedId) {
@@ -121,6 +130,14 @@ export default function TeamsPage() {
     const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
     
     const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
+    
+    const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
+      const IconComponent = (LucideIcons as any)[name];
+      if (!IconComponent) {
+        return <LucideIcons.HelpCircle className={className} />;
+      }
+      return createElement(IconComponent, { className });
+    };
 
   return (
     <div className="flex flex-col">
@@ -203,7 +220,10 @@ export default function TeamsPage() {
                                         if (!category.displayName) return null;
                                         return (
                                             <div key={category.displayName} className="flex justify-between items-center">
-                                                <span className="flex items-center gap-1.5">{category.displayName}</span>
+                                                <span className="flex items-center gap-1.5">
+                                                  <DynamicIcon name={category.icon} className={cn("h-4 w-4", category.color)} />
+                                                  {category.displayName}
+                                                </span>
                                                 <span className="font-mono font-medium">{value > 0 ? '+':''}{value}</span>
                                             </div>
                                         );

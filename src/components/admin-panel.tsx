@@ -1,19 +1,21 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createElement } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_LEAGUES, MOCK_SCORING_RULES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +28,18 @@ import { app } from '@/lib/firebase';
 import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
+const iconSelection = [
+    'Crown', 'Shield', 'ShieldPlus', 'Trophy', 'Star', 'Swords', 'Handshake', 'Angry',
+    'TrendingUp', 'TrendingDown', 'UserX', 'UserCheck', 'Pencil', 'BookCopy', 'Smile', 'Settings'
+] as const;
+
+const colorSelection = [
+    'text-gray-500', 'text-red-500', 'text-orange-500', 'text-amber-500',
+    'text-yellow-500', 'text-lime-500', 'text-green-500', 'text-emerald-500',
+    'text-teal-500', 'text-cyan-500', 'text-sky-500', 'text-blue-500',
+    'text-indigo-500', 'text-violet-500', 'text-purple-500', 'text-fuchsia-500',
+    'text-pink-500', 'text-rose-500'
+];
 
 export function AdminPanel() {
   const { toast } = useToast();
@@ -171,6 +185,13 @@ export function AdminPanel() {
     const unsubscribeLeagues = onSnapshot(leagueDocRef, (docSnap) => {
         if (docSnap.exists()) {
             const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+             // Ensure breakdown categories has 6 items
+            const currentCategories = leagueData.settings?.scoringBreakdownCategories || [];
+            const newCategories = Array.from({ length: 6 }, (_, i) => {
+                return currentCategories[i] || { icon: 'HelpCircle', color: 'text-gray-500', displayName: '', ruleCodes: [''] };
+            });
+            leagueData.settings.scoringBreakdownCategories = newCategories;
+
             setLeagueSettings(leagueData);
 
             if (leagueData.settings.scoringRuleSetId) {
@@ -186,10 +207,19 @@ export function AdminPanel() {
             }
         } else {
             console.log("No league documents found, using mock data.");
-            setLeagueSettings(MOCK_LEAGUES[0] || null);
-             if (MOCK_LEAGUES[0]?.settings.scoringRuleSetId) {
-                const ruleset = MOCK_SCORING_RULES.find(rs => rs.id === MOCK_LEAGUES[0].settings.scoringRuleSetId);
-                setScoringRuleSet(ruleset || null);
+            const mockLeague = MOCK_LEAGUES[0] || null;
+             if (mockLeague) {
+                const currentCategories = mockLeague.settings?.scoringBreakdownCategories || [];
+                const newCategories = Array.from({ length: 6 }, (_, i) => {
+                    return currentCategories[i] || { icon: 'HelpCircle', color: 'text-gray-500', displayName: '', ruleCodes: [''] };
+                });
+                mockLeague.settings.scoringBreakdownCategories = newCategories;
+                setLeagueSettings(mockLeague);
+
+                if (mockLeague.settings.scoringRuleSetId) {
+                    const ruleset = MOCK_SCORING_RULES.find(rs => rs.id === mockLeague.settings.scoringRuleSetId);
+                    setScoringRuleSet(ruleset || null);
+                }
             }
         }
     });
@@ -341,8 +371,8 @@ export function AdminPanel() {
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
         const leagueDataToSave = {
             name: leagueSettings.name,
-            maxTeams: leagueSettings.maxTeams,
-            contestantTerm: leagueSettings.contestantTerm,
+            'contestantTerm.singular': leagueSettings.contestantTerm.singular,
+            'contestantTerm.plural': leagueSettings.contestantTerm.plural,
         };
         await setDoc(leagueDocRef, leagueDataToSave, { merge: true });
 
@@ -360,6 +390,9 @@ export function AdminPanel() {
      if (!leagueSettings) return;
 
      try {
+        const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
+        await updateDoc(leagueDocRef, { maxTeams: leagueSettings.maxTeams });
+
         const teamPromises = displayedTeams.map(team => {
             if(team.id.endsWith('_placeholder')) return null;
             const teamDocRef = doc(db, 'teams', team.id);
@@ -435,7 +468,7 @@ export function AdminPanel() {
     toast({ title: "Rule Removed", description: "The scoring rule has been removed. Remember to save changes." });
   };
 
-  const handleBreakdownCategoryChange = (index: number, field: keyof LeagueScoringBreakdownCategory, value: string | string[]) => {
+  const handleBreakdownCategoryChange = (catIndex: number, field: keyof LeagueScoringBreakdownCategory, value: string | string[]) => {
       if (!leagueSettings) return;
       const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
       
@@ -445,7 +478,7 @@ export function AdminPanel() {
           toast({ title: "Character Limit", description: "Display names are limited to 12 characters.", variant: "destructive"});
       }
 
-      (updatedCategories[index] as any)[field] = finalValue;
+      (updatedCategories[catIndex] as any)[field] = finalValue;
       
       setLeagueSettings({
           ...leagueSettings,
@@ -455,8 +488,57 @@ export function AdminPanel() {
           },
       });
   };
+
+  const handleBreakdownRuleCodeChange = (catIndex: number, ruleIndex: number, value: string) => {
+      if (!leagueSettings) return;
+      const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
+      const newRuleCodes = [...updatedCategories[catIndex].ruleCodes];
+      newRuleCodes[ruleIndex] = value;
+      updatedCategories[catIndex].ruleCodes = newRuleCodes;
+       setLeagueSettings({
+          ...leagueSettings,
+          settings: {
+              ...leagueSettings.settings,
+              scoringBreakdownCategories: updatedCategories,
+          },
+      });
+  };
+
+  const addBreakdownRuleCode = (catIndex: number) => {
+      if (!leagueSettings) return;
+      const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
+      updatedCategories[catIndex].ruleCodes.push('');
+       setLeagueSettings({
+          ...leagueSettings,
+          settings: {
+              ...leagueSettings.settings,
+              scoringBreakdownCategories: updatedCategories,
+          },
+      });
+  };
   
+  const removeBreakdownRuleCode = (catIndex: number, ruleIndex: number) => {
+      if (!leagueSettings) return;
+      const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
+      const newRuleCodes = updatedCategories[catIndex].ruleCodes.filter((_, i) => i !== ruleIndex);
+      updatedCategories[catIndex].ruleCodes = newRuleCodes;
+       setLeagueSettings({
+          ...leagueSettings,
+          settings: {
+              ...leagueSettings.settings,
+              scoringBreakdownCategories: updatedCategories,
+          },
+      });
+  };
   
+  const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
+    const IconComponent = (LucideIcons as any)[name];
+    if (!IconComponent) {
+        return <LucideIcons.HelpCircle className={className} />;
+    }
+    return createElement(IconComponent, { className });
+  };
+
   if (!leagueSettings || !activeSeason) {
     return <div>Loading...</div>;
   }
@@ -909,28 +991,60 @@ export function AdminPanel() {
                       <div>
                           <h3 className="text-lg font-medium mb-2">Scoring Breakdown Categories</h3>
                           <p className="text-sm text-muted-foreground mb-4">Customize how scores are displayed on team cards. Define up to 6 categories.</p>
-                          <div className="space-y-4">
-                              {leagueSettings.settings?.scoringBreakdownCategories?.map((category, index) => (
-                                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md">
-                                      <div>
-                                          <Label>Display Name</Label>
-                                          <Input 
-                                              value={category.displayName} 
-                                              onChange={(e) => handleBreakdownCategoryChange(index, 'displayName', e.target.value)}
-                                              maxLength={12}
-                                          />
-                                      </div>
-                                      <div>
-                                          <Label>Associated Rule Codes</Label>
-                                          {/* This should be a multi-select component in a real app */}
-                                          <Input 
-                                              value={category.ruleCodes.join(', ')} 
-                                              onChange={(e) => handleBreakdownCategoryChange(index, 'ruleCodes', e.target.value.split(',').map(s => s.trim()))}
-                                              placeholder="e.g., HOH_WIN, VETO_WIN"
-                                          />
-                                      </div>
-                                  </div>
-                              ))}
+                          <div className="space-y-2">
+                            {leagueSettings.settings?.scoringBreakdownCategories?.map((category, catIndex) => (
+                                <div key={catIndex} className="flex items-center gap-2 p-3 border rounded-lg">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color)}>
+                                               <DynamicIcon name={category.icon} className="h-5 w-5" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto">
+                                            <div className="grid grid-cols-8 gap-1">
+                                                {iconSelection.map(iconName => (
+                                                    <Button key={iconName} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleBreakdownCategoryChange(catIndex, 'icon', iconName)}>
+                                                        <DynamicIcon name={iconName} />
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                            <Separator className="my-2" />
+                                            <div className="grid grid-cols-9 gap-1">
+                                                {colorSelection.map(colorClass => (
+                                                    <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass)}>
+                                                        <div className={cn("h-4 w-4 rounded-full", colorClass.replace('text-', 'bg-'))} />
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Input 
+                                        placeholder="Display Name"
+                                        value={category.displayName} 
+                                        onChange={(e) => handleBreakdownCategoryChange(catIndex, 'displayName', e.target.value)}
+                                        maxLength={12}
+                                        className="w-40"
+                                    />
+                                    <div className="flex flex-col gap-1 flex-grow">
+                                    {category.ruleCodes.map((ruleCode, ruleIndex) => (
+                                        <div key={ruleIndex} className="flex items-center gap-1">
+                                             <Select value={ruleCode} onValueChange={(value) => handleBreakdownRuleCodeChange(catIndex, ruleIndex, value)}>
+                                                <SelectTrigger><SelectValue placeholder="Select event code..."/></SelectTrigger>
+                                                <SelectContent>
+                                                    {scoringRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeBreakdownRuleCode(catIndex, ruleIndex)}>
+                                                <Trash2 className="h-4 w-4 text-red-500"/>
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    </div>
+                                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={() => addBreakdownRuleCode(catIndex)}>
+                                        <Plus className="h-4 w-4"/>
+                                    </Button>
+                                </div>
+                            ))}
                           </div>
                       </div>
                   </CardContent>
@@ -1140,5 +1254,3 @@ export function AdminPanel() {
     </div>
   );
 }
-
-    

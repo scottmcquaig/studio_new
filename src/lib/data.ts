@@ -58,6 +58,8 @@ export interface Competition {
 }
 
 export interface LeagueScoringBreakdownCategory {
+    icon: string;
+    color: string;
     displayName: string;
     ruleCodes: string[];
 }
@@ -225,12 +227,12 @@ export const MOCK_LEAGUES: League[] = [
         "scoringRuleSetId":"bb27_ruleset",
         "transactionLockDuringEpisodes":true,
         "scoringBreakdownCategories": [
-            { "displayName": "HOH Wins", "ruleCodes": ["HOH_WIN"] },
-            { "displayName": "Veto Wins", "ruleCodes": ["VETO_WIN"] },
-            { "displayName": "Powers", "ruleCodes": ["SPECIAL_POWER"] },
-            { "displayName": "Noms", "ruleCodes": ["NOMINATED"] },
-            { "displayName": "Evicted", "ruleCodes": ["EVICTED"] },
-            { "displayName": "Other", "ruleCodes": [] }
+            { "icon": "Crown", "color": "text-purple-500", "displayName": "HOH Wins", "ruleCodes": ["HOH_WIN"] },
+            { "icon": "Shield", "color": "text-amber-500", "displayName": "Veto Wins", "ruleCodes": ["VETO_WIN"] },
+            { "icon": "ShieldPlus", "color": "text-blue-500", "displayName": "Powers", "ruleCodes": ["SPECIAL_POWER", "BLOCK_BUSTER_SAFE"] },
+            { "icon": "Users", "color": "text-red-500", "displayName": "Noms", "ruleCodes": ["NOMINATED", "FINAL_NOM"] },
+            { "icon": "UserX", "color": "text-gray-500", "displayName": "Evicted", "ruleCodes": ["EVICTED"] },
+            { "icon": "TrendingUp", "color": "text-green-500", "displayName": "Misc", "ruleCodes": ["VETO_USED", "SURVIVES_EVICTION"] }
         ]
       }
     }
@@ -266,6 +268,7 @@ export const MOCK_SCORING_RULES: ScoringRuleSet[] = [
         {"code":"VETO_USED","label":"Uses Veto (any target)","points":3},
         {"code":"NOMINATED","label":"Is nominated at any point","points":-3},
         {"code":"FINAL_NOM","label":"Sits on eviction night","points":-2},
+        {"code":"EVICTED", "label": "Is evicted from the house", "points": -10},
         {"code":"SURVIVES_EVICTION","label":"Survives an eviction vote","points":5},
         {"code":"BLOCK_BUSTER_SAFE","label":"Wins Block Buster safety","points":4},
         {"code":"HAVE_NOT","label":"Becomes a Have-Not","points":-1},
