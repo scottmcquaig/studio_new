@@ -386,30 +386,30 @@ export default function AdminPage() {
   };
 
   const handleSaveRules = async () => {
-      if (!scoringRuleSet || !leagueSettings) return;
-      const batch = writeBatch(db);
-      try {
-          const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
-          batch.set(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
-          
-          const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
-          batch.set(leagueDocRef, {
-              'settings.scoringBreakdownCategories': leagueSettings.settings.scoringBreakdownCategories.filter(c => c.displayName),
-          }, { merge: true });
+    if (!scoringRuleSet || !leagueSettings) return;
+    const batch = writeBatch(db);
+    try {
+        const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
+        batch.set(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
 
-          await batch.commit();
-          toast({ title: "Changes Saved", description: `Scoring rules and breakdowns have been saved.` });
-      } catch (error) {
-          console.error(`Error saving rules: `, error);
-          toast({ title: "Error", description: `Could not save scoring rules.`, variant: "destructive" });
-      }
+        const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
+        // Create a copy of settings to modify
+        const updatedSettings = { ...leagueSettings.settings };
+        updatedSettings.scoringBreakdownCategories = leagueSettings.settings.scoringBreakdownCategories.filter(c => c.displayName);
+
+        batch.update(leagueDocRef, { settings: updatedSettings });
+
+        await batch.commit();
+        toast({ title: "Changes Saved", description: `Scoring rules and breakdowns have been saved.` });
+    } catch (error) {
+        console.error(`Error saving rules: `, error);
+        toast({ title: "Error", description: `Could not save scoring rules.`, variant: "destructive" });
+    }
   };
 
   const handleSaveWeeklyEvents = async () => {
     const batch = writeBatch(db);
 
-    const eventTypes = ['HOH', 'NOMINATIONS', 'VETO', 'BLOCK_BUSTER', 'EVICTION'];
-    
     // Delete existing events for the week to avoid duplicates
     weekEvents.forEach(event => {
         batch.delete(doc(db, 'competitions', event.id));
@@ -976,11 +976,11 @@ export default function AdminPage() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <Label>First Name</Label>
-                                                <Input value={editingContestant.firstName} onChange={(e) => handleUpdateContestant('firstName', e.target.value)} />
+                                                <Input value={editingContestant.firstName || ''} onChange={(e) => handleUpdateContestant('firstName', e.target.value)} />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Last Name</Label>
-                                                <Input value={editingContestant.lastName} onChange={(e) => handleUpdateContestant('lastName', e.target.value)} />
+                                                <Input value={editingContestant.lastName || ''} onChange={(e) => handleUpdateContestant('lastName', e.target.value)} />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
@@ -990,7 +990,7 @@ export default function AdminPage() {
                                             </div>
                                             <div className="space-y-2">
                                                 <Label>Age</Label>
-                                                <Input type="number" value={editingContestant.age} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
+                                                <Input type="number" value={editingContestant.age || 0} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
                                             </div>
                                         </div>
                                         
@@ -1007,15 +1007,15 @@ export default function AdminPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Hometown</Label>
-                                            <Input value={editingContestant.hometown} onChange={(e) => handleUpdateContestant('hometown', e.target.value)} />
+                                            <Input value={editingContestant.hometown || ''} onChange={(e) => handleUpdateContestant('hometown', e.target.value)} />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Occupation</Label>
-                                            <Input value={editingContestant.occupation} onChange={(e) => handleUpdateContestant('occupation', e.target.value)} />
+                                            <Input value={editingContestant.occupation || ''} onChange={(e) => handleUpdateContestant('occupation', e.target.value)} />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Photo URL</Label>
-                                            <Input value={editingContestant.photoUrl} onChange={(e) => handleUpdateContestant('photoUrl', e.target.value)} />
+                                            <Input value={editingContestant.photoUrl || ''} onChange={(e) => handleUpdateContestant('photoUrl', e.target.value)} />
                                         </div>
                                     </div>
                                 )}
@@ -1435,6 +1435,7 @@ export default function AdminPage() {
 }
 
     
+
 
 
 
