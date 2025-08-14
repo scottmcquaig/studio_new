@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -31,11 +31,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Link from 'next/link';
 import Cropper, { Area } from 'react-easy-crop';
 import { Slider } from '@/components/ui/slider';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 
 const iconSelection = [
     'Crown', 'Ban', 'Gem', 'Gift', 'HeartPulse', 'KeyRound', 'ShieldPlus', 'Trophy',
-    'Medal', 'DollarSign', 'Rocket', 'Cctv', 'Save', 'Skull', 'CloudSun', 'XCircle'
+    'Medal', 'DollarSign', 'Rocket', 'Cctv', 'Skull', 'CloudSun', 'XCircle'
 ] as const;
 
 const colorSelection = [
@@ -67,6 +69,9 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
 
     return (
         <TableRow>
+            <TableCell>
+                <GripVertical className="h-4 w-4 text-muted-foreground mr-2 cursor-grab" />
+            </TableCell>
             <TableCell>
                 <Input 
                     value={localRule.code} 
@@ -110,6 +115,7 @@ export default function AdminPage() {
   const [leagueSettings, setLeagueSettings] = useState<League | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
+  const [picks, setPicks] = useState<Pick[]>([]);
 
   const [activeSeason, setActiveSeason] = useState<Season | null>(MOCK_SEASONS[0]);
 
@@ -131,6 +137,7 @@ export default function AdminPage() {
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
   const [draftingTeam, setDraftingTeam] = useState<Team | null>(null);
   const [draftSelection, setDraftSelection] = useState<string>('');
+  const [currentPickNumber, setCurrentPickNumber] = useState(1);
 
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: ''});
@@ -146,18 +153,18 @@ export default function AdminPage() {
 
   // State for weekly event management
   const [hohWinnerId, setHohWinnerId] = useState<string | undefined>();
-  const [hohDate, setHohDate] = useState(new Date());
+  const [hohDate, setHohDate] = useState<Date | undefined>();
   const [nominees, setNominees] = useState<string[]>(['', '']);
-  const [nomsDate, setNomsDate] = useState(new Date());
+  const [nomsDate, setNomsDate] = useState<Date | undefined>();
   const [vetoWinnerId, setVetoWinnerId] = useState<string | undefined>();
-  const [vetoDate, setVetoDate] = useState(new Date());
+  const [vetoDate, setVetoDate] = useState<Date | undefined>();
   const [vetoUsed, setVetoUsed] = useState(false);
   const [vetoUsedOnId, setVetoUsedOnId] = useState<string | undefined>();
   const [vetoReplacementNomId, setVetoReplacementNomId] = useState<string | undefined>();
   const [blockBusterWinnerId, setBlockBusterWinnerId] = useState<string | undefined>();
-  const [blockBusterDate, setBlockBusterDate] = useState(new Date());
+  const [blockBusterDate, setBlockBusterDate] = useState<Date | undefined>();
   const [evictedId, setEvictedId] = useState<string | undefined>();
-  const [evictionDate, setEvictionDate] = useState(new Date());
+  const [evictionDate, setEvictionDate] = useState<Date | undefined>();
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -226,6 +233,16 @@ export default function AdminPage() {
         });
         setContestants(contestantData.sort((a,b) => (a.firstName || '').localeCompare(b.firstName || '')));
     });
+
+    const picksCol = collection(db, "picks");
+    const unsubscribePicks = onSnapshot(picksCol, (querySnapshot) => {
+        const picksData: Pick[] = [];
+        querySnapshot.forEach((doc) => {
+            picksData.push({ ...doc.data(), id: doc.id } as Pick);
+        });
+        setPicks(picksData.sort((a,b) => a.pick - b.pick));
+        setCurrentPickNumber(picksData.length + 1);
+    });
     
     const teamsCol = collection(db, "teams");
     const qTeams = query(teamsCol);
@@ -285,6 +302,7 @@ export default function AdminPage() {
         unsubscribeLeagues();
         unsubscribeTeams();
         unsubscribeUsers();
+        unsubscribePicks();
     };
   }, [db]);
 
@@ -292,7 +310,7 @@ export default function AdminPage() {
   const activeContestants = useMemo(() => contestants.filter(hg => hg.status === 'active'), [contestants]);
   const weekOptions = useMemo(() => Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1).reverse(), [activeSeason]);
   
-  const allAssignedContestantIds = useMemo(() => teams.flatMap(t => t.contestantIds || []), [teams]);
+  const allAssignedContestantIds = useMemo(() => picks.map(p => p.contestantId), [picks]);
   const undraftedContestants = useMemo(() => contestants.filter(c => !allAssignedContestantIds.includes(c.id)), [contestants, allAssignedContestantIds]);
 
   const weekEvents = useMemo(() => competitions.filter(c => c.week === selectedWeek), [competitions, selectedWeek]);
@@ -305,13 +323,18 @@ export default function AdminPage() {
     const eviction = weekEvents.find(c => c.type === 'EVICTION');
     
     setHohWinnerId(hoh?.winnerId);
+    setHohDate(hoh?.airDate ? new Date(hoh.airDate) : undefined);
     setNominees(noms?.nominees || ['', '']);
+    setNomsDate(noms?.airDate ? new Date(noms.airDate) : undefined);
     setVetoWinnerId(pov?.winnerId);
+    setVetoDate(pov?.airDate ? new Date(pov.airDate) : undefined);
     setVetoUsed(pov?.used || false);
     setVetoUsedOnId(pov?.usedOnId);
     setVetoReplacementNomId(pov?.replacementNomId);
     setBlockBusterWinnerId(blockBuster?.winnerId);
+    setBlockBusterDate(blockBuster?.airDate ? new Date(blockBuster.airDate) : undefined);
     setEvictedId(eviction?.evictedId);
+    setEvictionDate(eviction?.airDate ? new Date(eviction.airDate) : undefined);
 
   }, [weekEvents, selectedWeek]);
 
@@ -460,9 +483,10 @@ export default function AdminPage() {
     const batch = writeBatch(db);
     try {
         const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
-        batch.set(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
+        batch.update(rulesetDocRef, { rules: scoringRuleSet.rules });
 
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
+        
         const updatedSettings = {
           ...leagueSettings.settings,
           scoringBreakdownCategories: leagueSettings.settings.scoringBreakdownCategories.filter(c => c.displayName)
@@ -494,29 +518,29 @@ export default function AdminPage() {
     };
 
     if (hohWinnerId) {
-        createEvent('HOH', { winnerId: hohWinnerId, airDate: hohDate.toISOString() });
+        createEvent('HOH', { winnerId: hohWinnerId, airDate: (hohDate || new Date()).toISOString() });
     }
     if (nominees.some(n => n)) {
-        createEvent('NOMINATIONS', { nominees: nominees.filter(n => n), airDate: nomsDate.toISOString() });
+        createEvent('NOMINATIONS', { nominees: nominees.filter(n => n), airDate: (nomsDate || new Date()).toISOString() });
     }
     if (vetoWinnerId) {
-        createEvent('VETO', { winnerId: vetoWinnerId, used: vetoUsed, usedOnId, replacementNomId, airDate: vetoDate.toISOString() });
+        createEvent('VETO', { winnerId: vetoWinnerId, used: vetoUsed, usedOnId, replacementNomId, airDate: (vetoDate || new Date()).toISOString() });
         if (vetoUsed && vetoUsedOnId) {
              createEvent('SPECIAL_EVENT', {
                 specialEventCode: 'SAVED',
                 winnerId: vetoUsedOnId,
-                airDate: vetoDate.toISOString(),
+                airDate: (vetoDate || new Date()).toISOString(),
                 notes: 'Saved by Power of Veto'
             });
         }
     }
     if (blockBusterWinnerId) {
-        createEvent('BLOCK_BUSTER', { winnerId: blockBusterWinnerId, airDate: blockBusterDate.toISOString() });
+        createEvent('BLOCK_BUSTER', { winnerId: blockBusterWinnerId, airDate: (blockBusterDate || new Date()).toISOString() });
     }
     if (evictedId) {
         const juryStartWeek = leagueSettings.settings.juryStartWeek;
         const eventCode = juryStartWeek && selectedWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-        createEvent('EVICTION', { evictedId: evictedId, airDate: evictionDate.toISOString(), specialEventCode: eventCode });
+        createEvent('EVICTION', { evictedId: evictedId, airDate: (evictionDate || new Date()).toISOString(), specialEventCode: eventCode });
     }
 
     try {
@@ -551,6 +575,8 @@ export default function AdminPage() {
                 variant: "destructive",
             });
             // Revert the change locally if it's a duplicate
+            const updatedRules = [...scoringRuleSet.rules];
+            setLocalRule(updatedRules[index]); // This needs to be defined in RuleRow, not here
             return;
         }
     }
@@ -656,29 +682,62 @@ export default function AdminPage() {
       return users.filter(u => (team.ownerUserIds || []).includes(u.id));
   };
   
-  const getContestantsForTeam = (teamId: string): Contestant[] => {
-    const team = teams.find(t => t.id === teamId);
-    if (!team || !team.contestantIds) return [];
-    return contestants.filter(c => (team.contestantIds || []).includes(c.id));
+  const getPicksForTeam = (teamId: string): Pick[] => {
+    return picks.filter(p => p.teamId === teamId);
   };
 
-  const handleOpenDraftDialog = (team: Team) => {
-    setDraftingTeam(team);
+  const snakeDraftOrder = useMemo(() => {
+    const numTeams = teams.length;
+    const numContestants = contestants.length;
+    if (numTeams === 0 || numContestants === 0) return [];
+
+    const rounds = Math.ceil(numContestants / numTeams);
+    const order: { pick: number, team: Team }[] = [];
+    const sortedTeams = [...teams].sort((a,b) => a.draftOrder - b.draftOrder);
+
+    for (let round = 0; round < rounds; round++) {
+        const pickOrder = (round % 2 === 1) ? [...sortedTeams].reverse() : sortedTeams;
+        for (let i = 0; i < pickOrder.length; i++) {
+            const team = pickOrder[i];
+            const pickNumber = round * numTeams + i + 1;
+            if(pickNumber <= numContestants) {
+                order.push({ pick: pickNumber, team: team });
+            }
+        }
+    }
+    return order;
+  }, [teams, contestants]);
+  
+  const nextPickDetails = useMemo(() => {
+    if (snakeDraftOrder.length === 0 || currentPickNumber > snakeDraftOrder.length) return null;
+    return snakeDraftOrder[currentPickNumber - 1];
+  }, [snakeDraftOrder, currentPickNumber]);
+
+  const handleOpenDraftDialog = () => {
+    if (!nextPickDetails) return;
+    setDraftingTeam(nextPickDetails.team);
     setIsDraftDialogOpen(true);
     setDraftSelection('');
   }
 
   const handleDraftContestant = async () => {
-    if (!draftingTeam || !draftSelection) {
+    if (!draftingTeam || !draftSelection || !leagueSettings) {
         toast({ title: "Error", description: "No contestant selected.", variant: "destructive"});
         return;
     }
 
-    const teamDocRef = doc(db, 'teams', draftingTeam.id);
-    const updatedContestantIds = [...(draftingTeam.contestantIds || []), draftSelection];
+    const pickData: Pick = {
+        id: `pick_${currentPickNumber}`,
+        leagueId: leagueSettings.id,
+        teamId: draftingTeam.id,
+        contestantId: draftSelection,
+        pick: currentPickNumber,
+        round: Math.ceil(currentPickNumber / teams.length),
+        createdAt: new Date().toISOString()
+    };
     
     try {
-        await updateDoc(teamDocRef, { contestantIds: updatedContestantIds });
+        await setDoc(doc(db, 'picks', pickData.id), pickData);
         toast({ title: "Draft Successful", description: `${getContestantDisplayName(contestants.find(c => c.id === draftSelection), 'full')} has been drafted to ${draftingTeam.name}.`});
         setIsDraftDialogOpen(false);
         setDraftingTeam(null);
@@ -688,20 +747,13 @@ export default function AdminPage() {
     }
   };
   
-  const handleRemoveContestantFromTeam = async (contestantId: string, teamId: string) => {
-    const team = teams.find(t => t.id === teamId);
-    if (!team || !team.contestantIds) return;
-    
-    const teamDocRef = doc(db, 'teams', team.id);
-    const updatedContestantIds = team.contestantIds.filter(id => id !== contestantId);
-
+  const handleRemoveContestantFromTeam = async (pickId: string) => {
     try {
-        await updateDoc(teamDocRef, { contestantIds: updatedContestantIds });
-        const contestant = contestants.find(c => c.id === contestantId);
-        toast({ title: "Player Removed", description: `${getContestantDisplayName(contestant, 'full')} has been removed from ${team.name}.`});
+        await deleteDoc(doc(db, 'picks', pickId));
+        toast({ title: "Pick Removed", description: `The draft pick has been removed.`});
     } catch(e) {
-        console.error("Error removing contestant: ", e);
-        toast({ title: "Error", description: "Could not remove contestant.", variant: "destructive"});
+        console.error("Error removing pick: ", e);
+        toast({ title: "Error", description: "Could not remove pick.", variant: "destructive"});
     }
   };
 
@@ -984,7 +1036,13 @@ export default function AdminPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-purple-600"><Crown className="h-4 w-4" /> Head of Household</CardTitle>
+                                    <CardTitle className="flex items-center justify-between text-base text-purple-600">
+                                        <span className="flex items-center gap-2"><Crown className="h-4 w-4" /> Head of Household</span>
+                                        <Popover>
+                                            <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><CalendarIcon className="h-4 w-4"/></Button></PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={hohDate} onSelect={setHohDate} initialFocus/></PopoverContent>
+                                        </Popover>
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <Label>HOH Winner</Label>
@@ -999,8 +1057,12 @@ export default function AdminPage() {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-red-500">
-                                        <Users className="h-4 w-4" /> Nominations
+                                    <CardTitle className="flex items-center justify-between text-base text-red-500">
+                                        <span className="flex items-center gap-2"><Users className="h-4 w-4" /> Nominations</span>
+                                         <Popover>
+                                            <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><CalendarIcon className="h-4 w-4"/></Button></PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={nomsDate} onSelect={setNomsDate} initialFocus/></PopoverContent>
+                                        </Popover>
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
@@ -1031,7 +1093,13 @@ export default function AdminPage() {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-amber-500"><Shield className="h-4 w-4" /> Power of Veto</CardTitle>
+                                    <CardTitle className="flex items-center justify-between text-base text-amber-500">
+                                        <span className="flex items-center gap-2"><Shield className="h-4 w-4" /> Power of Veto</span>
+                                        <Popover>
+                                            <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><CalendarIcon className="h-4 w-4"/></Button></PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={vetoDate} onSelect={setVetoDate} initialFocus/></PopoverContent>
+                                        </Popover>
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div>
@@ -1079,7 +1147,13 @@ export default function AdminPage() {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-sky-500"><ShieldCheck className="h-4 w-4" /> Block Buster</CardTitle>
+                                     <CardTitle className="flex items-center justify-between text-base text-sky-500">
+                                        <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Block Buster</span>
+                                         <Popover>
+                                            <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><CalendarIcon className="h-4 w-4"/></Button></PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={blockBusterDate} onSelect={setBlockBusterDate} initialFocus/></PopoverContent>
+                                        </Popover>
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <Label>Winner (Safe)</Label>
@@ -1094,7 +1168,13 @@ export default function AdminPage() {
                             </Card>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-base text-muted-foreground"><UserX className="h-4 w-4" /> Eviction</CardTitle>
+                                     <CardTitle className="flex items-center justify-between text-base text-muted-foreground">
+                                        <span className="flex items-center gap-2"><UserX className="h-4 w-4" /> Eviction</span>
+                                         <Popover>
+                                            <PopoverTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><CalendarIcon className="h-4 w-4"/></Button></PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={evictionDate} onSelect={setEvictionDate} initialFocus/></PopoverContent>
+                                        </Popover>
+                                    </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <Label>Evicted Player</Label>
@@ -1189,9 +1269,25 @@ export default function AdminPage() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Button variant="outline" size="sm" onClick={() => handleOpenContestantDialog(c)}><Pencil className="mr-2 h-3 w-3" /> Edit</Button>
-                                            <Button variant="destructive" size="icon" className="h-9 w-9" onClick={() => setContestantToDelete(c)}>
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="destructive" size="icon" className="h-9 w-9">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete {getContestantDisplayName(c, 'full')} and all their data.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteContestant(c)}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </div>
                                     </div>
                                 ))}
@@ -1272,21 +1368,6 @@ export default function AdminPage() {
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
-                        
-                         <AlertDialog open={!!contestantToDelete} onOpenChange={(isOpen) => !isOpen && setContestantToDelete(null)}>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete {getContestantDisplayName(contestantToDelete, 'full')} and all their data.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setContestantToDelete(null)}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDeleteContestant}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
                         
                         <Dialog open={!!imageSrc} onOpenChange={(isOpen) => !isOpen && setImageSrc(null)}>
                             <DialogContent className="max-w-lg">
@@ -1370,6 +1451,7 @@ export default function AdminPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-10"></TableHead>
                                         <TableHead>Event Code</TableHead>
                                         <TableHead>Description</TableHead>
                                         <TableHead className="text-right">Score</TableHead>
@@ -1391,11 +1473,12 @@ export default function AdminPage() {
                         </div>
                         <Separator/>
                         <div>
-                            <h3 className="text-lg font-medium mb-2">Scoring Breakdown Categories</h3>
+                            <h3 className="text-lg font-medium mb-2">Team Card KPIs</h3>
                             <p className="text-sm text-muted-foreground mb-4">Customize how scores are displayed on team cards. Define up to 6 categories.</p>
                             <div className="space-y-2">
                                 {leagueSettings.settings?.scoringBreakdownCategories?.map((category, catIndex) => (
                                     <div key={catIndex} className="flex items-center gap-2 p-3 border rounded-lg">
+                                        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
                                         <Popover>
                                             <PopoverTrigger asChild>
                                                 <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color ? category.color.replace('text-','bg-') : 'bg-gray-500' )}>
@@ -1459,8 +1542,22 @@ export default function AdminPage() {
             <TabsContent value="draft" className="mt-6 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2">Draft Center</CardTitle>
-                        <CardDescription>Assign contestants to teams.</CardDescription>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="flex items-center gap-2">Draft Center</CardTitle>
+                            {nextPickDetails ? (
+                                <Button size="sm" onClick={handleOpenDraftDialog}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Make Next Pick ({currentPickNumber})
+                                </Button>
+                            ) : (
+                                <Badge variant="outline">Draft Complete</Badge>
+                            )}
+                        </div>
+                        <CardDescription>
+                            {nextPickDetails ? 
+                                `On the clock: ${nextPickDetails.team.name} (Pick ${currentPickNumber})` :
+                                `All ${contestants.length} contestants have been drafted.`
+                            }
+                        </CardDescription>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div className="space-y-4">
@@ -1475,21 +1572,23 @@ export default function AdminPage() {
                                                 </CardDescription>
                                             )}
                                         </div>
-                                        <Button size="sm" onClick={() => handleOpenDraftDialog(team)}>
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Draft {contestantTerm.singular}
-                                        </Button>
                                     </CardHeader>
                                     <CardContent className="p-4 pt-0">
-                                    {getContestantsForTeam(team.id).length > 0 ? (
+                                    {getPicksForTeam(team.id).length > 0 ? (
                                         <div className="space-y-2">
-                                            {getContestantsForTeam(team.id).map(contestant => (
-                                                <div key={contestant.id} className="flex items-center justify-between text-sm">
-                                                    <span>{getContestantDisplayName(contestant, 'full')}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveContestantFromTeam(contestant.id, team.id)}>
+                                            {getPicksForTeam(team.id).map(pick => {
+                                                const contestant = contestants.find(c => c.id === pick.contestantId);
+                                                return (
+                                                <div key={pick.id} className="flex items-center justify-between text-sm">
+                                                    <span className="flex items-center gap-2">
+                                                        <Badge variant="secondary" className="w-6 justify-center">{pick.pick}</Badge>
+                                                        {getContestantDisplayName(contestant, 'full')}
+                                                    </span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveContestantFromTeam(pick.id)}>
                                                         <Trash2 className="h-4 w-4 text-red-500" />
                                                     </Button>
                                                 </div>
-                                            ))}
+                                            )})}
                                         </div>
                                     ): (
                                         <p className="text-sm text-muted-foreground">No {contestantTerm.plural} drafted yet.</p>
@@ -1525,7 +1624,7 @@ export default function AdminPage() {
                 <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Drafting to {draftingTeam?.name}</DialogTitle>
+                            <DialogTitle>Pick {currentPickNumber}: {draftingTeam?.name} selects...</DialogTitle>
                             <DialogDescription>Select a {contestantTerm.singular} to add to this team.</DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
@@ -1567,21 +1666,27 @@ export default function AdminPage() {
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                              <div className="space-y-2">
                                 <Label htmlFor="seasonStart">Season Start Date</Label>
-                                <Input 
-                                    id="seasonStart" 
-                                    type="date"
-                                    value={leagueSettings.settings.seasonStartDate || ''}
-                                    onChange={(e) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonStartDate: e.target.value }})}
-                                />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !leagueSettings.settings.seasonStartDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-2 h-4 w-4"/>
+                                            {leagueSettings.settings.seasonStartDate ? format(new Date(leagueSettings.settings.seasonStartDate), 'PPP') : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(leagueSettings.settings.seasonStartDate || '')} onSelect={(date) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonStartDate: date?.toISOString()}})}/></PopoverContent>
+                                </Popover>
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="seasonEnd">Season End Date</Label>
-                                <Input 
-                                    id="seasonEnd" 
-                                    type="date"
-                                    value={leagueSettings.settings.seasonEndDate || ''}
-                                    onChange={(e) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonEndDate: e.target.value }})}
-                                />
+                                 <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !leagueSettings.settings.seasonEndDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-2 h-4 w-4"/>
+                                            {leagueSettings.settings.seasonEndDate ? format(new Date(leagueSettings.settings.seasonEndDate), 'PPP') : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(leagueSettings.settings.seasonEndDate || '')} onSelect={(date) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonEndDate: date?.toISOString()}})}/></PopoverContent>
+                                </Popover>
                             </div>
                             <div className="space-y-2">
                                 <Label>Jury Start Week</Label>
@@ -1768,7 +1873,5 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
 
     
