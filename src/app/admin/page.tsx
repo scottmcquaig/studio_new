@@ -758,10 +758,10 @@ export default function AdminPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <Label>HOH Winner</Label>
-                                    <Select value={hohWinnerId} onValueChange={setHohWinnerId}>
+                                    <Select value={hohWinnerId} onValueChange={(val) => setHohWinnerId(val === 'none' ? undefined : val)}>
                                         <SelectTrigger><SelectValue placeholder="Select HOH..." /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value=''>None</SelectItem>
+                                            <SelectItem value='none'>None</SelectItem>
                                             {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
@@ -776,12 +776,12 @@ export default function AdminPage() {
                                 <CardContent className="space-y-2">
                                     {nominees.map((nomineeId, index) => (
                                         <div key={index} className="flex items-center gap-2">
-                                            <Select value={nomineeId} onValueChange={(value) => handleNomineeChange(index, value)}>
+                                            <Select value={nomineeId} onValueChange={(value) => handleNomineeChange(index, value === 'none' ? '' : value)}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select Nominee..." />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value=''>None</SelectItem>
+                                                    <SelectItem value='none'>None</SelectItem>
                                                     {activeContestants
                                                         .filter(c => !nominees.includes(c.id) || nominees[index] === c.id)
                                                         .map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
@@ -806,10 +806,10 @@ export default function AdminPage() {
                                 <CardContent className="space-y-4">
                                     <div>
                                         <Label>Veto Winner</Label>
-                                        <Select value={vetoWinnerId} onValueChange={setVetoWinnerId}>
+                                        <Select value={vetoWinnerId} onValueChange={(val) => setVetoWinnerId(val === 'none' ? undefined : val)}>
                                             <SelectTrigger><SelectValue placeholder="Select Veto Winner..." /></SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value=''>None</SelectItem>
+                                                <SelectItem value='none'>None</SelectItem>
                                                 {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
@@ -822,10 +822,10 @@ export default function AdminPage() {
                                         <>
                                             <div>
                                                 <Label>Used On (Saved)</Label>
-                                                <Select value={vetoUsedOnId} onValueChange={setVetoUsedOnId}>
+                                                <Select value={vetoUsedOnId} onValueChange={(val) => setVetoUsedOnId(val === 'none' ? undefined : val)}>
                                                     <SelectTrigger><SelectValue placeholder="Select Player Saved..." /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value=''>None</SelectItem>
+                                                        <SelectItem value='none'>None</SelectItem>
                                                         {nominees?.map(nomId => {
                                                             const nom = contestants.find(c => c.id === nomId);
                                                             return nom ? <SelectItem key={nom.id} value={nom.id}>{getContestantDisplayName(nom, 'full')}</SelectItem> : null;
@@ -835,10 +835,10 @@ export default function AdminPage() {
                                             </div>
                                             <div>
                                                 <Label>Replacement Nominee (Renom)</Label>
-                                                <Select value={vetoReplacementNomId} onValueChange={setVetoReplacementNomId}>
+                                                <Select value={vetoReplacementNomId} onValueChange={(val) => setVetoReplacementNomId(val === 'none' ? undefined : val)}>
                                                     <SelectTrigger><SelectValue placeholder="Select Replacement..." /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value=''>None</SelectItem>
+                                                        <SelectItem value='none'>None</SelectItem>
                                                         {activeContestants.filter(c => !nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
@@ -853,10 +853,10 @@ export default function AdminPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <Label>Winner (Safe)</Label>
-                                    <Select value={blockBusterWinnerId} onValueChange={setBlockBusterWinnerId}>
+                                    <Select value={blockBusterWinnerId} onValueChange={(val) => setBlockBusterWinnerId(val === 'none' ? undefined : val)}>
                                         <SelectTrigger><SelectValue placeholder="Select Winner..." /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value=''>None</SelectItem>
+                                            <SelectItem value='none'>None</SelectItem>
                                             {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
@@ -868,10 +868,10 @@ export default function AdminPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <Label>Evicted Player</Label>
-                                    <Select value={evictedId} onValueChange={setEvictedId}>
+                                    <Select value={evictedId} onValueChange={(val) => setEvictedId(val === 'none' ? undefined : val)}>
                                         <SelectTrigger><SelectValue placeholder="Select Evictee..." /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value=''>None</SelectItem>
+                                            <SelectItem value='none'>None</SelectItem>
                                             {contestants.filter(c => c.status === 'active').map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
@@ -1435,6 +1435,7 @@ export default function AdminPage() {
 }
 
     
+
 
 
 
