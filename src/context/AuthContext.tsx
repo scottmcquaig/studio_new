@@ -34,7 +34,7 @@ const seedInitialData = async () => {
     // Only seed if the placeholder admin user doesn't exist
     if (!adminUserSnap.exists()) {
         console.log("Admin user placeholder not found. Seeding initial admin user...");
-        const adminUser = {
+        const adminUser: AppUser = {
             id: 'user_admin_placeholder',
             displayName: "YAC Admin",
             email: "admin@yac.com",
@@ -56,31 +56,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Run the seeder function once on app startup
-    seedInitialData();
+    const initialize = async () => {
+      await seedInitialData();
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        const db = getFirestore(app);
-        const userDocRef = doc(db, 'users', user.uid);
-        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                setAppUser({ ...docSnap.data(), id: docSnap.id } as AppUser);
-            } else {
-                // This case handles when a user has an auth record but no firestore doc yet.
-                // It can happen during the sign-up process before the doc is created.
-                setAppUser(null);
-            }
-            setLoading(false);
-        });
-        return () => unsubscribeSnapshot();
-      } else {
-        setAppUser(null);
-        setLoading(false);
-      }
-    });
+      const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+        setCurrentUser(user);
+        if (user) {
+          const db = getFirestore(app);
+          const userDocRef = doc(db, 'users', user.uid);
+          const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
+              if (docSnap.exists()) {
+                  setAppUser({ ...docSnap.data(), id: docSnap.id } as AppUser);
+              } else {
+                  setAppUser(null);
+              }
+              setLoading(false);
+          });
+          return () => unsubscribeSnapshot();
+        } else {
+          setAppUser(null);
+          setLoading(false);
+        }
+      });
+      return unsubscribeAuth;
+    };
 
-    return () => unsubscribeAuth();
+    const unsubscribePromise = initialize();
+
+    return () => {
+      unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+    };
   }, []);
 
   const value = {

@@ -29,7 +29,6 @@ export default function SignUpPage() {
       return;
     }
     try {
-      // Check if a user with this email already exists in the database (as a pending user)
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
@@ -38,34 +37,35 @@ export default function SignUpPage() {
       const user = userCredential.user;
 
       if (!querySnapshot.empty) {
-        // User exists (likely pending), link the auth account to the existing Firestore doc
         const existingUserDoc = querySnapshot.docs[0];
         const batch = writeBatch(db);
         
-        // Create a new document with the auth UID, copying data from the placeholder
         const newUserDocRef = doc(db, "users", user.uid);
+        // Copy existing data, but don't touch the role. Update status and ID.
+        const { role, ...restOfData } = existingUserDoc.data();
         const updatedData = {
-            ...existingUserDoc.data(),
-            id: user.uid, // Update ID to the new auth UID
+            ...restOfData,
+            role: role, // Preserve the existing role
+            id: user.uid,
             status: 'active',
-            displayName: displayName || existingUserDoc.data().displayName, // Use new display name
+            displayName: displayName || existingUserDoc.data().displayName,
         };
         batch.set(newUserDocRef, updatedData);
         
-        // Delete the old document that used a placeholder ID
         batch.delete(existingUserDoc.ref);
 
         await batch.commit();
         toast({ title: "Success", description: "Account claimed successfully!" });
 
       } else {
-        // New user, create a new document in Firestore with the auth UID
+        // New user, create a new document in Firestore with a default 'player' role
+        // This is safe because it's a new user, not an existing privileged one.
         await setDoc(doc(db, "users", user.uid), {
             id: user.uid,
             displayName: displayName,
             email: user.email,
             createdAt: new Date().toISOString(),
-            role: 'player', // Default role for new sign-ups
+            role: 'player', // Assign a default, non-privileged role
             status: 'active'
         });
         toast({ title: "Success", description: "Account created successfully!" });
