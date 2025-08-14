@@ -214,7 +214,7 @@ export default function AdminPage() {
   const activeContestants = useMemo(() => contestants.filter(hg => hg.status === 'active'), [contestants]);
   const weekOptions = useMemo(() => Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1).reverse(), [activeSeason]);
   
-  const allAssignedContestantIds = useMemo(() => teams.flatMap(t => t.contestantIds), [teams]);
+  const allAssignedContestantIds = useMemo(() => teams.flatMap(t => t.contestantIds || []), [teams]);
   const undraftedContestants = useMemo(() => contestants.filter(c => !allAssignedContestantIds.includes(c.id)), [contestants, allAssignedContestantIds]);
 
   const weekEvents = useMemo(() => competitions.filter(c => c.week === selectedWeek), [competitions, selectedWeek]);
@@ -297,7 +297,7 @@ export default function AdminPage() {
 
     // Add user to the selected team
     const teamDocRef = doc(db, 'teams', team.id);
-    const newOwners = [...team.ownerUserIds, user.id];
+    const newOwners = [...(team.ownerUserIds || []), user.id];
     batch.update(teamDocRef, { ownerUserIds: newOwners });
 
     try {
@@ -566,13 +566,13 @@ export default function AdminPage() {
 
   const getUsersForTeam = (teamId: string): UserType[] => {
       const team = teams.find(t => t.id === teamId);
-      if (!team) return [];
+      if (!team || !team.ownerUserIds) return [];
       return users.filter(u => team.ownerUserIds.includes(u.id));
   };
   
   const getContestantsForTeam = (teamId: string): Contestant[] => {
     const team = teams.find(t => t.id === teamId);
-    if (!team) return [];
+    if (!team || !team.contestantIds) return [];
     return contestants.filter(c => team.contestantIds.includes(c.id));
   };
 
@@ -589,7 +589,7 @@ export default function AdminPage() {
     }
 
     const teamDocRef = doc(db, 'teams', draftingTeam.id);
-    const updatedContestantIds = [...draftingTeam.contestantIds, draftSelection];
+    const updatedContestantIds = [...(draftingTeam.contestantIds || []), draftSelection];
     
     try {
         await updateDoc(teamDocRef, { contestantIds: updatedContestantIds });
@@ -604,7 +604,7 @@ export default function AdminPage() {
   
   const handleRemoveContestantFromTeam = async (contestantId: string, teamId: string) => {
     const team = teams.find(t => t.id === teamId);
-    if (!team) return;
+    if (!team || !team.contestantIds) return;
     
     const teamDocRef = doc(db, 'teams', team.id);
     const updatedContestantIds = team.contestantIds.filter(id => id !== contestantId);
@@ -694,7 +694,7 @@ export default function AdminPage() {
     }
   };
 
-  const allAssignedUserIds = useMemo(() => teams.flatMap(t => t.ownerUserIds), [teams]);
+  const allAssignedUserIds = useMemo(() => teams.flatMap(t => t.ownerUserIds || []), [teams]);
   const unassignedUsers = useMemo(() => users.filter(u => !allAssignedUserIds.includes(u.id)), [users, allAssignedUserIds]);
   
   const isEditingNewContestant = editingContestant?.id.startsWith('new_contestant_');
@@ -1432,3 +1432,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
+    
