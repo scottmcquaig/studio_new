@@ -32,25 +32,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
+        setLoading(true); // Start loading when auth user is found, wait for firestore doc
         const db = getFirestore(app);
         const userDocRef = doc(db, 'users', user.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setAppUser({ ...docSnap.data(), id: docSnap.id } as AppUser);
+                setLoading(false); // Stop loading once firestore doc is found
             } else {
                 // User exists in Auth, but not in Firestore yet.
-                // The cloud function might be running. We'll wait.
+                // The cloud function might still be running. We'll wait.
                 setAppUser(null);
+                // Keep loading until the document appears or user logs out.
             }
-            setLoading(false);
         }, (error) => {
             console.error("Error fetching user document:", error);
             setAppUser(null);
             setLoading(false);
         });
-        return unsubscribeSnapshot; // This will be cleaned up by the outer return function
+        return () => unsubscribeSnapshot();
       } else {
         setAppUser(null);
+        setCurrentUser(null);
         setLoading(false);
       }
     });
@@ -68,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
