@@ -477,27 +477,28 @@ export default function AdminPage() {
 
   const handleSaveRules = async () => {
     if (!scoringRuleSet || !leagueSettings) return;
-    const batch = writeBatch(db);
     try {
         const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
-        batch.update(rulesetDocRef, { rules: scoringRuleSet.rules });
-
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
-        
+
         const updatedSettings = {
-          ...leagueSettings.settings,
-          scoringBreakdownCategories: leagueSettings.settings.scoringBreakdownCategories.filter(c => c.displayName)
+            ...leagueSettings.settings,
+            scoringBreakdownCategories: leagueSettings.settings.scoringBreakdownCategories
+                .map(c => ({...c, ruleCodes: c.ruleCodes.filter(rc => rc)})) // remove empty rule codes
+                .filter(c => c.displayName)
         };
         
+        const batch = writeBatch(db);
+        batch.update(rulesetDocRef, { rules: scoringRuleSet.rules });
         batch.update(leagueDocRef, { settings: updatedSettings });
-
+        
         await batch.commit();
         toast({ title: "Changes Saved", description: `Scoring rules and breakdowns have been saved.` });
     } catch (error) {
         console.error(`Error saving rules: `, error);
         toast({ title: "Error", description: `Could not save scoring rules.`, variant: "destructive" });
     }
-  };
+};
 
   const handleSaveWeeklyEvents = async () => {
     if (!activeSeason || !leagueSettings) return;
@@ -683,12 +684,16 @@ export default function AdminPage() {
     return picks.filter(p => p.teamId === teamId);
   };
 
+  const totalDraftPicks = useMemo(() => {
+    if (!leagueSettings) return 0;
+    return (leagueSettings.maxTeams || 0) * (leagueSettings.settings?.draftRounds || 0);
+  }, [leagueSettings]);
+
   const snakeDraftOrder = useMemo(() => {
     const numTeams = teams.length;
-    const numContestants = contestants.length;
-    if (numTeams === 0 || numContestants === 0) return [];
-
-    const rounds = Math.ceil(numContestants / numTeams);
+    if (!leagueSettings || numTeams === 0 || totalDraftPicks === 0) return [];
+    
+    const rounds = leagueSettings.settings.draftRounds || 0;
     const order: { pick: number, team: Team }[] = [];
     const sortedTeams = [...teams].sort((a,b) => a.draftOrder - b.draftOrder);
 
@@ -697,13 +702,13 @@ export default function AdminPage() {
         for (let i = 0; i < pickOrder.length; i++) {
             const team = pickOrder[i];
             const pickNumber = round * numTeams + i + 1;
-            if(pickNumber <= numContestants) {
+            if(pickNumber <= totalDraftPicks) {
                 order.push({ pick: pickNumber, team: team });
             }
         }
     }
     return order;
-  }, [teams, contestants]);
+  }, [teams, leagueSettings, totalDraftPicks]);
   
   const nextPickDetails = useMemo(() => {
     if (snakeDraftOrder.length === 0 || currentPickNumber > snakeDraftOrder.length) return null;
@@ -816,8 +821,10 @@ export default function AdminPage() {
           const photoRef = ref(storage, contestantToDelete.photoUrl);
           await deleteObject(photoRef).catch(err => console.warn("Could not delete photo, it might not exist:", err));
       }
-
+      
       await deleteDoc(doc(db, 'contestants', contestantToDelete.id));
+
+      setContestants(prev => prev.filter(c => c.id !== contestantToDelete.id));
       
       toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(contestantToDelete, 'full')} has been permanently removed.` });
     } catch (error) {
@@ -911,10 +918,9 @@ export default function AdminPage() {
 
     const snakeDraftPicks = useMemo(() => {
         const numTeams = teams.length;
-        const numContestants = contestants.length;
-        if (numTeams === 0 || numContestants === 0) return {};
-
-        const rounds = Math.ceil(numContestants / numTeams);
+        if (numTeams === 0 || totalDraftPicks === 0) return {};
+        
+        const rounds = leagueSettings?.settings.draftRounds || 0;
         const picks: { [teamId: string]: number[] } = {};
         const sortedTeams = [...teams].sort((a,b) => a.draftOrder - b.draftOrder);
 
@@ -927,14 +933,14 @@ export default function AdminPage() {
             for (let i = 0; i < pickOrder.length; i++) {
                 const team = pickOrder[i];
                 const pickNumber = round * numTeams + i + 1;
-                if(pickNumber <= numContestants) {
+                if(pickNumber <= totalDraftPicks) {
                     picks[team.id].push(pickNumber);
                 }
             }
         }
         return picks;
 
-    }, [teams, contestants]);
+    }, [teams, totalDraftPicks, leagueSettings]);
   
   if (!leagueSettings || !activeSeason) {
     return (
@@ -1545,12 +1551,12 @@ export default function AdminPage() {
                         <CardDescription>
                             {nextPickDetails ? 
                                 `On the clock: ${nextPickDetails.team.name} (Pick ${currentPickNumber})` :
-                                `All ${contestants.length} contestants have been drafted.`
+                                `All ${totalDraftPicks > 0 ? totalDraftPicks : contestants.length} draft picks have been made.`
                             }
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div className="space-y-4">
+                    <CardContent className="grid grid-cols-1 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {teams.map(team => (
                                 <Card key={team.id}>
                                     <CardHeader className="flex-row items-center justify-between p-4">
@@ -1702,19 +1708,35 @@ export default function AdminPage() {
                                 <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
                             </div>
                         </div>
-                        <div className="space-y-2 w-40">
-                            <Label htmlFor="maxTeams">Number of Teams</Label>
-                            <Input 
-                                id="maxTeams" 
-                                type="number"
-                                min="4"
-                                max="12"
-                                value={leagueSettings.maxTeams} 
-                                onChange={(e) => {
-                                    const val = Math.max(4, Math.min(12, Number(e.target.value)));
-                                    setLeagueSettings({...leagueSettings, maxTeams: val});
-                                }}
-                            />
+                        <div className="flex items-center gap-4">
+                            <div className="space-y-2 w-40">
+                                <Label htmlFor="maxTeams">Number of Teams</Label>
+                                <Input 
+                                    id="maxTeams" 
+                                    type="number"
+                                    min="4"
+                                    max="12"
+                                    value={leagueSettings.maxTeams} 
+                                    onChange={(e) => {
+                                        const val = Math.max(4, Math.min(12, Number(e.target.value)));
+                                        setLeagueSettings({...leagueSettings, maxTeams: val});
+                                    }}
+                                />
+                            </div>
+                             <div className="space-y-2 w-40">
+                                <Label htmlFor="draftRounds">Number of Rounds</Label>
+                                <Input 
+                                    id="draftRounds" 
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={leagueSettings.settings.draftRounds || 4} 
+                                    onChange={(e) => {
+                                        const val = Math.max(1, Math.min(10, Number(e.target.value)));
+                                        setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, draftRounds: val}});
+                                    }}
+                                />
+                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="flex justify-end">
@@ -1863,7 +1885,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-    
-
-    

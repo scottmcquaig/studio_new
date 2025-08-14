@@ -85,6 +85,10 @@ export interface League {
         scoringRuleSetId: string;
         transactionLockDuringEpisodes: boolean;
         scoringBreakdownCategories: LeagueScoringBreakdownCategory[];
+        juryStartWeek?: number;
+        seasonStartDate?: string;
+        seasonEndDate?: string;
+        draftRounds?: number;
     };
 }
 
@@ -228,6 +232,7 @@ export const MOCK_LEAGUES: League[] = [
         "allowMidSeasonDraft":true,
         "scoringRuleSetId":"bb27_ruleset",
         "transactionLockDuringEpisodes":true,
+        "draftRounds": 4,
         "scoringBreakdownCategories": [
             { "icon": "Crown", "color": "text-purple-500", "displayName": "HOH Wins", "ruleCodes": ["HOH_WIN"] },
             { "icon": "Shield", "color": "text-amber-500", "displayName": "Veto Wins", "ruleCodes": ["VETO_WIN"] },
