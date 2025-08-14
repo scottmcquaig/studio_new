@@ -13,6 +13,8 @@ import Image from "next/image";
 import { getFirestore, collection, onSnapshot, doc, Unsubscribe, query } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant } from '@/lib/data';
+import { AppHeader } from '@/components/app-header';
+import { BottomNavBar } from '@/components/bottom-nav-bar';
 
 // Memoize this helper to avoid re-running on every render
 const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
@@ -228,50 +230,56 @@ export default function TeamsPage() {
     const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
 
   return (
-    <div className="flex flex-col">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
-        <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Teams & Standings
-        </h1>
-      </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        
-        <Card>
-            <CardHeader>
-                <CardTitle>Current Standings</CardTitle>
-                <CardDescription>Teams are ranked by total points accumulated throughout the season.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                 {sortedTeams.map((team, index) => (
-                    <div key={team.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                         <span className={cn("text-xl font-bold w-6 text-center", 
-                            index === 0 && "text-amber-400",
-                            index === 1 && "text-slate-400",
-                            index === 2 && "text-orange-500"
-                        )}>{index + 1}</span>
-                        <div>
-                            <p className="font-semibold text-sm truncate">{team.name}</p>
-                            <p className="text-xs text-muted-foreground">{(team.total_score || 0).toLocaleString()} pts</p>
+    <>
+      <AppHeader />
+      <main className="flex-1 pb-20">
+        <div className="flex flex-col">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
+            <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Teams & Standings
+            </h1>
+          </header>
+          <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle>Current Standings</CardTitle>
+                    <CardDescription>Teams are ranked by total points accumulated throughout the season.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {sortedTeams.map((team, index) => (
+                        <div key={team.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                            <span className={cn("text-xl font-bold w-6 text-center", 
+                                index === 0 && "text-amber-400",
+                                index === 1 && "text-slate-400",
+                                index === 2 && "text-orange-500"
+                            )}>{index + 1}</span>
+                            <div>
+                                <p className="font-semibold text-sm truncate">{team.name}</p>
+                                <p className="text-xs text-muted-foreground">{(team.total_score || 0).toLocaleString()} pts</p>
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
+                    ))}
+                </CardContent>
+            </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {league && sortedTeams.map((team) => (
-                <TeamCard 
-                    key={team.id}
-                    team={team}
-                    league={league}
-                    rules={rules}
-                    competitions={competitions}
-                    contestants={contestants}
-                />
-            ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {league && sortedTeams.map((team) => (
+                    <TeamCard 
+                        key={team.id}
+                        team={team}
+                        league={league}
+                        rules={rules}
+                        competitions={competitions}
+                        contestants={contestants}
+                    />
+                ))}
+            </div>
+          </div>
         </div>
       </main>
-    </div>
+      <BottomNavBar />
+    </>
   );
 }

@@ -28,6 +28,8 @@ import {
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { AppHeader } from "@/components/app-header";
+import { BottomNavBar } from "@/components/bottom-nav-bar";
 
 const league = MOCK_LEAGUES[0];
 const contestantTerm = league.contestantTerm;
@@ -116,14 +118,17 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="flex flex-col">
+    <>
+      <AppHeader />
+      <main className="flex-1 pb-20">
+        <div className="flex flex-col">
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
         <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
           <Home className="h-5 w-5" />
           Dashboard
         </h1>
       </header>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <Card className="bg-card/50">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -429,7 +434,10 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-      </main>
+      </div>
     </div>
+      </main>
+      <BottomNavBar />
+    </>
   );
 }

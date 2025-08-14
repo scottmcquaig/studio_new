@@ -12,26 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
-
 import { Button } from "./ui/button";
-import { Building, ChevronDown, Settings } from "lucide-react";
-import { AdminPanel } from "./admin-panel";
-
+import { ChevronDown, Settings } from "lucide-react";
 
 export function AppHeader() {
   const activeLeague = MOCK_LEAGUES[0];
   const activeSeason = MOCK_SEASONS.find(s => s.id === activeLeague.seasonId);
   const currentUser = MOCK_USERS.find(u => u.role === 'site_admin'); // In a real app, this would come from auth state
   const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
-
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
@@ -44,22 +32,11 @@ export function AppHeader() {
       </Link>
       
       {canShowAdminView && (
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="ml-2">
+        <Button asChild variant="ghost" size="icon" className="ml-2">
+            <Link href="/admin">
                 <Settings className="h-5 w-5"/>
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-4xl overflow-y-auto p-0">
-             <SheetHeader className="px-4 sm:px-6 pt-6">
-                <SheetTitle className="flex items-center gap-2">
-                    <Building className="h-5 w-5" />
-                    Admin Panel
-                </SheetTitle>
-            </SheetHeader>
-            <AdminPanel />
-          </SheetContent>
-        </Sheet>
+            </Link>
+        </Button>
       )}
 
       <div className="ml-auto">
