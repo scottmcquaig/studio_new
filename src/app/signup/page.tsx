@@ -25,7 +25,7 @@ export default function SignUpPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Check if a user with this email already exists in the database
+      // Check if a user with this email already exists in the database (as a pending user)
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
@@ -36,17 +36,17 @@ export default function SignUpPage() {
       await updateProfile(user, { displayName: displayName });
 
       if (!querySnapshot.empty) {
-        // User exists, link the auth account to the existing Firestore doc
+        // User exists (likely pending), link the auth account to the existing Firestore doc
         const existingUserDoc = querySnapshot.docs[0];
         const batch = writeBatch(db);
         
-        // Create a new document with the auth UID
+        // Create a new document with the auth UID, copying data from the placeholder
         const newUserDocRef = doc(db, "users", user.uid);
         const updatedData = {
             ...existingUserDoc.data(),
             id: user.uid, // Update ID to the new auth UID
             status: 'active',
-            displayName: displayName || existingUserDoc.data().displayName, // Update display name if provided
+            displayName: displayName || existingUserDoc.data().displayName, // Update display name if provided during signup
         };
         batch.set(newUserDocRef, updatedData);
         
