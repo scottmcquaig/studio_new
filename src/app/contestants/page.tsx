@@ -1,17 +1,19 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
-import type { Contestant } from '@/lib/data';
+import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick } from '@/lib/data';
 import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
+import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { MOCK_SEASONS } from "@/lib/data";
 
 type ContestantWithStats = Contestant & {
   teamName: string;
@@ -24,12 +26,41 @@ type ContestantWithStats = Contestant & {
 export default function ContestantsPage() {
   const [selectedContestant, setSelectedContestant] = useState<ContestantWithStats | null>(null);
   
+  const db = getFirestore(app);
+  const [contestants, setContestants] = useState<Contestant[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [league, setLeague] = useState<League | null>(null);
+  const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
+  const [picks, setPicks] = useState<Pick[]>([]);
+  
   const activeSeason = useMemo(() => MOCK_SEASONS[0], []);
-  const league = useMemo(() => MOCK_LEAGUES[0], []);
-  const contestantTerm = league.contestantTerm;
-  const scoringRules = useMemo(() => MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || [], []);
+  
+  useEffect(() => {
+        const unsubscribes: Unsubscribe[] = [];
+        
+        const leagueDocRef = doc(db, "leagues", "bb27");
+        unsubscribes.push(onSnapshot(leagueDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+                setLeague(leagueData);
+                if (leagueData.settings.scoringRuleSetId) {
+                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
+                        if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                    }));
+                }
+            }
+        }));
 
-  const weekEvents = useMemo(() => MOCK_COMPETITIONS.filter(c => c.week === activeSeason.currentWeek), [activeSeason.currentWeek]);
+        unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "teams")), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "picks")), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+
+        return () => unsubscribes.forEach(unsub => unsub());
+  }, [db]);
+
+  const weekEvents = useMemo(() => competitions.filter(c => c.week === activeSeason.currentWeek), [competitions, activeSeason.currentWeek]);
   
   const hoh = useMemo(() => weekEvents.find(c => c.type === 'HOH'), [weekEvents]);
   const pov = useMemo(() => weekEvents.find(c => c.type === 'VETO'), [weekEvents]);
@@ -37,26 +68,19 @@ export default function ContestantsPage() {
   const blockBuster = useMemo(() => weekEvents.find(c => c.type === 'BLOCK_BUSTER'), [weekEvents]);
 
   const contestantStats: ContestantWithStats[] = useMemo(() => {
-    return MOCK_CONTESTANTS.map(hg => {
-      const team = MOCK_TEAMS.find(t => t.contestantIds.includes(hg.id));
+    return contestants.map(hg => {
+      const pick = picks.find(p => p.contestantId === hg.id);
+      const team = teams.find(t => t.id === pick?.teamId);
       
       let totalPoints = 0;
-      MOCK_TEAMS.forEach(team => {
-          const weeklyData = team.weekly_score_breakdown.week4;
-          const playerData = weeklyData.find(d => d.contestantId === hg.id);
-          if (playerData) {
-              totalPoints += playerData.points;
-          }
-      });
+      const hohWins = competitions.filter(c => c.type === 'HOH' && c.winnerId === hg.id).length;
+      const vetoWins = competitions.filter(c => c.type === 'VETO' && c.winnerId === hg.id).length;
+      const nomCount = competitions.filter(c => c.type === 'NOMINATIONS' && c.nominees?.includes(hg.id)).length;
       
-      const hohWins = MOCK_COMPETITIONS.filter(c => c.type === 'HOH' && c.winnerId === hg.id).length;
-      const vetoWins = MOCK_COMPETITIONS.filter(c => c.type === 'VETO' && c.winnerId === hg.id).length;
-      const nomCount = MOCK_COMPETITIONS.filter(c => c.type === 'NOMINATIONS' && c.nominees?.includes(hg.id)).length;
-      
-      if (scoringRules.length > 0) {
-          totalPoints += hohWins * (scoringRules.find(r => r.code === 'HOH_WIN')?.points || 0);
-          totalPoints += vetoWins * (scoringRules.find(r => r.code === 'VETO_WIN')?.points || 0);
-          totalPoints += nomCount * (scoringRules.find(r => r.code === 'NOMINATED')?.points || 0);
+      if (scoringRules?.rules.length) {
+          totalPoints += hohWins * (scoringRules.rules.find(r => r.code === 'HOH_WIN')?.points || 0);
+          totalPoints += vetoWins * (scoringRules.rules.find(r => r.code === 'VETO_WIN')?.points || 0);
+          totalPoints += nomCount * (scoringRules.rules.find(r => r.code === 'NOMINATED')?.points || 0);
       }
 
       return {
@@ -68,7 +92,7 @@ export default function ContestantsPage() {
         evictionWeek: hg.evictedDay ? Math.ceil(hg.evictedDay / 7) : undefined,
       };
     });
-  }, [scoringRules]);
+  }, [contestants, competitions, teams, scoringRules, picks]);
 
   const sortedContestants = useMemo(() => {
     return [...contestantStats].sort((a, b) => {
@@ -97,6 +121,15 @@ export default function ContestantsPage() {
     });
   }, [contestantStats, hoh, pov, noms]);
 
+  if (!league || !contestants.length) {
+    return (
+        <div className="flex flex-1 items-center justify-center">
+            <div>Loading Contestants...</div>
+        </div>
+    );
+  }
+
+  const contestantTerm = league.contestantTerm;
 
   return (
     <>
@@ -196,3 +229,5 @@ export default function ContestantsPage() {
     </>
   );
 }
+
+    

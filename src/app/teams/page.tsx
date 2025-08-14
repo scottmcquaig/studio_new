@@ -5,19 +5,17 @@ import { useState, useEffect, createElement, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_USERS } from "@/lib/data";
 import { Users, HelpCircle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
 import { getFirestore, collection, onSnapshot, doc, Unsubscribe, query } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User } from '@/lib/data';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 
-// Memoize this helper to avoid re-running on every render
-const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
+const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], competitions: Competition[], contestants: Contestant[]) => {
     const breakdownCategories = league.settings.scoringBreakdownCategories || [];
     const kpis: { [key: string]: number } = {};
     
@@ -28,7 +26,7 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
     const rules = scoringRules || [];
     if (!rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
 
-    const teamContestantIds = team.contestantIds || [];
+    const teamContestantIds = contestants.filter(c => team.contestantIds?.includes(c.id)).map(c => c.id);
 
     competitions.forEach(comp => {
         const processEvent = (contestantId: string, eventCode: string) => {
@@ -48,7 +46,7 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
             let eventCode = '';
             if (comp.type === 'HOH') eventCode = 'HOH_WIN';
             else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
-            else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE';
+            else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE'; // Example, adjust as needed
             else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
             
             if (eventCode) {
@@ -61,7 +59,7 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
                 const isFinalNom = comp.finalNoms?.includes(nomId);
                 processEvent(nomId, 'NOMINATED');
                 if (isFinalNom) {
-                    processEvent(nomId, 'FINAL_NOM');
+                     processEvent(nomId, 'FINAL_NOM');
                 }
             });
         }
@@ -71,8 +69,11 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
         }
     });
 
-    return { ...kpis, total: team.total_score || 0 };
+    const totalCalculated = Object.values(kpis).reduce((acc, val) => acc + val, 0);
+
+    return { ...kpis, total: totalCalculated };
 };
+
 
 const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
     const IconComponent = (LucideIcons as any)[name];
@@ -81,20 +82,18 @@ const DynamicIcon = ({ name, className }: { name: string; className?: string }) 
     }
     return createElement(IconComponent, { className });
 };
-  
-const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
 
-const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[] }) => {
-    const owners = (team.ownerUserIds || []).map(getOwner).filter(Boolean);
-    
-    const kpis = useMemo(() => {
-        if (!league || !rules.length) return { total: team.total_score || 0 };
-        return calculateKpis(team, league, rules, competitions);
-    }, [team, league, rules, competitions]);
+const TeamCard = ({ team, league, rules, competitions, contestants, users }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[], users: User[] }) => {
+    const owners = (team.ownerUserIds || []).map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
     
     const teamContestants = contestants.filter(hg => (team.contestantIds || []).includes(hg.id));
     const breakdownCategories = (league.settings.scoringBreakdownCategories || []).filter(c => c.displayName);
 
+    const kpis = useMemo(() => {
+        if (!league || !rules.length || !contestants.length) return { total: team.total_score || 0 };
+        return calculateKpis(team, league, rules, competitions, contestants);
+    }, [team, league, rules, competitions, contestants]);
+    
     return (
         <Card>
             <CardHeader>
@@ -102,7 +101,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Te
                     <div>
                         <CardTitle>{team.name}</CardTitle>
                         <CardDescription>
-                            Owned by {owners.length > 0 ? owners.map(o => o?.displayName).join(' & ') : 'Unassigned'}
+                            Owned by {owners.length > 0 ? owners.map(o => o.displayName).join(' & ') : 'Unassigned'}
                         </CardDescription>
                     </div>
                     <Badge variant="secondary" className="text-lg font-bold">{(kpis.total || 0).toLocaleString()} pts</Badge>
@@ -160,9 +159,10 @@ const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Te
 export default function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [league, setLeague] = useState<League | null>(null);
-    const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
+    const [scoringRules, setScoringRuleSet] = useState<ScoringRuleSet | null>(null);
     const [contestants, setContestants] = useState<Contestant[]>([]);
     const [competitions, setCompetitions] = useState<Competition[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
 
     const db = getFirestore(app);
 
@@ -178,7 +178,7 @@ export default function TeamsPage() {
                     const ruleSetDocRef = doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId);
                     const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
                         if (ruleSnap.exists()) {
-                            setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                            setScoringRuleSet({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
                         }
                     });
                     unsubscribes.push(unsubscribeRules);
@@ -218,16 +218,34 @@ export default function TeamsPage() {
         });
         unsubscribes.push(unsubscribeCompetitions);
         
+        const usersCol = collection(db, "users");
+        const unsubscribeUsers = onSnapshot(query(usersCol), (querySnapshot) => {
+            const usersData: User[] = [];
+            querySnapshot.forEach((doc) => {
+                usersData.push({ ...doc.data(), id: doc.id } as User);
+            });
+            setUsers(usersData);
+        });
+        unsubscribes.push(unsubscribeUsers);
+        
         return () => {
             unsubscribes.forEach(unsub => unsub());
         };
     }, [db]);
 
     const sortedTeams = useMemo(() => {
-        return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+        return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder)
     }, [teams]);
 
     const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
+    
+  if (!league || !contestants.length) {
+    return (
+        <div className="flex flex-1 items-center justify-center">
+            <div>Loading Teams...</div>
+        </div>
+    );
+  }
 
   return (
     <>
@@ -273,6 +291,7 @@ export default function TeamsPage() {
                         rules={rules}
                         competitions={competitions}
                         contestants={contestants}
+                        users={users}
                     />
                 ))}
             </div>
@@ -283,3 +302,5 @@ export default function TeamsPage() {
     </>
   );
 }
+
+    

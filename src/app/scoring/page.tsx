@@ -1,18 +1,22 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { MOCK_COMPETITIONS, MOCK_CONTESTANTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS, MOCK_LEAGUES } from "@/lib/data";
+import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick, User } from '@/lib/data';
 import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
+import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { MOCK_SEASONS } from "@/lib/data";
+
 
 type ScoringEvent = {
   week: number;
@@ -26,56 +30,80 @@ type ScoringEvent = {
 };
 
 export default function ScoringPage() {
-  const ruleSet = useMemo(() => MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset'), []);
+  const db = getFirestore(app);
+
+  const [contestants, setContestants] = useState<Contestant[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [league, setLeague] = useState<League | null>(null);
+  const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
+  const [picks, setPicks] = useState<Pick[]>([]);
+  
   const activeSeason = useMemo(() => MOCK_SEASONS[0], []);
-  const league = useMemo(() => MOCK_LEAGUES[0], []);
-  const contestantTerm = league.contestantTerm;
+  const contestantTerm = league?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
 
   const [selectedWeek, setSelectedWeek] = useState<string>(String(activeSeason.currentWeek));
   const [selectedContestant, setSelectedContestant] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
-  const weekOptions = useMemo(() => Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1)), [activeSeason.currentWeek]);
+  const weekOptions = useMemo(() => Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1)).reverse(), [activeSeason.currentWeek]);
   const displayWeek = selectedWeek === 'all' ? activeSeason.currentWeek : Number(selectedWeek);
   
-  const weeklyEvents = useMemo(() => MOCK_COMPETITIONS.filter(c => c.week === displayWeek), [displayWeek]);
+  useEffect(() => {
+        const unsubscribes: Unsubscribe[] = [];
+        
+        const leagueDocRef = doc(db, "leagues", "bb27");
+        unsubscribes.push(onSnapshot(leagueDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+                setLeague(leagueData);
+                if (leagueData.settings.scoringRuleSetId) {
+                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
+                        if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                    }));
+                }
+            }
+        }));
+
+        unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "teams")), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "picks")), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+
+        return () => unsubscribes.forEach(unsub => unsub());
+  }, [db]);
+
+
+  const weeklyEvents = useMemo(() => competitions.filter(c => c.week === displayWeek), [competitions, displayWeek]);
   
   const hoh = useMemo(() => weeklyEvents.find((c) => c.type === "HOH"), [weeklyEvents]);
-  const hohWinner = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === hoh?.winnerId), [hoh]);
+  const hohWinner = useMemo(() => contestants.find((hg) => hg.id === hoh?.winnerId), [contestants, hoh]);
 
   const noms = useMemo(() => weeklyEvents.find((c) => c.type === "NOMINATIONS"), [weeklyEvents]);
-  const nomWinners = useMemo(() => MOCK_CONTESTANTS.filter((hg) => noms?.nominees?.includes(hg.id)), [noms]);
+  const nomWinners = useMemo(() => contestants.filter((hg) => noms?.nominees?.includes(hg.id)), [contestants, noms]);
   
   const pov = useMemo(() => weeklyEvents.find((c) => c.type === "VETO"), [weeklyEvents]);
-  const povWinner = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId), [pov]);
-  const savedPlayer = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === pov?.usedOnId), [pov]);
-  const renomPlayer = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === pov?.replacementNomId), [pov]);
+  const povWinner = useMemo(() => contestants.find((hg) => hg.id === pov?.winnerId), [contestants, pov]);
+  const savedPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.usedOnId), [contestants, pov]);
+  const renomPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.replacementNomId), [contestants, pov]);
 
   const blockBuster = useMemo(() => weeklyEvents.find((c) => c.type === "BLOCK_BUSTER"), [weeklyEvents]);
-  const blockBusterWinner = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId), [blockBuster]);
+  const blockBusterWinner = useMemo(() => contestants.find((hg) => hg.id === blockBuster?.winnerId), [contestants, blockBuster]);
   
   const eviction = useMemo(() => weeklyEvents.find((c) => c.type === "EVICTION"), [weeklyEvents]);
-  const evictedPlayer = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === eviction?.evictedId), [eviction]);
+  const evictedPlayer = useMemo(() => contestants.find((hg) => hg.id === eviction?.evictedId), [contestants, eviction]);
 
-
-  // Memoize the creation of the event log to avoid re-computation on every render
   const scoringEvents = useMemo(() => {
     const events: ScoringEvent[] = [];
-    if (!ruleSet) return events;
+    if (!scoringRules?.rules) return events;
 
-    MOCK_COMPETITIONS.forEach(comp => {
-      const team = MOCK_TEAMS.find(t => t.contestantIds.includes(comp.winnerId || ''));
-      
-      let eventCode = '';
-      if (comp.type === 'HOH') eventCode = 'HOH_WIN';
-      if (comp.type === 'VETO') eventCode = 'VETO_WIN';
-      if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE';
-      if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
-      
-      // Handle single-winner events
-      if (eventCode && comp.winnerId) {
-        const rule = ruleSet.rules.find(r => r.code === eventCode);
-        const contestant = MOCK_CONTESTANTS.find(hg => hg.id === comp.winnerId);
+    competitions.forEach(comp => {
+      const processEvent = (contestantId: string, eventCode: string) => {
+        const rule = scoringRules.rules.find(r => r.code === eventCode);
+        const contestant = contestants.find(hg => hg.id === contestantId);
+        const pick = picks.find(p => p.contestantId === contestantId);
+        const team = teams.find(t => t.id === pick?.teamId);
+        
         if (rule && contestant) {
           events.push({
             week: comp.week,
@@ -88,33 +116,28 @@ export default function ScoringPage() {
             points: rule.points,
           });
         }
+      };
+
+      if (comp.winnerId) {
+        let eventCode = '';
+        if (comp.type === 'HOH') eventCode = 'HOH_WIN';
+        else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
+        else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE';
+        else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
+        if (eventCode) processEvent(comp.winnerId, eventCode);
       }
       
-      // Handle nominations (multiple players)
       if (comp.type === 'NOMINATIONS' && comp.nominees) {
-        const rule = ruleSet.rules.find(r => r.code === 'NOMINATED');
-        if (rule) {
-          comp.nominees.forEach(nomId => {
-            const contestant = MOCK_CONTESTANTS.find(hg => hg.id === nomId);
-            const nomineeTeam = MOCK_TEAMS.find(t => t.contestantIds.includes(nomId));
-            if (contestant) {
-              events.push({
-                week: comp.week,
-                contestantId: contestant.id,
-                contestantName: getContestantDisplayName(contestant, 'full'),
-                teamId: nomineeTeam?.id,
-                teamName: nomineeTeam?.name,
-                eventLabel: rule.label,
-                eventCode: rule.code,
-                points: rule.points,
-              });
-            }
-          });
-        }
+        comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
+      }
+       if (comp.type === 'EVICTION' && comp.evictedId) {
+          const juryStartWeek = league?.settings.juryStartWeek;
+          const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+          processEvent(comp.evictedId, eventCode);
       }
     });
     return events.sort((a,b) => b.week - a.week);
-  }, [ruleSet]);
+  }, [scoringRules, competitions, contestants, teams, picks, league]);
 
   const filteredEvents = useMemo(() => {
     return scoringEvents.filter(event => {
@@ -125,6 +148,13 @@ export default function ScoringPage() {
     });
   }, [scoringEvents, selectedWeek, selectedContestant, selectedTeam]);
 
+  if (!league || !contestants.length) {
+    return (
+        <div className="flex flex-1 items-center justify-center">
+            <div>Loading Scoring...</div>
+        </div>
+    );
+  }
 
   return (
     <>
@@ -140,6 +170,7 @@ export default function ScoringPage() {
               <Select value={selectedWeek} onValueChange={setSelectedWeek}>
                 <SelectTrigger><SelectValue/></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All Weeks</SelectItem>
                   {weekOptions.map(week => <SelectItem key={week} value={week}>Week {week}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -161,7 +192,7 @@ export default function ScoringPage() {
                   {hohWinner ? (
                     <>
                       <Image
-                        src={hohWinner.photoUrl!}
+                        src={hohWinner.photoUrl || "https://placehold.co/100x100.png"}
                         alt={getContestantDisplayName(hohWinner, 'full')}
                         width={64}
                         height={64}
@@ -192,7 +223,7 @@ export default function ScoringPage() {
                           className="flex flex-col items-center gap-1"
                         >
                           <Image
-                            src={nom.photoUrl!}
+                            src={nom.photoUrl || "https://placehold.co/100x100.png"}
                             alt={getContestantDisplayName(nom, 'full')}
                             width={48}
                             height={48}
@@ -228,7 +259,7 @@ export default function ScoringPage() {
                     {povWinner ? (
                       <>
                         <Image
-                          src={povWinner.photoUrl!}
+                          src={povWinner.photoUrl || "https://placehold.co/100x100.png"}
                           alt={getContestantDisplayName(povWinner, 'full')}
                           width={64}
                           height={64}
@@ -282,7 +313,7 @@ export default function ScoringPage() {
                   {blockBusterWinner ? (
                     <>
                       <Image
-                        src={blockBusterWinner.photoUrl!}
+                        src={blockBusterWinner.photoUrl || "https://placehold.co/100x100.png"}
                         alt={getContestantDisplayName(blockBusterWinner, 'full')}
                         width={64}
                         height={64}
@@ -308,7 +339,7 @@ export default function ScoringPage() {
                   {evictedPlayer ? (
                     <>
                       <Image
-                        src={evictedPlayer.photoUrl!}
+                        src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"}
                         alt={getContestantDisplayName(evictedPlayer, 'full')}
                         width={64}
                         height={64}
@@ -353,7 +384,7 @@ export default function ScoringPage() {
                       <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All {contestantTerm.plural}</SelectItem>
-                        {MOCK_CONTESTANTS.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
+                        {contestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -363,7 +394,7 @@ export default function ScoringPage() {
                       <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Teams</SelectItem>
-                        {MOCK_TEAMS.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                        {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -405,11 +436,11 @@ export default function ScoringPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>{ruleSet?.name || 'Scoring Rules'}</CardTitle>
+                <CardTitle>{scoringRules?.name || 'Scoring Rules'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-                    {ruleSet?.rules.map((rule) => (
+                    {scoringRules?.rules.map((rule) => (
                       <div key={rule.code} className="flex justify-between items-center text-sm border-b py-2">
                         <span>{rule.label}</span>
                         <span className={cn(
@@ -431,3 +462,5 @@ export default function ScoringPage() {
     </>
   );
 }
+
+    

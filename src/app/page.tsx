@@ -1,4 +1,6 @@
 
+"use client";
+
 import Image from "next/image";
 import {
   Card,
@@ -7,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { MOCK_COMPETITIONS, MOCK_CONTESTANTS, MOCK_SEASONS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import {
   Home,
   Crown,
@@ -30,92 +31,158 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/app-header";
 import { BottomNavBar } from "@/components/bottom-nav-bar";
-
-const league = MOCK_LEAGUES[0];
-const contestantTerm = league.contestantTerm;
-
-// Helper to get top players
-const getTopPlayers = () => {
-  const allPlayers = MOCK_TEAMS.flatMap(team => 
-    team.weekly_score_breakdown.week4.map(playerScore => {
-      const player = MOCK_CONTESTANTS.find(hg => hg.id === playerScore.contestantId);
-      return {
-        ...player,
-        points: playerScore.points,
-        absPoints: Math.abs(playerScore.points),
-      };
-    })
-  );
-
-  return allPlayers
-    .sort((a, b) => b.absPoints - a.absPoints)
-    .slice(0, 4);
-};
-
+import { useState, useEffect, useMemo } from 'react';
+import { getFirestore, collection, onSnapshot, query, doc } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import type { Team, League, ScoringRuleSet, Competition, Contestant, Season } from '@/lib/data';
+import { MOCK_SEASONS } from "@/lib/data"; // Keep for activeSeason until seasons are in Firestore
 
 export default function DashboardPage() {
-  const activeSeason = MOCK_SEASONS[0];
-  const currentWeekEvents = MOCK_COMPETITIONS.filter(
-    (c) => c.week === activeSeason.currentWeek
-  );
+  const db = getFirestore(app);
 
-  const hoh = currentWeekEvents.find((c) => c.type === "HOH");
-  const hohWinner = MOCK_CONTESTANTS.find((hg) => hg.id === hoh?.winnerId);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [league, setLeague] = useState<League | null>(null);
+  const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
+  const [contestants, setContestants] = useState<Contestant[]>([]);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
 
-  const noms = currentWeekEvents.find((c) => c.type === "NOMINATIONS");
-  const nomWinners = MOCK_CONTESTANTS.filter(
-    (hg) => noms?.nominees?.includes(hg.id)
-  );
+  // Using mock for now, will be dynamic later
+  const activeSeason = MOCK_SEASONS[0]; 
 
-  const pov = currentWeekEvents.find((c) => c.type === "VETO");
-  const povWinner = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId);
-  const savedPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.usedOnId);
-  const renomPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.replacementNomId);
+  useEffect(() => {
+    // Fetch League and dependent data
+    const leagueDocRef = doc(db, "leagues", "bb27");
+    const unsubscribeLeague = onSnapshot(leagueDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+            setLeague(leagueData);
 
+            if (leagueData.settings.scoringRuleSetId) {
+                const ruleSetDocRef = doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId);
+                const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
+                    if (ruleSnap.exists()) {
+                        setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                    }
+                });
+                // Note: Consider how to manage this nested subscription's cleanup
+            }
+        }
+    });
 
-  const blockBuster = currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER");
-  const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
+    // Fetch Teams
+    const teamsCol = collection(db, "teams");
+    const unsubscribeTeams = onSnapshot(query(teamsCol), (querySnapshot) => {
+        const teamsData: Team[] = [];
+        querySnapshot.forEach((doc) => {
+            teamsData.push({ ...doc.data(), id: doc.id } as Team);
+        });
+        setTeams(teamsData);
+    });
 
-  const eviction = currentWeekEvents.find(
-    (c) => c.type === "EVICTION"
-  );
-  const evictedPlayer = MOCK_CONTESTANTS.find(
-    (hg) => hg.id === eviction?.evictedId
+    // Fetch Contestants
+    const contestantsCol = collection(db, "contestants");
+    const unsubscribeContestants = onSnapshot(query(contestantsCol), (querySnapshot) => {
+        const contestantsData: Contestant[] = [];
+        querySnapshot.forEach((doc) => {
+            contestantsData.push({ ...doc.data(), id: doc.id } as Contestant);
+        });
+        setContestants(contestantsData);
+    });
+
+    // Fetch Competitions
+    const competitionsCol = collection(db, "competitions");
+    const unsubscribeCompetitions = onSnapshot(query(competitionsCol), (querySnapshot) => {
+        const competitionsData: Competition[] = [];
+        querySnapshot.forEach((doc) => {
+            competitionsData.push({ ...doc.data(), id: doc.id } as Competition);
+        });
+        setCompetitions(competitionsData);
+    });
+
+    return () => {
+      unsubscribeLeague();
+      unsubscribeTeams();
+      unsubscribeContestants();
+      unsubscribeCompetitions();
+      // Add cleanup for nested rule subscription if needed
+    };
+  }, [db]);
+
+  const currentWeekEvents = useMemo(() => 
+    competitions.filter((c) => c.week === activeSeason.currentWeek),
+    [competitions, activeSeason.currentWeek]
   );
   
-  const sortedTeams = [...MOCK_TEAMS].sort((a, b) => b.total_score - a.total_score);
-  const topPlayers = getTopPlayers();
-  const scoringRules = MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset')?.rules;
+  const hoh = useMemo(() => currentWeekEvents.find((c) => c.type === "HOH"), [currentWeekEvents]);
+  const hohWinner = useMemo(() => contestants.find((hg) => hg.id === hoh?.winnerId), [contestants, hoh]);
 
+  const noms = useMemo(() => currentWeekEvents.find((c) => c.type === "NOMINATIONS"), [currentWeekEvents]);
+  const nomWinners = useMemo(() => contestants.filter((hg) => noms?.nominees?.includes(hg.id)), [contestants, noms]);
 
-  const weeklyActivity = [];
-    if (hoh && hohWinner) {
-        weeklyActivity.push({
-            type: 'HOH',
-            player: hohWinner,
-            points: scoringRules?.find(r => r.code === 'HOH_WIN')?.points,
-            description: `${getContestantDisplayName(hohWinner, 'full')} won Head of Household.`
-        });
-    }
-    if (noms && nomWinners.length > 0) {
-        nomWinners.forEach(nominee => {
-            weeklyActivity.push({
-                type: 'NOMINATIONS',
-                player: nominee,
-                points: scoringRules?.find(r => r.code === 'NOMINATED')?.points,
-                description: `${getContestantDisplayName(nominee, 'full')} was nominated for eviction.`
+  const pov = useMemo(() => currentWeekEvents.find((c) => c.type === "VETO"), [currentWeekEvents]);
+  const povWinner = useMemo(() => contestants.find((hg) => hg.id === pov?.winnerId), [contestants, pov]);
+  const savedPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.usedOnId), [contestants, pov]);
+  const renomPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.replacementNomId), [contestants, pov]);
+
+  const blockBuster = useMemo(() => currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER"), [currentWeekEvents]);
+  const blockBusterWinner = useMemo(() => contestants.find((hg) => hg.id === blockBuster?.winnerId), [contestants, blockBuster]);
+
+  const eviction = useMemo(() => currentWeekEvents.find((c) => c.type === "EVICTION"), [currentWeekEvents]);
+  const evictedPlayer = useMemo(() => contestants.find((hg) => hg.id === eviction?.evictedId), [contestants, eviction]);
+
+  const sortedTeams = useMemo(() => {
+    return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
+  }, [teams]);
+  
+  const weeklyActivity = useMemo(() => {
+    if (!scoringRules?.rules || !contestants.length) return [];
+    
+    const activities: any[] = [];
+    currentWeekEvents.forEach(event => {
+        if (event.type === 'HOH' && event.winnerId) {
+            const player = contestants.find(c => c.id === event.winnerId);
+            const rule = scoringRules.rules.find(r => r.code === 'HOH_WIN');
+            if(player && rule) activities.push({
+                player,
+                description: `${getContestantDisplayName(player, 'full')} won Head of Household.`,
+                points: rule.points,
+                type: 'HOH Win'
             });
-        });
-    }
-    if (pov && povWinner) {
-        weeklyActivity.push({
-            type: 'VETO',
-            player: povWinner,
-            points: scoringRules?.find(r => r.code === 'VETO_WIN')?.points,
-            description: `${getContestantDisplayName(povWinner, 'full')} won the Power of Veto.`
-        });
-    }
+        }
+        if (event.type === 'NOMINATIONS' && event.nominees) {
+            event.nominees.forEach(nomId => {
+                const player = contestants.find(c => c.id === nomId);
+                const rule = scoringRules.rules.find(r => r.code === 'NOMINATED');
+                if(player && rule) activities.push({
+                    player,
+                    description: `${getContestantDisplayName(player, 'full')} was nominated for eviction.`,
+                    points: rule.points,
+                    type: 'Nomination'
+                });
+            });
+        }
+        if (event.type === 'VETO' && event.winnerId) {
+            const player = contestants.find(c => c.id === event.winnerId);
+            const rule = scoringRules.rules.find(r => r.code === 'VETO_WIN');
+            if(player && rule) activities.push({
+                player,
+                description: `${getContestantDisplayName(player, 'full')} won the Power of Veto.`,
+                points: rule.points,
+                type: 'Veto Win'
+            });
+        }
+    });
+    return activities;
+  }, [currentWeekEvents, contestants, scoringRules]);
 
+
+  if (!league || !contestants.length) {
+    return (
+        <div className="flex flex-1 items-center justify-center">
+            <div>Loading Dashboard...</div>
+        </div>
+    );
+  }
 
   return (
     <>
@@ -146,7 +213,7 @@ export default function DashboardPage() {
               {hohWinner ? (
                 <>
                   <Image
-                    src={hohWinner.photoUrl!}
+                    src={hohWinner.photoUrl || "https://placehold.co/100x100.png"}
                     alt={getContestantDisplayName(hohWinner, 'full')}
                     width={64}
                     height={64}
@@ -177,7 +244,7 @@ export default function DashboardPage() {
                       className="flex flex-col items-center gap-1"
                     >
                       <Image
-                        src={nom.photoUrl!}
+                        src={nom.photoUrl || "https://placehold.co/100x100.png"}
                         alt={getContestantDisplayName(nom, 'full')}
                         width={48}
                         height={48}
@@ -213,7 +280,7 @@ export default function DashboardPage() {
                 {povWinner ? (
                   <>
                     <Image
-                      src={povWinner.photoUrl!}
+                      src={povWinner.photoUrl || "https://placehold.co/100x100.png"}
                       alt={getContestantDisplayName(povWinner, 'full')}
                       width={64}
                       height={64}
@@ -267,7 +334,7 @@ export default function DashboardPage() {
               {blockBusterWinner ? (
                 <>
                   <Image
-                    src={blockBusterWinner.photoUrl!}
+                    src={blockBusterWinner.photoUrl || "https://placehold.co/100x100.png"}
                     alt={getContestantDisplayName(blockBusterWinner, 'full')}
                     width={64}
                     height={64}
@@ -294,7 +361,7 @@ export default function DashboardPage() {
               {evictedPlayer ? (
                 <>
                   <Image
-                    src={evictedPlayer.photoUrl!}
+                    src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"}
                     alt={getContestantDisplayName(evictedPlayer, 'full')}
                     width={64}
                     height={64}
@@ -324,7 +391,7 @@ export default function DashboardPage() {
                 <CardContent>
                     <div className="flex justify-between items-center px-4 mb-2">
                         <span className="text-xs font-medium text-muted-foreground">TEAM</span>
-                        <span className="text-xs font-medium text-muted-foreground">WoW</span>
+                        <span className="text-xs font-medium text-muted-foreground">POINTS</span>
                     </div>
                     <div className="space-y-4">
                         {sortedTeams.map((team, index) => (
@@ -337,20 +404,12 @@ export default function DashboardPage() {
                                     )}>{index + 1}</span>
                                     <div>
                                         <p className="font-medium">{team.name}</p>
-                                        <p className="text-sm text-muted-foreground">{team.total_score.toLocaleString()} pts</p>
+                                        <p className="text-sm text-muted-foreground">{team.ownerUserIds.join(', ')}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    {team.weekly_score > 0 ? <TrendingUp className="h-4 w-4 text-green-600"/> : team.weekly_score < 0 ? <TrendingDown className="h-4 w-4 text-red-600"/> : <Minus className="h-4 w-4 text-gray-500" />}
-                                    <Badge variant={team.weekly_score > 0 ? "default" : team.weekly_score < 0 ? "destructive" : "secondary"} className={cn(
-                                        "w-12 justify-center",
-                                        team.weekly_score > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
-                                        team.weekly_score < 0 && "bg-red-100 text-red-800",
-                                        team.weekly_score === 0 && "bg-gray-100 text-gray-800"
-                                     )}>
-                                      <span>{team.weekly_score > 0 ? '+': ''}{team.weekly_score}</span>
-                                    </Badge>
-                                </div>
+                                <Badge variant="secondary" className="w-20 justify-center text-base">
+                                  <span>{team.total_score || 0}</span>
+                                </Badge>
                             </div>
                         ))}
                     </div>
@@ -359,80 +418,43 @@ export default function DashboardPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Medal/> Top Movers (Week 4)</CardTitle>
-                    <CardDescription>Players with the biggest point swings last week.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><ListOrdered /> Week {activeSeason.currentWeek} Scoring Activity</CardTitle>
+                    <CardDescription>A log of all point-scoring events from this week.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                     <div className="space-y-4">
-                        {topPlayers.map(player => (
-                            <div key={player.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                                <div className="flex items-center gap-3">
-                                    <Image 
-                                        src={player.photoUrl!}
-                                        alt={getContestantDisplayName(player, 'full')}
-                                        width={40}
-                                        height={40}
-                                        className="rounded-full"
-                                        data-ai-hint="portrait person"
-                                    />
-                                    <div>
-                                        <p className="font-medium">{getContestantDisplayName(player, 'full')}</p>
-                                        <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
-                                    </div>
-                                </div>
-                                <Badge variant={player.points >= 0 ? "default" : "destructive"} className={cn(
-                                    "w-12 justify-center",
-                                    player.points >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
-                                    player.points < 0 && "bg-red-100 text-red-800")}>
-                                    <span>{player.points > 0 ? '+': ''}{player.points}</span>
-                                </Badge>
+                    <div className="space-y-4">
+                    {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                        <div className="flex items-center gap-3">
+                            <Image
+                            src={activity.player.photoUrl || "https://placehold.co/100x100.png"}
+                            alt={getContestantDisplayName(activity.player, 'full')}
+                            width={40}
+                            height={40}
+                            className="rounded-full"
+                            data-ai-hint="portrait person"
+                            />
+                            <div>
+                            <p className="font-medium">{activity.description}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {activity.type}
+                            </p>
                             </div>
-                        ))}
+                        </div>
+                        <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
+                                "w-12 justify-center",
+                                activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                                activity.points! < 0 && "bg-red-100 text-red-800")}>
+                                <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
+                        </Badge>
+                        </div>
+                    )) : (
+                        <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
+                    )}
                     </div>
                 </CardContent>
             </Card>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><ListOrdered /> Week {activeSeason.currentWeek} Scoring Activity</CardTitle>
-            <CardDescription>A log of all point-scoring events from this week.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <Image
-                      src={activity.player.photoUrl!}
-                      alt={getContestantDisplayName(activity.player, 'full')}
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                      data-ai-hint="portrait person"
-                    />
-                    <div>
-                      <p className="font-medium">{activity.description}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {activity.type === 'HOH' && 'HOH Win'}
-                        {activity.type === 'NOMINATIONS' && 'Nomination'}
-                        {activity.type === 'VETO' && 'Veto Win'}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
-                        "w-12 justify-center",
-                        activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
-                        activity.points! < 0 && "bg-red-100 text-red-800")}>
-                        <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
-                  </Badge>
-                </div>
-              )) : (
-                <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
 
       </div>
     </div>
@@ -441,3 +463,5 @@ export default function DashboardPage() {
     </>
   );
 }
+
+    
