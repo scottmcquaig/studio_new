@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, createElement } from 'react';
+import { useState, useEffect, createElement, useMemo } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,21 +124,23 @@ export function AdminPanel() {
     }
   }, [teamDraftOrders, teams]);
   
-  const displayedTeams = Array.from({ length: leagueSettings?.maxTeams || 0 }, (_, i) => {
-    return teams[i] || {
-        id: `team_${i + 1}_placeholder`,
-        leagueId: leagueSettings?.id || '',
-        name: `Team ${i + 1}`,
-        ownerUserIds: [],
-        contestantIds: [],
-        faab: 100,
-        createdAt: new Date().toISOString(),
-        total_score: 0,
-        weekly_score: 0,
-        draftOrder: i + 1,
-        weekly_score_breakdown: { week4: [] }
-    };
-  });
+  const displayedTeams = useMemo(() => {
+    return Array.from({ length: leagueSettings?.maxTeams || 0 }, (_, i) => {
+        return teams[i] || {
+            id: `team_${i + 1}_placeholder`,
+            leagueId: leagueSettings?.id || '',
+            name: `Team ${i + 1}`,
+            ownerUserIds: [],
+            contestantIds: [],
+            faab: 100,
+            createdAt: new Date().toISOString(),
+            total_score: 0,
+            weekly_score: 0,
+            draftOrder: i + 1,
+            weekly_score_breakdown: { week4: [] }
+        };
+    });
+  }, [teams, leagueSettings]);
 
 
   useEffect(() => {
@@ -245,23 +247,23 @@ export function AdminPanel() {
   }, [db]);
 
 
-  const activeContestants = contestants.filter(hg => hg.status === 'active');
-  const weekEvents = competitions.filter(c => c.week === selectedWeek);
+  const activeContestants = useMemo(() => contestants.filter(hg => hg.status === 'active'), [contestants]);
+  const weekEvents = useMemo(() => competitions.filter(c => c.week === selectedWeek), [competitions, selectedWeek]);
   
-  const hoh = weekEvents.find(c => c.type === 'HOH');
-  const pov = weekEvents.find(c => c.type === 'VETO');
-  const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
-  const eviction = weekEvents.find(c => c.type === 'EVICTION');
-  const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
-  const weekOptions = Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1).reverse();
+  const hoh = useMemo(() => weekEvents.find(c => c.type === 'HOH'), [weekEvents]);
+  const pov = useMemo(() => weekEvents.find(c => c.type === 'VETO'), [weekEvents]);
+  const noms = useMemo(() => weekEvents.find(c => c.type === 'NOMINATIONS'), [weekEvents]);
+  const eviction = useMemo(() => weekEvents.find(c => c.type === 'EVICTION'), [weekEvents]);
+  const blockBuster = useMemo(() => weekEvents.find(c => c.type === 'BLOCK_BUSTER'), [weekEvents]);
+  const weekOptions = useMemo(() => Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1).reverse(), [activeSeason]);
 
 
-  const [nominees, setNominees] = useState<string[]>(noms?.nominees || ['', '']);
+  const [nominees, setNominees] = useState<string[]>(['', '']);
 
     useEffect(() => {
         setNominees(noms?.nominees || ['', '']);
         setVetoUsed(pov?.used || false);
-    }, [selectedWeek, competitions, pov, noms]);
+    }, [selectedWeek, noms, pov]);
 
     const handleNomineeChange = (index: number, value: string) => {
         const newNominees = [...nominees];
@@ -613,22 +615,17 @@ export function AdminPanel() {
     }
     
     try {
-        const contestantId = editingContestant.id;
-        await deleteDoc(doc(db, 'contestants', contestantId));
-        
+        await deleteDoc(doc(db, 'contestants', editingContestant.id));
         toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been permanently removed.` });
-        
-        // This will close the dialog. The onSnapshot listener will handle removing the contestant from the UI.
-        setEditingContestant(null);
-
+        setEditingContestant(null); // Close dialog, onSnapshot will update UI.
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
     }
   };
 
-  const allAssignedUserIds = teams.flatMap(t => t.ownerUserIds);
-  const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
+  const allAssignedUserIds = useMemo(() => teams.flatMap(t => t.ownerUserIds), [teams]);
+  const unassignedUsers = useMemo(() => users.filter(u => !allAssignedUserIds.includes(u.id)), [users, allAssignedUserIds]);
   
   const isEditingNewContestant = editingContestant?.id.startsWith('new_contestant_');
   

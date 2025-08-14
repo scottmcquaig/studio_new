@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, createElement } from 'react';
+import { useState, useEffect, createElement, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,29 +11,27 @@ import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "l
 import * as LucideIcons from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
-import { getFirestore, collection, onSnapshot, doc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, Unsubscribe } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet, LeagueScoringBreakdownCategory } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, ScoringRule, Competition } from '@/lib/data';
 
-// Calculate KPIs for a team
-const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringRuleSet | null) => {
-    const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
-    const rules = scoringRules?.rules || [];
-    
+// Memoize this helper to avoid re-running on every render
+const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
+    const breakdownCategories = league.settings.scoringBreakdownCategories || [];
     const kpis: { [key: string]: number } = {};
     
     breakdownCategories.forEach(category => {
         kpis[category.displayName] = 0;
     });
 
-    if (!league || !rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
+    if (!rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
 
     const teamContestantIds = team.contestantIds || [];
 
-    MOCK_COMPETITIONS.forEach(comp => {
+    competitions.forEach(comp => {
         const processEvent = (contestantId: string, eventCode: string) => {
             if (teamContestantIds.includes(contestantId)) {
-                const rule = rules.find(r => r.code === eventCode);
+                const rule = scoringRules.find(r => r.code === eventCode);
                 if (rule) {
                     breakdownCategories.forEach(category => {
                         if (category.ruleCodes.includes(rule.code)) {
@@ -74,7 +72,6 @@ const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringR
     return { ...kpis, total: team.total_score || 0 };
 };
 
-
 export default function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [league, setLeague] = useState<League | null>(null);
@@ -82,7 +79,8 @@ export default function TeamsPage() {
     const db = getFirestore(app);
 
     useEffect(() => {
-        // Assume one league for now, in a real app you'd select this
+        const unsubscribes: Unsubscribe[] = [];
+
         const leagueDocRef = doc(db, "leagues", "bb27");
         const unsubscribeLeague = onSnapshot(leagueDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -96,7 +94,7 @@ export default function TeamsPage() {
                             setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
                         }
                     });
-                    // In a real app, manage this unsubscribe properly
+                    unsubscribes.push(unsubscribeRules);
                 }
             } else {
                 setLeague(MOCK_LEAGUES[0]);
@@ -104,6 +102,7 @@ export default function TeamsPage() {
                 if (ruleset) setScoringRules(ruleset);
             }
         });
+        unsubscribes.push(unsubscribeLeague);
 
         const teamsCol = collection(db, "teams");
         const unsubscribeTeams = onSnapshot(teamsCol, (querySnapshot) => {
@@ -117,15 +116,19 @@ export default function TeamsPage() {
                 setTeams(MOCK_TEAMS);
             }
         });
+        unsubscribes.push(unsubscribeTeams);
         
         return () => {
-            unsubscribeLeague();
-            unsubscribeTeams();
+            unsubscribes.forEach(unsub => unsub());
         };
     }, [db]);
 
-    const sortedTeams = [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
-    const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
+    const sortedTeams = useMemo(() => {
+        return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
+    }, [teams]);
+
+    const breakdownCategories = useMemo(() => league?.settings.scoringBreakdownCategories || [], [league]);
+    const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
     
     const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
     
@@ -172,7 +175,11 @@ export default function TeamsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {sortedTeams.map((team) => {
                 const owners = team.ownerUserIds.map(getOwner);
-                const kpis = calculateKpis(team, league, scoringRules);
+                const kpis = useMemo(() => {
+                    if (!league || !rules.length) return { total: team.total_score || 0 };
+                    return calculateKpis(team, league, rules, MOCK_COMPETITIONS);
+                }, [team, league, rules]);
+                
                 const teamContestants = MOCK_CONTESTANTS.filter(hg => (team.contestantIds || []).includes(hg.id));
 
                 return (
@@ -214,7 +221,7 @@ export default function TeamsPage() {
                                <h4 className="text-sm font-semibold text-muted-foreground mb-3">Scoring Breakdown</h4>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-sm">
                                     {breakdownCategories.map((category) => {
-                                        const value = kpis[category.displayName] || 0;
+                                        const value = (kpis as any)[category.displayName] || 0;
                                         if (!category.displayName) return null;
                                         return (
                                             <div key={category.displayName} className="flex justify-between items-center">

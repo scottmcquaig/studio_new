@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,78 +21,79 @@ type ContestantWithStats = Contestant & {
 
 export default function ContestantsPage() {
   const [selectedContestant, setSelectedContestant] = useState<ContestantWithStats | null>(null);
-  const activeSeason = MOCK_SEASONS[0];
-  const league = MOCK_LEAGUES[0];
+  
+  const activeSeason = useMemo(() => MOCK_SEASONS[0], []);
+  const league = useMemo(() => MOCK_LEAGUES[0], []);
   const contestantTerm = league.contestantTerm;
+  const scoringRules = useMemo(() => MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules || [], []);
 
-  const hoh = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'HOH');
-  const pov = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'VETO');
-  const noms = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'NOMINATIONS');
-  const blockBuster = MOCK_COMPETITIONS.find(c => c.week === activeSeason.currentWeek && c.type === 'BLOCK_BUSTER');
+  const weekEvents = useMemo(() => MOCK_COMPETITIONS.filter(c => c.week === activeSeason.currentWeek), [activeSeason.currentWeek]);
+  
+  const hoh = useMemo(() => weekEvents.find(c => c.type === 'HOH'), [weekEvents]);
+  const pov = useMemo(() => weekEvents.find(c => c.type === 'VETO'), [weekEvents]);
+  const noms = useMemo(() => weekEvents.find(c => c.type === 'NOMINATIONS'), [weekEvents]);
+  const blockBuster = useMemo(() => weekEvents.find(c => c.type === 'BLOCK_BUSTER'), [weekEvents]);
 
+  const contestantStats: ContestantWithStats[] = useMemo(() => {
+    return MOCK_CONTESTANTS.map(hg => {
+      const team = MOCK_TEAMS.find(t => t.contestantIds.includes(hg.id));
+      
+      let totalPoints = 0;
+      MOCK_TEAMS.forEach(team => {
+          const weeklyData = team.weekly_score_breakdown.week4;
+          const playerData = weeklyData.find(d => d.contestantId === hg.id);
+          if (playerData) {
+              totalPoints += playerData.points;
+          }
+      });
+      
+      const hohWins = MOCK_COMPETITIONS.filter(c => c.type === 'HOH' && c.winnerId === hg.id).length;
+      const vetoWins = MOCK_COMPETITIONS.filter(c => c.type === 'VETO' && c.winnerId === hg.id).length;
+      const nomCount = MOCK_COMPETITIONS.filter(c => c.type === 'NOMINATIONS' && c.nominees?.includes(hg.id)).length;
+      
+      if (scoringRules.length > 0) {
+          totalPoints += hohWins * (scoringRules.find(r => r.code === 'HOH_WIN')?.points || 0);
+          totalPoints += vetoWins * (scoringRules.find(r => r.code === 'VETO_WIN')?.points || 0);
+          totalPoints += nomCount * (scoringRules.find(r => r.code === 'NOMINATED')?.points || 0);
+      }
 
-  const contestantStats: ContestantWithStats[] = MOCK_CONTESTANTS.map(hg => {
-    const team = MOCK_TEAMS.find(t => t.contestantIds.includes(hg.id));
-    
-    // Aggregate points from all teams' weekly breakdowns
-    let totalPoints = 0;
-    MOCK_TEAMS.forEach(team => {
-        const weeklyData = team.weekly_score_breakdown.week4;
-        const playerData = weeklyData.find(d => d.contestantId === hg.id);
-        if (playerData) {
-            totalPoints += playerData.points;
-        }
+      return {
+        ...hg,
+        teamName: team?.name || 'Unassigned',
+        totalWins: hohWins + vetoWins,
+        totalNoms: nomCount,
+        totalPoints: totalPoints,
+        evictionWeek: hg.evictedDay ? Math.ceil(hg.evictedDay / 7) : undefined,
+      };
     });
-    
-    // Add points from other events not directly in weekly breakdown for a more complete picture
-    const hohWins = MOCK_COMPETITIONS.filter(c => c.type === 'HOH' && c.winnerId === hg.id).length;
-    const vetoWins = MOCK_COMPETITIONS.filter(c => c.type === 'VETO' && c.winnerId === hg.id).length;
-    const nomCount = MOCK_COMPETITIONS.filter(c => c.type === 'NOMINATIONS' && c.nominees?.includes(hg.id)).length;
-    
-    const scoringRules = MOCK_SCORING_RULES.find(rs => rs.id === 'std_bb_rules_v1')?.rules;
-    if (scoringRules) {
-        totalPoints += hohWins * (scoringRules.find(r => r.code === 'HOH_WIN')?.points || 0);
-        totalPoints += vetoWins * (scoringRules.find(r => r.code === 'VETO_WIN')?.points || 0);
-        totalPoints += nomCount * (scoringRules.find(r => r.code === 'NOMINATED')?.points || 0);
-    }
+  }, [scoringRules]);
 
-    return {
-      ...hg,
-      teamName: team?.name || 'Unassigned',
-      totalWins: hohWins + vetoWins,
-      totalNoms: nomCount,
-      totalPoints: totalPoints,
-      evictionWeek: hg.evictedDay ? Math.ceil(hg.evictedDay / 7) : undefined,
-    };
-  });
+  const sortedContestants = useMemo(() => {
+    return [...contestantStats].sort((a, b) => {
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status !== 'active') {
+        return (b.evictedDay || 0) - (a.evictedDay || 0); 
+      }
 
-  const sortedContestants = [...contestantStats].sort((a, b) => {
-    // Evicted players to the bottom
-    if (a.status !== 'active' && b.status === 'active') return 1;
-    if (a.status === 'active' && b.status !== 'active') return -1;
-    if (a.status !== 'active' && b.status !== 'active') {
-      return (b.evictedDay || 0) - (a.evictedDay || 0); // most recent evicted first
-    }
+      const aIsHoh = a.id === hoh?.winnerId;
+      const bIsHoh = b.id === hoh?.winnerId;
+      if (aIsHoh) return -1;
+      if (bIsHoh) return 1;
 
-    // Active players sorting logic
-    const aIsHoh = a.id === hoh?.winnerId;
-    const bIsHoh = b.id === hoh?.winnerId;
-    if (aIsHoh) return -1;
-    if (bIsHoh) return 1;
+      const aIsPov = a.id === pov?.winnerId;
+      const bIsPov = b.id === pov?.winnerId;
+      if (aIsPov) return -1;
+      if (bIsPov) return 1;
 
-    const aIsPov = a.id === pov?.winnerId;
-    const bIsPov = b.id === pov?.winnerId;
-    if (aIsPov) return -1;
-    if (bIsPov) return 1;
+      const aIsNom = noms?.nominees?.includes(a.id);
+      const bIsNom = noms?.nominees?.includes(b.id);
+      if (aIsNom && !bIsNom) return -1;
+      if (!aIsNom && bIsNom) return 1;
 
-    const aIsNom = noms?.nominees?.includes(a.id);
-    const bIsNom = noms?.nominees?.includes(b.id);
-    if (aIsNom && !bIsNom) return -1;
-    if (!aIsNom && bIsNom) return 1;
-
-    // Alphabetical for the rest
-    return getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'));
-  });
+      return getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'));
+    });
+  }, [contestantStats, hoh, pov, noms]);
 
 
   return (

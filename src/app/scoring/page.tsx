@@ -24,33 +24,36 @@ type ScoringEvent = {
 };
 
 export default function ScoringPage() {
-  const ruleSet = MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset');
-  const activeSeason = MOCK_SEASONS[0];
-  const league = MOCK_LEAGUES[0];
+  const ruleSet = useMemo(() => MOCK_SCORING_RULES.find(rs => rs.id === 'bb27_ruleset'), []);
+  const activeSeason = useMemo(() => MOCK_SEASONS[0], []);
+  const league = useMemo(() => MOCK_LEAGUES[0], []);
   const contestantTerm = league.contestantTerm;
-
 
   const [selectedWeek, setSelectedWeek] = useState<string>(String(activeSeason.currentWeek));
   const [selectedContestant, setSelectedContestant] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   
-  const weekOptions = Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1));
+  const weekOptions = useMemo(() => Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1)), [activeSeason.currentWeek]);
   const displayWeek = selectedWeek === 'all' ? activeSeason.currentWeek : Number(selectedWeek);
   
-  const weeklyEvents = MOCK_COMPETITIONS.filter(c => c.week === displayWeek);
-  const hoh = weeklyEvents.find((c) => c.type === "HOH");
-  const hohWinner = MOCK_CONTESTANTS.find((hg) => hg.id === hoh?.winnerId);
-  const noms = weeklyEvents.find((c) => c.type === "NOMINATIONS");
-  const nomWinners = MOCK_CONTESTANTS.filter((hg) => noms?.nominees?.includes(hg.id));
-  const pov = weeklyEvents.find((c) => c.type === "VETO");
-  const povWinner = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId);
-  const savedPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.usedOnId);
-  const renomPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === pov?.replacementNomId);
+  const weeklyEvents = useMemo(() => MOCK_COMPETITIONS.filter(c => c.week === displayWeek), [displayWeek]);
+  
+  const hoh = useMemo(() => weeklyEvents.find((c) => c.type === "HOH"), [weeklyEvents]);
+  const hohWinner = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === hoh?.winnerId), [hoh]);
 
-  const blockBuster = weeklyEvents.find((c) => c.type === "BLOCK_BUSTER");
-  const blockBusterWinner = MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId);
-  const eviction = weeklyEvents.find((c) => c.type === "EVICTION");
-  const evictedPlayer = MOCK_CONTESTANTS.find((hg) => hg.id === eviction?.evictedId);
+  const noms = useMemo(() => weeklyEvents.find((c) => c.type === "NOMINATIONS"), [weeklyEvents]);
+  const nomWinners = useMemo(() => MOCK_CONTESTANTS.filter((hg) => noms?.nominees?.includes(hg.id)), [noms]);
+  
+  const pov = useMemo(() => weeklyEvents.find((c) => c.type === "VETO"), [weeklyEvents]);
+  const povWinner = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === pov?.winnerId), [pov]);
+  const savedPlayer = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === pov?.usedOnId), [pov]);
+  const renomPlayer = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === pov?.replacementNomId), [pov]);
+
+  const blockBuster = useMemo(() => weeklyEvents.find((c) => c.type === "BLOCK_BUSTER"), [weeklyEvents]);
+  const blockBusterWinner = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === blockBuster?.winnerId), [blockBuster]);
+  
+  const eviction = useMemo(() => weeklyEvents.find((c) => c.type === "EVICTION"), [weeklyEvents]);
+  const evictedPlayer = useMemo(() => MOCK_CONTESTANTS.find((hg) => hg.id === eviction?.evictedId), [eviction]);
 
 
   // Memoize the creation of the event log to avoid re-computation on every render
