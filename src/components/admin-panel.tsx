@@ -55,7 +55,7 @@ export function AdminPanel() {
   const [scoringRuleSet, setScoringRuleSet] = useState<ScoringRuleSet | null>(null);
   
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [editingContestant, setEditingContestant] = useState<Contestant | null | 'new'>(null);
+  const [editingContestant, setEditingContestant] = useState<Contestant | 'new' | null>(null);
   
   const [selectedWeek, setSelectedWeek] = useState(activeSeason?.currentWeek || 1);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
@@ -375,8 +375,10 @@ export function AdminPanel() {
         const leagueDataToSave = {
             name: leagueSettings.name,
             maxTeams: leagueSettings.maxTeams,
-            'contestantTerm.singular': leagueSettings.contestantTerm.singular,
-            'contestantTerm.plural': leagueSettings.contestantTerm.plural,
+            contestantTerm: {
+                singular: leagueSettings.contestantTerm.singular,
+                plural: leagueSettings.contestantTerm.plural,
+            }
         };
         await setDoc(leagueDocRef, leagueDataToSave, { merge: true });
 
@@ -579,6 +581,8 @@ export function AdminPanel() {
   const handleUpdateContestant = (field: keyof Contestant, value: string | number | boolean) => {
     if (editingContestant && editingContestant !== 'new') {
       setEditingContestant({ ...editingContestant, [field]: value });
+    } else if (editingContestant && typeof editingContestant === 'object') {
+        setEditingContestant({ ...editingContestant, [field]: value });
     }
   };
 
@@ -607,25 +611,29 @@ export function AdminPanel() {
   };
   
   const handleDeleteContestant = async () => {
-      if (!editingContestant || editingContestant === 'new') return;
-      if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}?`)) return;
-      
-      try {
-          const contestantDoc = doc(db, 'contestants', editingContestant.id);
-          await deleteDoc(contestantDoc);
-          setContestants(contestants.filter(c => c.id !== (editingContestant as Contestant).id));
-          toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been removed.` });
-          setEditingContestant(null);
-      } catch (error) {
-          console.error("Error deleting contestant: ", error);
-          toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
-      }
-  };
+    if (!editingContestant || editingContestant === 'new' || typeof editingContestant === 'string') return;
+    
+    if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}?`)) return;
+    
+    try {
+        const contestantId = editingContestant.id;
+        const contestantDoc = doc(db, 'contestants', contestantId);
+        await deleteDoc(contestantDoc);
+        
+        // No need to update local state `contestants` as onSnapshot will do it.
+        
+        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been removed.` });
+        setEditingContestant(null);
+    } catch (error) {
+        console.error("Error deleting contestant: ", error);
+        toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
+    }
+};
 
   const allAssignedUserIds = teams.flatMap(t => t.ownerUserIds);
   const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
   
-  const currentDialogContestant = editingContestant === 'new' ? null : editingContestant;
+  const isEditingExistingContestant = editingContestant && typeof editingContestant === 'object' && contestants.some(c => c.id === editingContestant.id);
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
@@ -865,12 +873,12 @@ export function AdminPanel() {
                       <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                           <DialogContent>
                               <DialogHeader>
-                                  <DialogTitle>{editingContestant === 'new' ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(currentDialogContestant, 'full')}`}</DialogTitle>
+                                  <DialogTitle>{typeof editingContestant === 'object' && editingContestant?.id.startsWith('new_') ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant as Contestant, 'full')}`}</DialogTitle>
                                   <DialogDescription>
                                       Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
                                   </DialogDescription>
                               </DialogHeader>
-                              {editingContestant && (
+                              {editingContestant && typeof editingContestant === 'object' && (
                                 <div className="space-y-4 py-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -920,7 +928,7 @@ export function AdminPanel() {
                               )}
                               <DialogFooter className="justify-between">
                                   <div>
-                                      {editingContestant !== 'new' && (
+                                      {isEditingExistingContestant && (
                                           <Button variant="destructive" onClick={handleDeleteContestant}>Delete</Button>
                                       )}
                                   </div>
@@ -1007,13 +1015,13 @@ export function AdminPanel() {
                       <div>
                           <h3 className="text-lg font-medium mb-2">Scoring Breakdown Categories</h3>
                           <p className="text-sm text-muted-foreground mb-4">Customize how scores are displayed on team cards. Define up to 6 categories.</p>
-                          <div className="space-y-2">
+                           <div className="space-y-2">
                             {leagueSettings.settings?.scoringBreakdownCategories?.map((category, catIndex) => (
                                 <div key={catIndex} className="flex items-center gap-2 p-3 border rounded-lg">
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color)}>
-                                               <DynamicIcon name={category.icon} className="h-5 w-5" />
+                                            <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color.replace('text-', 'bg-') || 'bg-gray-500')}>
+                                               <DynamicIcon name={category.icon} className="h-5 w-5 text-white" />
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto">
@@ -1027,7 +1035,7 @@ export function AdminPanel() {
                                             <Separator className="my-2" />
                                             <div className="grid grid-cols-9 gap-1">
                                                 {colorSelection.map(colorClass => (
-                                                    <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass.replace('bg-','text-'))}>
+                                                    <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass.replace('bg-', 'text-'))}>
                                                         <div className={cn("h-4 w-4 rounded-full", colorClass)} />
                                                     </Button>
                                                 ))}
@@ -1071,10 +1079,9 @@ export function AdminPanel() {
           </TabsContent>
 
           <TabsContent value="league" className="mt-6 space-y-6">
-               <Card>
+              <Card>
                   <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Settings /> General Settings</CardTitle>
-                      <CardDescription>Manage league name, season, and terminology.</CardDescription>
+                      <CardTitle className="flex items-center gap-2"><Settings /> General League Settings</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
