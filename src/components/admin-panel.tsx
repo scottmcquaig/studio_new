@@ -33,11 +33,11 @@ const iconSelection = [
 ] as const;
 
 const colorSelection = [
-    'text-gray-500', 'text-red-500', 'text-orange-500', 'text-amber-500',
-    'text-yellow-500', 'text-lime-500', 'text-green-500', 'text-emerald-500',
-    'text-teal-500', 'text-cyan-500', 'text-sky-500', 'text-blue-500',
-    'text-indigo-500', 'text-violet-500', 'text-purple-500', 'text-fuchsia-500',
-    'text-pink-500', 'text-rose-500'
+    'bg-gray-500', 'bg-red-500', 'bg-orange-500', 'bg-amber-500',
+    'bg-yellow-500', 'bg-lime-500', 'bg-green-500', 'bg-emerald-500',
+    'bg-teal-500', 'bg-cyan-500', 'bg-sky-500', 'bg-blue-500',
+    'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500',
+    'bg-pink-500', 'bg-rose-500'
 ];
 
 export function AdminPanel() {
@@ -261,7 +261,7 @@ export function AdminPanel() {
     useEffect(() => {
         setNominees(noms?.nominees || ['', '']);
         setVetoUsed(pov?.used || false);
-    }, [selectedWeek, competitions, pov]);
+    }, [selectedWeek, competitions, pov, noms]);
 
     const handleNomineeChange = (index: number, value: string) => {
         const newNominees = [...nominees];
@@ -613,6 +613,7 @@ export function AdminPanel() {
       try {
           const contestantDoc = doc(db, 'contestants', editingContestant.id);
           await deleteDoc(contestantDoc);
+          setContestants(contestants.filter(c => c.id !== (editingContestant as Contestant).id));
           toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been removed.` });
           setEditingContestant(null);
       } catch (error) {
@@ -623,6 +624,8 @@ export function AdminPanel() {
 
   const allAssignedUserIds = teams.flatMap(t => t.ownerUserIds);
   const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
+  
+  const currentDialogContestant = editingContestant === 'new' ? null : editingContestant;
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
@@ -860,60 +863,60 @@ export function AdminPanel() {
                       </div>
 
                       <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
-                         <DialogContent>
+                          <DialogContent>
                               <DialogHeader>
-                                  <DialogTitle>{editingContestant === 'new' ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</DialogTitle>
+                                  <DialogTitle>{editingContestant === 'new' ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(currentDialogContestant, 'full')}`}</DialogTitle>
                                   <DialogDescription>
                                       Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
                                   </DialogDescription>
                               </DialogHeader>
-                              {editingContestant && editingContestant !== 'new' && (
-                              <div className="space-y-4 py-4">
-                                  <div className="grid grid-cols-2 gap-4">
+                              {editingContestant && (
+                                <div className="space-y-4 py-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>First Name</Label>
+                                            <Input value={editingContestant.firstName} onChange={(e) => handleUpdateContestant('firstName', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Last Name</Label>
+                                            <Input value={editingContestant.lastName} onChange={(e) => handleUpdateContestant('lastName', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-2">
-                                          <Label>First Name</Label>
-                                          <Input value={editingContestant.firstName} onChange={(e) => handleUpdateContestant('firstName', e.target.value)} />
+                                          <Label>Nickname (optional)</Label>
+                                          <Input value={editingContestant.nickname || ''} onChange={(e) => handleUpdateContestant('nickname', e.target.value)} />
                                       </div>
                                       <div className="space-y-2">
-                                          <Label>Last Name</Label>
-                                          <Input value={editingContestant.lastName} onChange={(e) => handleUpdateContestant('lastName', e.target.value)} />
+                                          <Label>Age</Label>
+                                          <Input type="number" value={editingContestant.age} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
                                       </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-4">
+                                    </div>
+                                    
                                     <div className="space-y-2">
-                                        <Label>Nickname (optional)</Label>
-                                        <Input value={editingContestant.nickname || ''} onChange={(e) => handleUpdateContestant('nickname', e.target.value)} />
+                                        <Label>Status</Label>
+                                        <Select value={editingContestant.status} onValueChange={(val) => handleUpdateContestant('status', val)}>
+                                            <SelectTrigger><SelectValue/></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="evicted">Evicted</SelectItem>
+                                                <SelectItem value="jury">Jury</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Age</Label>
-                                        <Input type="number" value={editingContestant.age} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
+                                        <Label>Hometown</Label>
+                                        <Input value={editingContestant.hometown} onChange={(e) => handleUpdateContestant('hometown', e.target.value)} />
                                     </div>
-                                  </div>
-                                  
-                                  <div className="space-y-2">
-                                      <Label>Status</Label>
-                                      <Select value={editingContestant.status} onValueChange={(val) => handleUpdateContestant('status', val)}>
-                                          <SelectTrigger><SelectValue/></SelectTrigger>
-                                          <SelectContent>
-                                              <SelectItem value="active">Active</SelectItem>
-                                              <SelectItem value="evicted">Evicted</SelectItem>
-                                              <SelectItem value="jury">Jury</SelectItem>
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div className="space-y-2">
-                                      <Label>Hometown</Label>
-                                      <Input value={editingContestant.hometown} onChange={(e) => handleUpdateContestant('hometown', e.target.value)} />
-                                  </div>
-                                  <div className="space-y-2">
-                                      <Label>Occupation</Label>
-                                      <Input value={editingContestant.occupation} onChange={(e) => handleUpdateContestant('occupation', e.target.value)} />
-                                  </div>
-                                   <div className="space-y-2">
-                                      <Label>Photo URL</Label>
-                                      <Input value={editingContestant.photoUrl} onChange={(e) => handleUpdateContestant('photoUrl', e.target.value)} />
-                                  </div>
-                              </div>
+                                    <div className="space-y-2">
+                                        <Label>Occupation</Label>
+                                        <Input value={editingContestant.occupation} onChange={(e) => handleUpdateContestant('occupation', e.target.value)} />
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label>Photo URL</Label>
+                                        <Input value={editingContestant.photoUrl} onChange={(e) => handleUpdateContestant('photoUrl', e.target.value)} />
+                                    </div>
+                                </div>
                               )}
                               <DialogFooter className="justify-between">
                                   <div>
@@ -926,7 +929,7 @@ export function AdminPanel() {
                                       <Button onClick={handleSaveContestant}>Save Changes</Button>
                                   </div>
                               </DialogFooter>
-                         </DialogContent>
+                          </DialogContent>
                       </Dialog>
                   </CardContent>
               </Card>
@@ -1024,8 +1027,8 @@ export function AdminPanel() {
                                             <Separator className="my-2" />
                                             <div className="grid grid-cols-9 gap-1">
                                                 {colorSelection.map(colorClass => (
-                                                    <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass)}>
-                                                        <div className={cn("h-4 w-4 rounded-full", colorClass.replace('text-', 'bg-'))} />
+                                                    <Button key={colorClass} variant="outline" size="icon" className="h-7 w-7 rounded-full p-0" onClick={() => handleBreakdownCategoryChange(catIndex, 'color', colorClass.replace('bg-','text-'))}>
+                                                        <div className={cn("h-4 w-4 rounded-full", colorClass)} />
                                                     </Button>
                                                 ))}
                                             </div>
@@ -1105,7 +1108,7 @@ export function AdminPanel() {
                     <CardTitle className="flex items-center gap-2 text-lg"><UserCog /> Users &amp; Teams</CardTitle>
                     <CardDescription className="text-left">Manage user roles, team names, assignments, and invitations.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6 p-4 pt-0">
+                <CardContent className="space-y-6">
                   <div className="flex justify-between items-center">
                     <div className="space-y-2 w-40">
                         <Label htmlFor="maxTeams">Number of Teams</Label>
