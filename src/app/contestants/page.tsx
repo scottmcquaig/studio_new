@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_TEAMS, MOCK_SEASONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import type { Contestant } from '@/lib/data';
 import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck } from "lucide-react";
-import { cn } from '@/lib/utils';
+import { cn, getContestantDisplayName } from '@/lib/utils';
 
 type ContestantWithStats = Contestant & {
   teamName: string;
@@ -91,7 +91,7 @@ export default function ContestantsPage() {
     if (!aIsNom && bIsNom) return 1;
 
     // Alphabetical for the rest
-    return a.fullName.localeCompare(b.fullName);
+    return getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'));
   });
 
 
@@ -118,7 +118,7 @@ export default function ContestantsPage() {
                   <CardHeader className="flex flex-row items-center gap-4 pb-2">
                     <Image
                       src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                      alt={hg.fullName}
+                      alt={getContestantDisplayName(hg, 'full')}
                       width={64}
                       height={64}
                       className="rounded-full border-2"
@@ -126,7 +126,7 @@ export default function ContestantsPage() {
                     />
                     <div className="flex-1">
                       <CardTitle className="text-xl flex items-center gap-2">
-                        {hg.fullName}
+                        {getContestantDisplayName(hg, 'full')}
                       </CardTitle>
                       <p className="text-xs text-muted-foreground">{hg.teamName}</p>
                     </div>
@@ -174,11 +174,11 @@ export default function ContestantsPage() {
           {selectedContestant && (
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>{selectedContestant.fullName}</DialogTitle>
+                <DialogTitle>{getContestantDisplayName(selectedContestant, 'full')}</DialogTitle>
                  <p className="text-sm text-muted-foreground">Season Stats & History</p>
               </DialogHeader>
               <div className="py-4">
-                <p>Detailed information about {selectedContestant.fullName}'s game will be displayed here, including a timeline of their wins, nominations, and other significant events.</p>
+                <p>Detailed information about {getContestantDisplayName(selectedContestant, 'full')}'s game will be displayed here, including a timeline of their wins, nominations, and other significant events.</p>
               </div>
             </DialogContent>
           )}

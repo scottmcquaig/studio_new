@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_TEAMS, MOCK_LEAGUES } from "@/lib/data";
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
 import { getFirestore, collection, onSnapshot, doc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
@@ -196,13 +196,13 @@ export default function TeamsPage() {
                                     <div key={hg.id} className="flex flex-col items-center">
                                         <Image
                                             src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                                            alt={hg.fullName}
+                                            alt={getContestantDisplayName(hg, 'full')}
                                             width={56}
                                             height={56}
                                             className={cn("rounded-full border-2", hg.status !== 'active' && 'grayscale')}
                                             data-ai-hint="portrait person"
                                         />
-                                        <span className="text-xs mt-1 font-medium">{hg.fullName.split(' ')[0]}</span>
+                                        <span className="text-xs mt-1 font-medium">{getContestantDisplayName(hg, 'short')}</span>
                                     </div>
                                 ))}
                              </div>

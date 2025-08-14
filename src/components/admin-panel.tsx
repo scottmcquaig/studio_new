@@ -14,12 +14,11 @@ import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_LEAGUES, 
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, getContestantDisplayName } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -562,7 +561,8 @@ export function AdminPanel() {
         const newContestant: Contestant = {
             id: `new_contestant_${Date.now()}`,
             seasonId: activeSeason.id,
-            fullName: '',
+            firstName: '',
+            lastName: '',
             age: 0,
             hometown: '',
             occupation: '',
@@ -593,11 +593,11 @@ export function AdminPanel() {
       try {
           if (isNew) {
               await addDoc(collection(db, 'contestants'), contestantData);
-              toast({ title: "Contestant Added", description: `${editingContestant.fullName} has been added.` });
+              toast({ title: "Contestant Added", description: `${getContestantDisplayName(editingContestant, 'full')} has been added.` });
           } else {
               const contestantDoc = doc(db, 'contestants', editingContestant.id);
               await updateDoc(contestantDoc, contestantData);
-              toast({ title: "Contestant Updated", description: `${editingContestant.fullName} has been updated.` });
+              toast({ title: "Contestant Updated", description: `${getContestantDisplayName(editingContestant, 'full')} has been updated.` });
           }
           setEditingContestant(null);
       } catch (error) {
@@ -608,12 +608,12 @@ export function AdminPanel() {
   
   const handleDeleteContestant = async () => {
       if (!editingContestant || editingContestant === 'new') return;
-      if (!window.confirm(`Are you sure you want to delete ${editingContestant.fullName}?`)) return;
+      if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}?`)) return;
       
       try {
           const contestantDoc = doc(db, 'contestants', editingContestant.id);
           await deleteDoc(contestantDoc);
-          toast({ title: "Contestant Deleted", description: `${editingContestant.fullName} has been removed.` });
+          toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been removed.` });
           setEditingContestant(null);
       } catch (error) {
           console.error("Error deleting contestant: ", error);
@@ -666,7 +666,7 @@ export function AdminPanel() {
                                   <Select value={hoh?.winnerId}>
                                       <SelectTrigger><SelectValue placeholder="Select HOH..." /></SelectTrigger>
                                       <SelectContent>
-                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
                               </CardContent>
@@ -687,7 +687,7 @@ export function AdminPanel() {
                                               <SelectContent>
                                                   {activeContestants
                                                       .filter(c => !nominees.includes(c.id) || nominees[index] === c.id)
-                                                      .map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                      .map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                               </SelectContent>
                                           </Select>
                                           <Button variant="ghost" size="icon" onClick={() => removeNomineeField(index)} className="h-9 w-9">
@@ -710,7 +710,7 @@ export function AdminPanel() {
                                       <Select value={pov?.winnerId}>
                                           <SelectTrigger><SelectValue placeholder="Select Veto Winner..." /></SelectTrigger>
                                           <SelectContent>
-                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                              {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
                                   </div>
@@ -727,7 +727,7 @@ export function AdminPanel() {
                                                   <SelectContent>
                                                       {nominees?.map(nomId => {
                                                           const nom = contestants.find(c => c.id === nomId);
-                                                          return nom ? <SelectItem key={nom.id} value={nom.id}>{nom.fullName}</SelectItem> : null;
+                                                          return nom ? <SelectItem key={nom.id} value={nom.id}>{getContestantDisplayName(nom, 'full')}</SelectItem> : null;
                                                       })}
                                                   </SelectContent>
                                               </Select>
@@ -737,7 +737,7 @@ export function AdminPanel() {
                                               <Select value={pov?.replacementNomId}>
                                                   <SelectTrigger><SelectValue placeholder="Select Replacement..." /></SelectTrigger>
                                                   <SelectContent>
-                                                      {activeContestants.filter(c => !nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                      {activeContestants.filter(c => !nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                                   </SelectContent>
                                               </Select>
                                           </div>
@@ -754,7 +754,7 @@ export function AdminPanel() {
                                    <Select value={blockBuster?.winnerId}>
                                       <SelectTrigger><SelectValue placeholder="Select Winner..." /></SelectTrigger>
                                       <SelectContent>
-                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
                               </CardContent>
@@ -768,7 +768,7 @@ export function AdminPanel() {
                                    <Select value={eviction?.evictedId}>
                                       <SelectTrigger><SelectValue placeholder="Select Evictee..." /></SelectTrigger>
                                       <SelectContent>
-                                          {contestants.filter(c => c.status === 'active').map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                          {contestants.filter(c => c.status === 'active').map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
                               </CardContent>
@@ -793,7 +793,7 @@ export function AdminPanel() {
                                                    <Select value={specialEventData.contestantId} onValueChange={(val) => setSpecialEventData({...specialEventData, contestantId: val})}>
                                                       <SelectTrigger><SelectValue placeholder="Select Contestant..." /></SelectTrigger>
                                                       <SelectContent>
-                                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                                                          {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                                       </SelectContent>
                                                   </Select>
                                               </div>
@@ -831,13 +831,13 @@ export function AdminPanel() {
           <TabsContent value="contestants" className="mt-6">
               <Card>
                   <CardHeader>
-                     <CardTitle className="flex items-center gap-2"><UserSquare/> {contestantTerm.plural} Management</CardTitle>
+                     <CardTitle className="flex items-center gap-2"><UserSquare/> Contestants Management</CardTitle>
                      <CardDescription>Manage contestant details for the league.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                       <div className="space-y-4">
                           <div className="flex justify-between items-center">
-                              <h3 className="text-lg font-medium">{contestantTerm.plural} Roster</h3>
+                              <h3 className="text-lg font-medium">Contestants Roster</h3>
                               <Button size="sm" variant="outline" onClick={() => handleOpenContestantDialog('new')}><PlusCircle className="mr-2"/> Add {contestantTerm.singular}</Button>
                           </div>
                           <div className="space-y-2">
@@ -845,11 +845,11 @@ export function AdminPanel() {
                                   <div key={c.id} className="flex items-center justify-between p-2 border rounded-md">
                                       <div className="flex items-center gap-3">
                                           <Avatar>
-                                              <AvatarImage src={c.photoUrl} alt={c.fullName} />
-                                              <AvatarFallback>{c.fullName.charAt(0)}</AvatarFallback>
+                                              <AvatarImage src={c.photoUrl} alt={getContestantDisplayName(c, 'full')} />
+                                              <AvatarFallback>{getContestantDisplayName(c, 'full').charAt(0)}</AvatarFallback>
                                           </Avatar>
                                           <div>
-                                              <p className="font-medium">{c.fullName}</p>
+                                              <p className="font-medium">{getContestantDisplayName(c, 'full')}</p>
                                               <p className="text-sm text-muted-foreground">{c.hometown}</p>
                                           </div>
                                       </div>
@@ -862,33 +862,44 @@ export function AdminPanel() {
                       <Dialog open={!!editingContestant} onOpenChange={(isOpen) => !isOpen && setEditingContestant(null)}>
                          <DialogContent>
                               <DialogHeader>
-                                  <DialogTitle>{editingContestant === 'new' ? `Add New ${contestantTerm.singular}` : `Edit ${editingContestant?.fullName}`}</DialogTitle>
+                                  <DialogTitle>{editingContestant === 'new' ? `Add New ${contestantTerm.singular}` : `Edit ${getContestantDisplayName(editingContestant, 'full')}`}</DialogTitle>
                                   <DialogDescription>
                                       Update the details for this {contestantTerm.singular}. Changes will be saved to the database.
                                   </DialogDescription>
                               </DialogHeader>
                               {editingContestant && editingContestant !== 'new' && (
                               <div className="space-y-4 py-4">
-                                  <div className="space-y-2">
-                                      <Label>Full Name</Label>
-                                      <Input value={editingContestant.fullName} onChange={(e) => handleUpdateContestant('fullName', e.target.value)} />
-                                  </div>
                                   <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-2">
-                                          <Label>Age</Label>
-                                          <Input type="number" value={editingContestant.age} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
+                                          <Label>First Name</Label>
+                                          <Input value={editingContestant.firstName} onChange={(e) => handleUpdateContestant('firstName', e.target.value)} />
                                       </div>
                                       <div className="space-y-2">
-                                          <Label>Status</Label>
-                                          <Select value={editingContestant.status} onValueChange={(val) => handleUpdateContestant('status', val)}>
-                                              <SelectTrigger><SelectValue/></SelectTrigger>
-                                              <SelectContent>
-                                                  <SelectItem value="active">Active</SelectItem>
-                                                  <SelectItem value="evicted">Evicted</SelectItem>
-                                                  <SelectItem value="jury">Jury</SelectItem>
-                                              </SelectContent>
-                                          </Select>
+                                          <Label>Last Name</Label>
+                                          <Input value={editingContestant.lastName} onChange={(e) => handleUpdateContestant('lastName', e.target.value)} />
                                       </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Nickname (optional)</Label>
+                                        <Input value={editingContestant.nickname || ''} onChange={(e) => handleUpdateContestant('nickname', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Age</Label>
+                                        <Input type="number" value={editingContestant.age} onChange={(e) => handleUpdateContestant('age', Number(e.target.value))} />
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                      <Label>Status</Label>
+                                      <Select value={editingContestant.status} onValueChange={(val) => handleUpdateContestant('status', val)}>
+                                          <SelectTrigger><SelectValue/></SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="active">Active</SelectItem>
+                                              <SelectItem value="evicted">Evicted</SelectItem>
+                                              <SelectItem value="jury">Jury</SelectItem>
+                                          </SelectContent>
+                                      </Select>
                                   </div>
                                   <div className="space-y-2">
                                       <Label>Hometown</Label>

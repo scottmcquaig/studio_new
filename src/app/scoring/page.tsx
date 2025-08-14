@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { MOCK_COMPETITIONS, MOCK_CONTESTANTS, MOCK_TEAMS, MOCK_SCORING_RULES, MOCK_SEASONS, MOCK_LEAGUES } from "@/lib/data";
 import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff } from "lucide-react";
-import { cn } from '@/lib/utils';
+import { cn, getContestantDisplayName } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 
 type ScoringEvent = {
@@ -75,7 +75,7 @@ export default function ScoringPage() {
           events.push({
             week: comp.week,
             contestantId: contestant.id,
-            contestantName: contestant.fullName,
+            contestantName: getContestantDisplayName(contestant, 'full'),
             teamId: team?.id,
             teamName: team?.name,
             eventLabel: rule.label,
@@ -96,7 +96,7 @@ export default function ScoringPage() {
               events.push({
                 week: comp.week,
                 contestantId: contestant.id,
-                contestantName: contestant.fullName,
+                contestantName: getContestantDisplayName(contestant, 'full'),
                 teamId: nomineeTeam?.id,
                 teamName: nomineeTeam?.name,
                 eventLabel: rule.label,
@@ -154,13 +154,13 @@ export default function ScoringPage() {
                 <>
                   <Image
                     src={hohWinner.photoUrl!}
-                    alt={hohWinner.fullName}
+                    alt={getContestantDisplayName(hohWinner, 'full')}
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-purple-600"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{hohWinner.fullName.split(' ')[0]}</span>
+                  <span className="text-sm">{getContestantDisplayName(hohWinner, 'short')}</span>
                 </>
               ) : (
                 <>
@@ -185,14 +185,14 @@ export default function ScoringPage() {
                     >
                       <Image
                         src={nom.photoUrl!}
-                        alt={nom.fullName}
+                        alt={getContestantDisplayName(nom, 'full')}
                         width={48}
                         height={48}
                         className="rounded-full border-2 border-red-400"
                         data-ai-hint="portrait person"
                       />
                       <span className="text-xs">
-                        {nom.fullName.split(" ")[0]}
+                        {getContestantDisplayName(nom, 'short')}
                       </span>
                     </div>
                   ))
@@ -221,13 +221,13 @@ export default function ScoringPage() {
                   <>
                     <Image
                       src={povWinner.photoUrl!}
-                      alt={povWinner.fullName}
+                      alt={getContestantDisplayName(povWinner, 'full')}
                       width={64}
                       height={64}
                       className="rounded-full border-2 border-amber-500 mt-2"
                       data-ai-hint="portrait person"
                     />
-                    <span className="text-sm mt-1">{povWinner.fullName.split(' ')[0]}</span>
+                    <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
                   </>
                 ) : (
                   <>
@@ -250,11 +250,11 @@ export default function ScoringPage() {
                      <div className="flex flex-col items-center gap-2">
                        <div className="flex flex-col items-center">
                           <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
-                          <span className="text-xs">{savedPlayer.fullName.split(' ')[0]}</span>
+                          <span className="text-xs">{getContestantDisplayName(savedPlayer, 'short')}</span>
                        </div>
                        <div className="flex flex-col items-center mt-1">
                            <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
-                           <span className="text-xs">{renomPlayer ? renomPlayer.fullName.split(' ')[0] : 'TBD'}</span>
+                           <span className="text-xs">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
                        </div>
                      </div>
                   )}
@@ -275,13 +275,13 @@ export default function ScoringPage() {
                 <>
                   <Image
                     src={blockBusterWinner.photoUrl!}
-                    alt={blockBusterWinner.fullName}
+                    alt={getContestantDisplayName(blockBusterWinner, 'full')}
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-sky-500"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{blockBusterWinner.fullName.split(' ')[0]}</span>
+                  <span className="text-sm">{getContestantDisplayName(blockBusterWinner, 'short')}</span>
                 </>
               ) : (
                 <>
@@ -301,13 +301,13 @@ export default function ScoringPage() {
                 <>
                   <Image
                     src={evictedPlayer.photoUrl!}
-                    alt={evictedPlayer.fullName}
+                    alt={getContestantDisplayName(evictedPlayer, 'full')}
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-muted-foreground"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{evictedPlayer.fullName.split(' ')[0]}</span>
+                  <span className="text-sm">{getContestantDisplayName(evictedPlayer, 'short')}</span>
                 </>
               ) : (
                 <>
@@ -345,7 +345,7 @@ export default function ScoringPage() {
                   <SelectTrigger><SelectValue/></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All {contestantTerm.plural}</SelectItem>
-                    {MOCK_CONTESTANTS.map(hg => <SelectItem key={hg.id} value={hg.id}>{hg.fullName}</SelectItem>)}
+                    {MOCK_CONTESTANTS.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

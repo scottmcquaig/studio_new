@@ -25,7 +25,7 @@ import {
   UserCheck,
   ShieldOff,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -92,7 +92,7 @@ export default function DashboardPage() {
             type: 'HOH',
             player: hohWinner,
             points: scoringRules?.find(r => r.code === 'HOH_WIN')?.points,
-            description: `${hohWinner.fullName} won Head of Household.`
+            description: `${getContestantDisplayName(hohWinner, 'full')} won Head of Household.`
         });
     }
     if (noms && nomWinners.length > 0) {
@@ -101,7 +101,7 @@ export default function DashboardPage() {
                 type: 'NOMINATIONS',
                 player: nominee,
                 points: scoringRules?.find(r => r.code === 'NOMINATED')?.points,
-                description: `${nominee.fullName} was nominated for eviction.`
+                description: `${getContestantDisplayName(nominee, 'full')} was nominated for eviction.`
             });
         });
     }
@@ -110,7 +110,7 @@ export default function DashboardPage() {
             type: 'VETO',
             player: povWinner,
             points: scoringRules?.find(r => r.code === 'VETO_WIN')?.points,
-            description: `${povWinner.fullName} won the Power of Veto.`
+            description: `${getContestantDisplayName(povWinner, 'full')} won the Power of Veto.`
         });
     }
 
@@ -142,13 +142,13 @@ export default function DashboardPage() {
                 <>
                   <Image
                     src={hohWinner.photoUrl!}
-                    alt={hohWinner.fullName}
+                    alt={getContestantDisplayName(hohWinner, 'full')}
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-purple-600"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{hohWinner.fullName.split(' ')[0]}</span>
+                  <span className="text-sm">{getContestantDisplayName(hohWinner, 'short')}</span>
                 </>
               ) : (
                 <>
@@ -173,14 +173,14 @@ export default function DashboardPage() {
                     >
                       <Image
                         src={nom.photoUrl!}
-                        alt={nom.fullName}
+                        alt={getContestantDisplayName(nom, 'full')}
                         width={48}
                         height={48}
                         className="rounded-full border-2 border-red-400"
                         data-ai-hint="portrait person"
                       />
                       <span className="text-xs">
-                        {nom.fullName.split(" ")[0]}
+                        {getContestantDisplayName(nom, 'short')}
                       </span>
                     </div>
                   ))
@@ -209,13 +209,13 @@ export default function DashboardPage() {
                   <>
                     <Image
                       src={povWinner.photoUrl!}
-                      alt={povWinner.fullName}
+                      alt={getContestantDisplayName(povWinner, 'full')}
                       width={64}
                       height={64}
                       className="rounded-full border-2 border-amber-500 mt-2"
                       data-ai-hint="portrait person"
                     />
-                    <span className="text-sm mt-1">{povWinner.fullName.split(' ')[0]}</span>
+                    <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
                   </>
                 ) : (
                   <>
@@ -238,11 +238,11 @@ export default function DashboardPage() {
                      <div className="flex flex-col items-center gap-2">
                        <div className="flex flex-col items-center">
                           <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
-                          <span className="text-xs">{savedPlayer.fullName.split(' ')[0]}</span>
+                          <span className="text-xs">{getContestantDisplayName(savedPlayer, 'short')}</span>
                        </div>
                        <div className="flex flex-col items-center mt-1">
                            <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
-                           <span className="text-xs">{renomPlayer ? renomPlayer.fullName.split(' ')[0] : 'TBD'}</span>
+                           <span className="text-xs">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
                        </div>
                      </div>
                   )}
@@ -263,13 +263,13 @@ export default function DashboardPage() {
                 <>
                   <Image
                     src={blockBusterWinner.photoUrl!}
-                    alt={blockBusterWinner.fullName}
+                    alt={getContestantDisplayName(blockBusterWinner, 'full')}
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-sky-500"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{blockBusterWinner.fullName.split(' ')[0]}</span>
+                  <span className="text-sm">{getContestantDisplayName(blockBusterWinner, 'short')}</span>
                 </>
               ) : (
                 <>
@@ -290,13 +290,13 @@ export default function DashboardPage() {
                 <>
                   <Image
                     src={evictedPlayer.photoUrl!}
-                    alt={evictedPlayer.fullName}
+                    alt={getContestantDisplayName(evictedPlayer, 'full')}
                     width={64}
                     height={64}
                     className="rounded-full border-2 border-muted-foreground"
                     data-ai-hint="portrait person"
                   />
-                  <span className="text-sm">{evictedPlayer.fullName.split(' ')[0]}</span>
+                  <span className="text-sm">{getContestantDisplayName(evictedPlayer, 'short')}</span>
                 </>
               ) : (
                 <>
@@ -364,14 +364,14 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-3">
                                     <Image 
                                         src={player.photoUrl!}
-                                        alt={player.fullName}
+                                        alt={getContestantDisplayName(player, 'full')}
                                         width={40}
                                         height={40}
                                         className="rounded-full"
                                         data-ai-hint="portrait person"
                                     />
                                     <div>
-                                        <p className="font-medium">{player.fullName}</p>
+                                        <p className="font-medium">{getContestantDisplayName(player, 'full')}</p>
                                         <p className="text-sm text-muted-foreground">{player.status === 'active' ? 'Active' : 'Evicted'}</p>
                                     </div>
                                 </div>
@@ -400,7 +400,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <Image
                       src={activity.player.photoUrl!}
-                      alt={activity.player.fullName}
+                      alt={getContestantDisplayName(activity.player, 'full')}
                       width={40}
                       height={40}
                       className="rounded-full"
