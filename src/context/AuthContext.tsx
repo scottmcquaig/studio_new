@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, onSnapshot, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import type { User as AppUser } from '@/lib/data';
@@ -27,14 +27,15 @@ export function useAuth() {
 // One-time function to seed initial data if the database is empty
 const seedInitialData = async () => {
     const db = getFirestore(app);
-    const usersRef = collection(db, "users");
-    const snapshot = await getDocs(usersRef);
+    // Use a specific, predictable document ID for the initial admin user
+    const adminUserRef = doc(db, "users", "user_admin_placeholder");
+    const adminUserSnap = await getDoc(adminUserRef);
 
-    // Only seed if there are no users at all
-    if (snapshot.empty) {
-        console.log("No users found. Seeding initial admin user...");
+    // Only seed if the placeholder admin user doesn't exist
+    if (!adminUserSnap.exists()) {
+        console.log("Admin user placeholder not found. Seeding initial admin user...");
         const adminUser = {
-            id: 'user_admin', // This is a placeholder ID before auth linking
+            id: 'user_admin_placeholder',
             displayName: "YAC Admin",
             email: "admin@yac.com",
             photoURL: "",
@@ -42,8 +43,7 @@ const seedInitialData = async () => {
             role: 'site_admin',
             status: 'pending' // Status is pending until they sign up
         };
-        // Use a specific, predictable document ID for the initial admin user
-        await setDoc(doc(db, "users", "user_admin_placeholder"), adminUser);
+        await setDoc(adminUserRef, adminUser);
         console.log("Admin user seeded.");
     }
 };
