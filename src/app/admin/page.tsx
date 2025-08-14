@@ -146,7 +146,7 @@ export default function AdminPage() {
         querySnapshot.forEach((doc) => {
             contestantData.push({ ...doc.data(), id: doc.id } as Contestant);
         });
-        setContestants(contestantData.sort((a,b) => a.firstName.localeCompare(b.firstName)));
+        setContestants(contestantData.sort((a,b) => (a.firstName || '').localeCompare(b.firstName || '')));
     });
     
     const teamsCol = collection(db, "teams");
@@ -684,7 +684,8 @@ export default function AdminPage() {
         const idToDelete = editingContestant.id;
         await deleteDoc(doc(db, 'contestants', idToDelete));
         
-        setContestants(prev => prev.filter(c => c.id !== idToDelete));
+        // The onSnapshot listener will automatically update the state.
+        // We just need to close the dialog.
         setEditingContestant(null);
         toast({ title: "Contestant Deleted", description: `The contestant has been permanently removed.` });
     } catch (error) {
