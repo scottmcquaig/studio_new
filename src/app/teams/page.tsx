@@ -17,9 +17,7 @@ import type { Team, League, ScoringRuleSet, LeagueScoringBreakdownCategory } fro
 
 // Calculate KPIs for a team
 const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringRuleSet | null) => {
-    if (!league) return { total: team.total_score || 0 };
-
-    const breakdownCategories = league.settings.scoringBreakdownCategories || [];
+    const breakdownCategories = league?.settings.scoringBreakdownCategories || [];
     const rules = scoringRules?.rules || [];
     
     const kpis: { [key: string]: number } = {};
@@ -28,7 +26,7 @@ const calculateKpis = (team: Team, league: League | null, scoringRules: ScoringR
         kpis[category.displayName] = 0;
     });
 
-    if (!rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
+    if (!league || !rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
 
     const teamContestantIds = team.contestantIds || [];
 
@@ -240,3 +238,5 @@ export default function TeamsPage() {
     </div>
   );
 }
+
+    
