@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "./ui/button";
-import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn } from "lucide-react";
+import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getFirestore, doc, onSnapshot, Unsubscribe, collection, query } from 'firebase/firestore';
 import { app, auth } from '@/lib/firebase';
