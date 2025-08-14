@@ -3,11 +3,10 @@
 
 import { useState, useEffect, createElement, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
-import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
+import { MOCK_USERS } from "@/lib/data";
+import { Users, HelpCircle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
@@ -73,6 +72,89 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
     return { ...kpis, total: team.total_score || 0 };
 };
 
+const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
+    const IconComponent = (LucideIcons as any)[name];
+    if (!IconComponent) {
+      return <HelpCircle className={className} />;
+    }
+    return createElement(IconComponent, { className });
+};
+  
+const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
+
+const TeamCard = ({ team, league, rules, competitions, contestants }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[] }) => {
+    const owners = team.ownerUserIds.map(getOwner);
+    
+    const kpis = useMemo(() => {
+        if (!league || !rules.length) return { total: team.total_score || 0 };
+        return calculateKpis(team, league, rules, competitions);
+    }, [team, league, rules, competitions]);
+    
+    const teamContestants = contestants.filter(hg => (team.contestantIds || []).includes(hg.id));
+    const breakdownCategories = league.settings.scoringBreakdownCategories || [];
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>{team.name}</CardTitle>
+                        <CardDescription>
+                            Owned by {owners.map(o => o?.displayName).join(' & ')}
+                        </CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="text-lg font-bold">{(kpis.total || 0).toLocaleString()} pts</Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+               <div className="mb-4">
+                 <h4 className="text-sm font-semibold text-muted-foreground mb-2">Roster</h4>
+                 <div className="flex flex-wrap items-center gap-2">
+                    {teamContestants.length > 0 ? teamContestants.map(hg => (
+                        <Badge key={hg.id} variant="outline" className={cn("py-1", hg.status !== 'active' && 'bg-muted text-muted-foreground')}>
+                          <Image
+                              src={hg.photoUrl || "https://placehold.co/100x100.png"}
+                              alt={getContestantDisplayName(hg, 'full')}
+                              width={20}
+                              height={20}
+                              className={cn("rounded-full mr-2", hg.status !== 'active' && 'grayscale')}
+                              data-ai-hint="portrait person"
+                          />
+                          {getContestantDisplayName(hg, 'short')}
+                        </Badge>
+                    )) : (
+                        <p className="text-xs text-muted-foreground">No contestants drafted yet.</p>
+                    )}
+                 </div>
+               </div>
+
+                <Separator className="my-4"/>
+                
+                <div>
+                   <h4 className="text-sm font-semibold text-muted-foreground mb-3">Scoring Breakdown</h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-sm">
+                        {breakdownCategories.map((category) => {
+                            const value = (kpis as any)[category.displayName] || 0;
+                            if (!category.displayName) return null;
+                            return (
+                                <div key={category.displayName} className="flex justify-between items-center">
+                                    <span className="flex items-center gap-1.5">
+                                      <DynamicIcon name={category.icon} className={cn("h-4 w-4", category.color)} />
+                                      {category.displayName}
+                                    </span>
+                                    <span className="font-mono font-medium">{value > 0 ? '+':''}{value}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+            </CardContent>
+        </Card>
+    );
+};
+
+
 export default function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [league, setLeague] = useState<League | null>(null);
@@ -89,7 +171,6 @@ export default function TeamsPage() {
         const unsubscribeLeague = onSnapshot(leagueDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-                setLeague(leagueData);
                 
                 if (leagueData.settings.scoringRuleSetId) {
                     const ruleSetDocRef = doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId);
@@ -100,6 +181,7 @@ export default function TeamsPage() {
                     });
                     unsubscribes.push(unsubscribeRules);
                 }
+                setLeague(leagueData);
             }
         });
         unsubscribes.push(unsubscribeLeague);
@@ -143,18 +225,7 @@ export default function TeamsPage() {
         return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0))
     }, [teams]);
 
-    const breakdownCategories = useMemo(() => league?.settings.scoringBreakdownCategories || [], [league]);
     const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
-    
-    const getOwner = (userId: string) => MOCK_USERS.find(u => u.id === userId);
-    
-    const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
-      const IconComponent = (LucideIcons as any)[name];
-      if (!IconComponent) {
-        return <LucideIcons.HelpCircle className={className} />;
-      }
-      return createElement(IconComponent, { className });
-    };
 
   return (
     <div className="flex flex-col">
@@ -189,77 +260,18 @@ export default function TeamsPage() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {sortedTeams.map((team) => {
-                const owners = team.ownerUserIds.map(getOwner);
-                const kpis = useMemo(() => {
-                    if (!league || !rules.length) return { total: team.total_score || 0 };
-                    return calculateKpis(team, league, rules, competitions);
-                }, [team, league, rules, competitions]);
-                
-                const teamContestants = contestants.filter(hg => (team.contestantIds || []).includes(hg.id));
-
-                return (
-                    <Card key={team.id}>
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle>{team.name}</CardTitle>
-                                    <CardDescription>
-                                        Owned by {owners.map(o => o?.displayName).join(' & ')}
-                                    </CardDescription>
-                                </div>
-                                <Badge variant="secondary" className="text-lg font-bold">{kpis.total.toLocaleString()} pts</Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                           <div className="mb-4">
-                             <h4 className="text-sm font-semibold text-muted-foreground mb-2">Roster</h4>
-                             <div className="flex flex-wrap items-center gap-2">
-                                {teamContestants.map(hg => (
-                                    <Badge key={hg.id} variant="outline" className={cn("py-1", hg.status !== 'active' && 'bg-muted text-muted-foreground')}>
-                                      <Image
-                                          src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                                          alt={getContestantDisplayName(hg, 'full')}
-                                          width={20}
-                                          height={20}
-                                          className={cn("rounded-full mr-2", hg.status !== 'active' && 'grayscale')}
-                                          data-ai-hint="portrait person"
-                                      />
-                                      {getContestantDisplayName(hg, 'short')}
-                                    </Badge>
-                                ))}
-                             </div>
-                           </div>
-
-                            <Separator className="my-4"/>
-                            
-                            <div>
-                               <h4 className="text-sm font-semibold text-muted-foreground mb-3">Scoring Breakdown</h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 text-sm">
-                                    {breakdownCategories.map((category) => {
-                                        const value = (kpis as any)[category.displayName] || 0;
-                                        if (!category.displayName) return null;
-                                        return (
-                                            <div key={category.displayName} className="flex justify-between items-center">
-                                                <span className="flex items-center gap-1.5">
-                                                  <DynamicIcon name={category.icon} className={cn("h-4 w-4", category.color)} />
-                                                  {category.displayName}
-                                                </span>
-                                                <span className="font-mono font-medium">{value > 0 ? '+':''}{value}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                        </CardContent>
-                    </Card>
-                )
-            })}
+            {league && sortedTeams.map((team) => (
+                <TeamCard 
+                    key={team.id}
+                    team={team}
+                    league={league}
+                    rules={rules}
+                    competitions={competitions}
+                    contestants={contestants}
+                />
+            ))}
         </div>
       </main>
     </div>
   );
 }
-
-    
