@@ -6,14 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_TEAMS, MOCK_LEAGUES } from "@/lib/data";
+import { MOCK_USERS, MOCK_CONTESTANTS, MOCK_COMPETITIONS, MOCK_SCORING_RULES, MOCK_LEAGUES } from "@/lib/data";
 import { Users, Crown, Shield, UserX, UserCheck, ShieldPlus, BarChart2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
-import { getFirestore, collection, onSnapshot, doc, Unsubscribe } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, Unsubscribe, query } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet, ScoringRule, Competition } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant } from '@/lib/data';
 
 // Memoize this helper to avoid re-running on every render
 const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
@@ -24,6 +24,7 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
         kpis[category.displayName] = 0;
     });
 
+    const rules = scoringRules || [];
     if (!rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
 
     const teamContestantIds = team.contestantIds || [];
@@ -31,7 +32,7 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
     competitions.forEach(comp => {
         const processEvent = (contestantId: string, eventCode: string) => {
             if (teamContestantIds.includes(contestantId)) {
-                const rule = scoringRules.find(r => r.code === eventCode);
+                const rule = rules.find(r => r.code === eventCode);
                 if (rule) {
                     breakdownCategories.forEach(category => {
                         if (category.ruleCodes.includes(rule.code)) {
@@ -76,6 +77,9 @@ export default function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [league, setLeague] = useState<League | null>(null);
     const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
+    const [contestants, setContestants] = useState<Contestant[]>([]);
+    const [competitions, setCompetitions] = useState<Competition[]>([]);
+
     const db = getFirestore(app);
 
     useEffect(() => {
@@ -96,27 +100,39 @@ export default function TeamsPage() {
                     });
                     unsubscribes.push(unsubscribeRules);
                 }
-            } else {
-                setLeague(MOCK_LEAGUES[0]);
-                const ruleset = MOCK_SCORING_RULES.find(rs => rs.id === MOCK_LEAGUES[0].settings.scoringRuleSetId);
-                if (ruleset) setScoringRules(ruleset);
             }
         });
         unsubscribes.push(unsubscribeLeague);
 
         const teamsCol = collection(db, "teams");
-        const unsubscribeTeams = onSnapshot(teamsCol, (querySnapshot) => {
-            if (!querySnapshot.empty) {
-                const teamsData: Team[] = [];
-                querySnapshot.forEach((doc) => {
-                    teamsData.push({ ...doc.data(), id: doc.id } as Team);
-                });
-                setTeams(teamsData);
-            } else {
-                setTeams(MOCK_TEAMS);
-            }
+        const unsubscribeTeams = onSnapshot(query(teamsCol), (querySnapshot) => {
+            const teamsData: Team[] = [];
+            querySnapshot.forEach((doc) => {
+                teamsData.push({ ...doc.data(), id: doc.id } as Team);
+            });
+            setTeams(teamsData);
         });
         unsubscribes.push(unsubscribeTeams);
+
+        const contestantsCol = collection(db, "contestants");
+        const unsubscribeContestants = onSnapshot(query(contestantsCol), (querySnapshot) => {
+            const contestantsData: Contestant[] = [];
+            querySnapshot.forEach((doc) => {
+                contestantsData.push({ ...doc.data(), id: doc.id } as Contestant);
+            });
+            setContestants(contestantsData);
+        });
+        unsubscribes.push(unsubscribeContestants);
+        
+        const competitionsCol = collection(db, "competitions");
+        const unsubscribeCompetitions = onSnapshot(query(competitionsCol), (querySnapshot) => {
+            const competitionsData: Competition[] = [];
+            querySnapshot.forEach((doc) => {
+                competitionsData.push({ ...doc.data(), id: doc.id } as Competition);
+            });
+            setCompetitions(competitionsData);
+        });
+        unsubscribes.push(unsubscribeCompetitions);
         
         return () => {
             unsubscribes.forEach(unsub => unsub());
@@ -177,10 +193,10 @@ export default function TeamsPage() {
                 const owners = team.ownerUserIds.map(getOwner);
                 const kpis = useMemo(() => {
                     if (!league || !rules.length) return { total: team.total_score || 0 };
-                    return calculateKpis(team, league, rules, MOCK_COMPETITIONS);
-                }, [team, league, rules]);
+                    return calculateKpis(team, league, rules, competitions);
+                }, [team, league, rules, competitions]);
                 
-                const teamContestants = MOCK_CONTESTANTS.filter(hg => (team.contestantIds || []).includes(hg.id));
+                const teamContestants = contestants.filter(hg => (team.contestantIds || []).includes(hg.id));
 
                 return (
                     <Card key={team.id}>
@@ -198,19 +214,19 @@ export default function TeamsPage() {
                         <CardContent>
                            <div className="mb-4">
                              <h4 className="text-sm font-semibold text-muted-foreground mb-2">Roster</h4>
-                             <div className="flex items-center gap-2">
+                             <div className="flex flex-wrap items-center gap-2">
                                 {teamContestants.map(hg => (
-                                    <div key={hg.id} className="flex flex-col items-center">
-                                        <Image
-                                            src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                                            alt={getContestantDisplayName(hg, 'full')}
-                                            width={56}
-                                            height={56}
-                                            className={cn("rounded-full border-2", hg.status !== 'active' && 'grayscale')}
-                                            data-ai-hint="portrait person"
-                                        />
-                                        <span className="text-xs mt-1 font-medium">{getContestantDisplayName(hg, 'short')}</span>
-                                    </div>
+                                    <Badge key={hg.id} variant="outline" className={cn("py-1", hg.status !== 'active' && 'bg-muted text-muted-foreground')}>
+                                      <Image
+                                          src={hg.photoUrl || "https://placehold.co/100x100.png"}
+                                          alt={getContestantDisplayName(hg, 'full')}
+                                          width={20}
+                                          height={20}
+                                          className={cn("rounded-full mr-2", hg.status !== 'active' && 'grayscale')}
+                                          data-ai-hint="portrait person"
+                                      />
+                                      {getContestantDisplayName(hg, 'short')}
+                                    </Badge>
                                 ))}
                              </div>
                            </div>

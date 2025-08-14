@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, UserSquare, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { MOCK_USERS, MOCK_TEAMS, MOCK_SEASONS, MOCK_COMPETITIONS, MOCK_LEAGUES, MOCK_SCORING_RULES } from "@/lib/data";
+import { MOCK_USERS, MOCK_SEASONS, MOCK_LEAGUES } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 const iconSelection = [
@@ -51,7 +51,7 @@ export function AdminPanel() {
   const [activeSeason, setActiveSeason] = useState<Season | null>(MOCK_SEASONS[0]);
 
   const [contestants, setContestants] = useState<Contestant[]>([]);
-  const [competitions, setCompetitions] = useState<Competition[]>(MOCK_COMPETITIONS);
+  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [scoringRuleSet, setScoringRuleSet] = useState<ScoringRuleSet | null>(null);
   
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
@@ -64,6 +64,10 @@ export function AdminPanel() {
   const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
 
   const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [draftingTeam, setDraftingTeam] = useState<Team | null>(null);
+  const [draftSelection, setDraftSelection] = useState<string>('');
+
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: ''});
   const [addUserToLeagueData, setAddUserToLeagueData] = useState({ userId: '', teamId: '' });
@@ -76,7 +80,15 @@ export function AdminPanel() {
 
   const [activeTab, setActiveTab] = useState('scoring');
 
+  // State for weekly event management
+  const [hohWinnerId, setHohWinnerId] = useState<string | undefined>();
+  const [nominees, setNominees] = useState<string[]>(['', '']);
+  const [vetoWinnerId, setVetoWinnerId] = useState<string | undefined>();
   const [vetoUsed, setVetoUsed] = useState(false);
+  const [vetoUsedOnId, setVetoUsedOnId] = useState<string | undefined>();
+  const [vetoReplacementNomId, setVetoReplacementNomId] = useState<string | undefined>();
+  const [blockBusterWinnerId, setBlockBusterWinnerId] = useState<string | undefined>();
+  const [evictedId, setEvictedId] = useState<string | undefined>();
 
 
   const scoringRules = scoringRuleSet?.rules || [];
@@ -116,41 +128,24 @@ export function AdminPanel() {
           toast({ title: "New Week Started", description: `You are now managing Week ${newWeek}.`});
       }
   };
-
-   useEffect(() => {
-    const sortedTeams = [...teams].sort((a,b) => (teamDraftOrders[a.id] ?? a.draftOrder) - (teamDraftOrders[b.id] ?? b.draftOrder));
-    if (JSON.stringify(sortedTeams) !== JSON.stringify(teams)) {
-        setTeams(sortedTeams);
-    }
-  }, [teamDraftOrders, teams]);
   
-  const displayedTeams = useMemo(() => {
-    return Array.from({ length: leagueSettings?.maxTeams || 0 }, (_, i) => {
-        return teams[i] || {
-            id: `team_${i + 1}_placeholder`,
-            leagueId: leagueSettings?.id || '',
-            name: `Team ${i + 1}`,
-            ownerUserIds: [],
-            contestantIds: [],
-            faab: 100,
-            createdAt: new Date().toISOString(),
-            total_score: 0,
-            weekly_score: 0,
-            draftOrder: i + 1,
-            weekly_score_breakdown: { week4: [] }
-        };
-    });
-  }, [teams, leagueSettings]);
-
-
   useEffect(() => {
+    const compCol = collection(db, "competitions");
+    const unsubscribeComps = onSnapshot(compCol, (querySnapshot) => {
+      const compData: Competition[] = [];
+      querySnapshot.forEach((doc) => {
+        compData.push({ ...doc.data(), id: doc.id } as Competition);
+      });
+      setCompetitions(compData);
+    });
+
     const contestantsCol = collection(db, "contestants");
     const unsubscribeContestants = onSnapshot(contestantsCol, (querySnapshot) => {
         const contestantData: Contestant[] = [];
         querySnapshot.forEach((doc) => {
             contestantData.push({ ...doc.data(), id: doc.id } as Contestant);
         });
-        setContestants(contestantData);
+        setContestants(contestantData.sort((a,b) => a.firstName.localeCompare(b.firstName)));
     });
     
     const teamsCol = collection(db, "teams");
@@ -173,15 +168,7 @@ export function AdminPanel() {
         setTeamDraftOrders(draftOrderData);
       } else {
         console.log("No teams documents found, using mock data.");
-        setTeams(MOCK_TEAMS);
-        const mockTeamNames: {[id: string]: string} = {};
-        const mockDraftOrders: {[id: string]: number} = {};
-        MOCK_TEAMS.forEach(team => {
-            mockTeamNames[team.id] = team.name;
-            mockDraftOrders[team.id] = team.draftOrder;
-        });
-        setTeamNames(mockTeamNames);
-        setTeamDraftOrders(mockDraftOrders);
+        // setTeams(MOCK_TEAMS);
       }
     });
 
@@ -189,7 +176,6 @@ export function AdminPanel() {
     const unsubscribeLeagues = onSnapshot(leagueDocRef, (docSnap) => {
         if (docSnap.exists()) {
             const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-             // Ensure breakdown categories has 6 items
             const currentCategories = leagueData.settings?.scoringBreakdownCategories || [];
             const newCategories = Array.from({ length: 6 }, (_, i) => {
                 return currentCategories[i] || { icon: 'HelpCircle', color: 'text-gray-500', displayName: '', ruleCodes: [''] };
@@ -204,27 +190,12 @@ export function AdminPanel() {
                     if (ruleSnap.exists()) {
                         setScoringRuleSet({ id: ruleSnap.id, ...ruleSnap.data() } as ScoringRuleSet);
                     } else {
-                        setScoringRuleSet(MOCK_SCORING_RULES.find(rs => rs.id === leagueData.settings.scoringRuleSetId) || null);
+                        // setScoringRuleSet(MOCK_SCORING_RULES.find(rs => rs.id === leagueData.settings.scoringRuleSetId) || null);
                     }
                 });
-                // In a real app, you would manage this unsubscribe
             }
         } else {
             console.log("No league documents found, using mock data.");
-            const mockLeague = MOCK_LEAGUES[0] || null;
-             if (mockLeague) {
-                const currentCategories = mockLeague.settings?.scoringBreakdownCategories || [];
-                const newCategories = Array.from({ length: 6 }, (_, i) => {
-                    return currentCategories[i] || { icon: 'HelpCircle', color: 'text-gray-500', displayName: '', ruleCodes: [''] };
-                });
-                mockLeague.settings.scoringBreakdownCategories = newCategories;
-                setLeagueSettings(mockLeague);
-
-                if (mockLeague.settings.scoringRuleSetId) {
-                    const ruleset = MOCK_SCORING_RULES.find(rs => rs.id === mockLeague.settings.scoringRuleSetId);
-                    setScoringRuleSet(ruleset || null);
-                }
-            }
         }
     });
 
@@ -239,6 +210,7 @@ export function AdminPanel() {
     });
 
     return () => {
+        unsubscribeComps();
         unsubscribeContestants();
         unsubscribeLeagues();
         unsubscribeTeams();
@@ -248,22 +220,31 @@ export function AdminPanel() {
 
 
   const activeContestants = useMemo(() => contestants.filter(hg => hg.status === 'active'), [contestants]);
+  const weekOptions = useMemo(() => Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1).reverse(), [activeSeason]);
+  
+  const allAssignedContestantIds = useMemo(() => teams.flatMap(t => t.contestantIds), [teams]);
+  const undraftedContestants = useMemo(() => contestants.filter(c => !allAssignedContestantIds.includes(c.id)), [contestants, allAssignedContestantIds]);
+
   const weekEvents = useMemo(() => competitions.filter(c => c.week === selectedWeek), [competitions, selectedWeek]);
   
-  const hoh = useMemo(() => weekEvents.find(c => c.type === 'HOH'), [weekEvents]);
-  const pov = useMemo(() => weekEvents.find(c => c.type === 'VETO'), [weekEvents]);
-  const noms = useMemo(() => weekEvents.find(c => c.type === 'NOMINATIONS'), [weekEvents]);
-  const eviction = useMemo(() => weekEvents.find(c => c.type === 'EVICTION'), [weekEvents]);
-  const blockBuster = useMemo(() => weekEvents.find(c => c.type === 'BLOCK_BUSTER'), [weekEvents]);
-  const weekOptions = useMemo(() => Array.from({ length: activeSeason?.currentWeek || 1 }, (_, i) => i + 1).reverse(), [activeSeason]);
+  useEffect(() => {
+    const hoh = weekEvents.find(c => c.type === 'HOH');
+    const pov = weekEvents.find(c => c.type === 'VETO');
+    const noms = weekEvents.find(c => c.type === 'NOMINATIONS');
+    const blockBuster = weekEvents.find(c => c.type === 'BLOCK_BUSTER');
+    const eviction = weekEvents.find(c => c.type === 'EVICTION');
+    
+    setHohWinnerId(hoh?.winnerId);
+    setNominees(noms?.nominees || ['', '']);
+    setVetoWinnerId(pov?.winnerId);
+    setVetoUsed(pov?.used || false);
+    setVetoUsedOnId(pov?.usedOnId);
+    setVetoReplacementNomId(pov?.replacementNomId);
+    setBlockBusterWinnerId(blockBuster?.winnerId);
+    setEvictedId(eviction?.evictedId);
 
+  }, [weekEvents, selectedWeek]);
 
-  const [nominees, setNominees] = useState<string[]>(['', '']);
-
-    useEffect(() => {
-        setNominees(noms?.nominees || ['', '']);
-        setVetoUsed(pov?.used || false);
-    }, [selectedWeek, noms, pov]);
 
     const handleNomineeChange = (index: number, value: string) => {
         const newNominees = [...nominees];
@@ -311,30 +292,24 @@ export function AdminPanel() {
 
     if (!user || !team) return;
 
+    const batch = writeBatch(db);
+
     // Remove user from any other team first
-    const updatedTeams = teams.map(t => {
+    teams.forEach(t => {
         if (t.ownerUserIds.includes(user.id)) {
-            return { ...t, ownerUserIds: t.ownerUserIds.filter(id => id !== user.id) };
+            const teamDocRef = doc(db, 'teams', t.id);
+            const updatedOwners = t.ownerUserIds.filter(id => id !== user.id);
+            batch.update(teamDocRef, { ownerUserIds: updatedOwners });
         }
-        return t;
     });
 
     // Add user to the selected team
-    const finalTeams = updatedTeams.map(t => {
-        if (t.id === team.id) {
-            return { ...t, ownerUserIds: [...t.ownerUserIds, user.id] };
-        }
-        return t;
-    });
+    const teamDocRef = doc(db, 'teams', team.id);
+    const newOwners = [...team.ownerUserIds, user.id];
+    batch.update(teamDocRef, { ownerUserIds: newOwners });
 
     try {
-        const batch = [];
-        finalTeams.forEach(t => {
-            const teamDocRef = doc(db, 'teams', t.id);
-            batch.push(updateDoc(teamDocRef, { ownerUserIds: t.ownerUserIds }));
-        });
-        await Promise.all(batch);
-
+        await batch.commit();
         toast({ title: "User Assigned", description: `${user?.displayName} has been assigned to ${team?.name}.` });
         setIsAddUserToLeagueDialogOpen(false);
         setAddUserToLeagueData({ userId: '', teamId: '' });
@@ -372,6 +347,7 @@ export function AdminPanel() {
 
   const handleSaveLeagueSettings = async () => {
     if (!leagueSettings || !activeSeason) return;
+    const batch = writeBatch(db);
     try {
         const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
         const leagueDataToSave = {
@@ -382,11 +358,12 @@ export function AdminPanel() {
                 plural: leagueSettings.contestantTerm.plural,
             }
         };
-        await setDoc(leagueDocRef, leagueDataToSave, { merge: true });
+        batch.set(leagueDocRef, leagueDataToSave, { merge: true });
 
         const seasonDocRef = doc(db, 'seasons', activeSeason.id);
-        await setDoc(seasonDocRef, { title: activeSeason.title }, { merge: true });
+        batch.set(seasonDocRef, { title: activeSeason.title }, { merge: true });
         
+        await batch.commit();
         toast({ title: "Changes Saved", description: `League settings have been saved.` });
     } catch (error) {
         console.error(`Error saving league settings: `, error);
@@ -396,19 +373,19 @@ export function AdminPanel() {
   
   const handleSaveTeamsAndUsers = async () => {
      if (!leagueSettings) return;
-
+     const batch = writeBatch(db);
      try {
-        const teamPromises = displayedTeams.map(team => {
-            if(team.id.endsWith('_placeholder')) return null;
+        teams.forEach(team => {
+            if(team.id.endsWith('_placeholder')) return;
             const teamDocRef = doc(db, 'teams', team.id);
             const dataToSave: Partial<Team> = {
                 name: teamNames[team.id] || team.name,
                 draftOrder: teamDraftOrders[team.id] || team.draftOrder,
             };
-            return updateDoc(teamDocRef, dataToSave);
-        }).filter(Boolean);
+            batch.update(teamDocRef, dataToSave);
+        });
 
-        await Promise.all(teamPromises as Promise<void>[]);
+        await batch.commit();
         
         toast({ title: "Changes Saved", description: `Team and user settings have been saved.` });
     } catch (error) {
@@ -419,15 +396,17 @@ export function AdminPanel() {
 
   const handleSaveRules = async () => {
       if (!scoringRuleSet || !leagueSettings) return;
+      const batch = writeBatch(db);
       try {
           const rulesetDocRef = doc(db, 'scoring_rules', scoringRuleSet.id);
-          await setDoc(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
+          batch.set(rulesetDocRef, { rules: scoringRuleSet.rules }, { merge: true });
           
           const leagueDocRef = doc(db, 'leagues', leagueSettings.id);
-          await setDoc(leagueDocRef, {
+          batch.set(leagueDocRef, {
               'settings.scoringBreakdownCategories': leagueSettings.settings.scoringBreakdownCategories,
           }, { merge: true });
 
+          await batch.commit();
           toast({ title: "Changes Saved", description: `Scoring rules and breakdowns have been saved.` });
       } catch (error) {
           console.error(`Error saving rules: `, error);
@@ -435,7 +414,57 @@ export function AdminPanel() {
       }
   };
 
-  
+  const handleSaveWeeklyEvents = async () => {
+    const batch = writeBatch(db);
+
+    const eventTypes = ['HOH', 'NOMINATIONS', 'VETO', 'BLOCK_BUSTER', 'EVICTION'];
+    
+    // Delete existing events for the week to avoid duplicates
+    weekEvents.forEach(event => {
+        batch.delete(doc(db, 'competitions', event.id));
+    });
+
+    // Create new events based on state
+    if (hohWinnerId) {
+        const id = `bb27_wk${selectedWeek}_hoh`;
+        batch.set(doc(db, 'competitions', id), {
+            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'HOH', winnerId: hohWinnerId, airDate: new Date().toISOString()
+        });
+    }
+     if (nominees.some(n => n)) {
+        const id = `bb27_wk${selectedWeek}_noms`;
+        batch.set(doc(db, 'competitions', id), {
+            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'NOMINATIONS', nominees: nominees.filter(n => n), airDate: new Date().toISOString()
+        });
+    }
+    if (vetoWinnerId) {
+        const id = `bb27_wk${selectedWeek}_veto`;
+        batch.set(doc(db, 'competitions', id), {
+            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'VETO', winnerId: vetoWinnerId, used: vetoUsed, usedOnId: vetoUsedOnId, replacementNomId: vetoReplacementNomId, airDate: new Date().toISOString()
+        });
+    }
+    if (blockBusterWinnerId) {
+        const id = `bb27_wk${selectedWeek}_blockbuster`;
+        batch.set(doc(db, 'competitions', id), {
+            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'BLOCK_BUSTER', winnerId: blockBusterWinnerId, airDate: new Date().toISOString()
+        });
+    }
+    if (evictedId) {
+        const id = `bb27_wk${selectedWeek}_eviction`;
+        batch.set(doc(db, 'competitions', id), {
+            id, seasonId: activeSeason?.id, week: selectedWeek, type: 'EVICTION', evictedId: evictedId, airDate: new Date().toISOString()
+        });
+    }
+
+    try {
+        await batch.commit();
+        toast({ title: "Events Saved", description: `All event changes for Week ${selectedWeek} have been saved.`});
+    } catch (error) {
+        console.error("Error saving weekly events: ", error);
+        toast({ title: "Error", description: "Could not save event changes.", variant: "destructive" });
+    }
+  };
+
   const handleTeamNameChange = (teamId: string, newName: string) => {
     setTeamNames(prev => ({ ...prev, [teamId]: newName }));
   };
@@ -544,15 +573,61 @@ export function AdminPanel() {
     return createElement(IconComponent, { className });
   };
 
-  const getTeamForUser = (user: UserType): Team | undefined => {
-    return teams.find(team => team.ownerUserIds.includes(user.id));
-  };
-  
   const getUsersForTeam = (teamId: string): UserType[] => {
       const team = teams.find(t => t.id === teamId);
       if (!team) return [];
       return users.filter(u => team.ownerUserIds.includes(u.id));
   };
+  
+  const getContestantsForTeam = (teamId: string): Contestant[] => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return [];
+    return contestants.filter(c => team.contestantIds.includes(c.id));
+  };
+
+  const handleOpenDraftDialog = (team: Team) => {
+    setDraftingTeam(team);
+    setIsDraftDialogOpen(true);
+    setDraftSelection('');
+  }
+
+  const handleDraftContestant = async () => {
+    if (!draftingTeam || !draftSelection) {
+        toast({ title: "Error", description: "No contestant selected.", variant: "destructive"});
+        return;
+    }
+
+    const teamDocRef = doc(db, 'teams', draftingTeam.id);
+    const updatedContestantIds = [...draftingTeam.contestantIds, draftSelection];
+    
+    try {
+        await updateDoc(teamDocRef, { contestantIds: updatedContestantIds });
+        toast({ title: "Draft Successful", description: `${getContestantDisplayName(contestants.find(c => c.id === draftSelection), 'full')} has been drafted to ${draftingTeam.name}.`});
+        setIsDraftDialogOpen(false);
+        setDraftingTeam(null);
+    } catch(e) {
+        console.error("Error drafting contestant: ", e);
+        toast({ title: "Error", description: "Could not draft contestant.", variant: "destructive"});
+    }
+  };
+  
+  const handleRemoveContestantFromTeam = async (contestantId: string, teamId: string) => {
+    const team = teams.find(t => t.id === teamId);
+    if (!team) return;
+    
+    const teamDocRef = doc(db, 'teams', team.id);
+    const updatedContestantIds = team.contestantIds.filter(id => id !== contestantId);
+
+    try {
+        await updateDoc(teamDocRef, { contestantIds: updatedContestantIds });
+        const contestant = contestants.find(c => c.id === contestantId);
+        toast({ title: "Player Removed", description: `${getContestantDisplayName(contestant, 'full')} has been removed from ${team.name}.`});
+    } catch(e) {
+        console.error("Error removing contestant: ", e);
+        toast({ title: "Error", description: "Could not remove contestant.", variant: "destructive"});
+    }
+  };
+
 
   const contestantTerm = leagueSettings?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
 
@@ -617,10 +692,9 @@ export function AdminPanel() {
     try {
         const idToDelete = editingContestant.id;
         await deleteDoc(doc(db, 'contestants', idToDelete));
-        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been permanently removed.` });
         
-        // Manually update local state to reflect deletion immediately
-        setContestants(prevContestants => prevContestants.filter(c => c.id !== idToDelete));
+        setContestants(prev => prev.filter(c => c.id !== idToDelete));
+        toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been permanently removed.` });
         setEditingContestant(null);
     } catch (error) {
         console.error("Error deleting contestant: ", error);
@@ -644,10 +718,11 @@ export function AdminPanel() {
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="scoring">Scoring</TabsTrigger>
               <TabsTrigger value="contestants">Contestants</TabsTrigger>
               <TabsTrigger value="rules">Rules</TabsTrigger>
+              <TabsTrigger value="draft">Draft</TabsTrigger>
               <TabsTrigger value="league">League Settings</TabsTrigger>
           </TabsList>
 
@@ -680,9 +755,10 @@ export function AdminPanel() {
                               </CardHeader>
                               <CardContent>
                                   <Label>HOH Winner</Label>
-                                  <Select value={hoh?.winnerId}>
+                                  <Select value={hohWinnerId} onValueChange={setHohWinnerId}>
                                       <SelectTrigger><SelectValue placeholder="Select HOH..." /></SelectTrigger>
                                       <SelectContent>
+                                          <SelectItem value=''>None</SelectItem>
                                           {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
@@ -702,14 +778,17 @@ export function AdminPanel() {
                                                   <SelectValue placeholder="Select Nominee..." />
                                               </SelectTrigger>
                                               <SelectContent>
+                                                  <SelectItem value=''>None</SelectItem>
                                                   {activeContestants
                                                       .filter(c => !nominees.includes(c.id) || nominees[index] === c.id)
                                                       .map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                               </SelectContent>
                                           </Select>
-                                          <Button variant="ghost" size="icon" onClick={() => removeNomineeField(index)} className="h-9 w-9">
-                                              <Trash2 className="h-4 w-4 text-red-500" />
-                                          </Button>
+                                          {index > 1 && (
+                                            <Button variant="ghost" size="icon" onClick={() => removeNomineeField(index)} className="h-9 w-9">
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                          )}
                                       </div>
                                   ))}
                                   <Button variant="outline" size="sm" onClick={addNomineeField} className="mt-2">
@@ -724,9 +803,10 @@ export function AdminPanel() {
                               <CardContent className="space-y-4">
                                    <div>
                                       <Label>Veto Winner</Label>
-                                      <Select value={pov?.winnerId}>
+                                      <Select value={vetoWinnerId} onValueChange={setVetoWinnerId}>
                                           <SelectTrigger><SelectValue placeholder="Select Veto Winner..." /></SelectTrigger>
                                           <SelectContent>
+                                              <SelectItem value=''>None</SelectItem>
                                               {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                           </SelectContent>
                                       </Select>
@@ -739,9 +819,10 @@ export function AdminPanel() {
                                       <>
                                           <div>
                                               <Label>Used On (Saved)</Label>
-                                              <Select value={pov?.usedOnId}>
+                                              <Select value={vetoUsedOnId} onValueChange={setVetoUsedOnId}>
                                                   <SelectTrigger><SelectValue placeholder="Select Player Saved..." /></SelectTrigger>
                                                   <SelectContent>
+                                                       <SelectItem value=''>None</SelectItem>
                                                       {nominees?.map(nomId => {
                                                           const nom = contestants.find(c => c.id === nomId);
                                                           return nom ? <SelectItem key={nom.id} value={nom.id}>{getContestantDisplayName(nom, 'full')}</SelectItem> : null;
@@ -751,9 +832,10 @@ export function AdminPanel() {
                                           </div>
                                           <div>
                                               <Label>Replacement Nominee (Renom)</Label>
-                                              <Select value={pov?.replacementNomId}>
+                                              <Select value={vetoReplacementNomId} onValueChange={setVetoReplacementNomId}>
                                                   <SelectTrigger><SelectValue placeholder="Select Replacement..." /></SelectTrigger>
                                                   <SelectContent>
+                                                       <SelectItem value=''>None</SelectItem>
                                                       {activeContestants.filter(c => !nominees?.includes(c.id)).map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                                   </SelectContent>
                                               </Select>
@@ -768,9 +850,10 @@ export function AdminPanel() {
                               </CardHeader>
                               <CardContent>
                                   <Label>Winner (Safe)</Label>
-                                   <Select value={blockBuster?.winnerId}>
+                                   <Select value={blockBusterWinnerId} onValueChange={setBlockBusterWinnerId}>
                                       <SelectTrigger><SelectValue placeholder="Select Winner..." /></SelectTrigger>
                                       <SelectContent>
+                                          <SelectItem value=''>None</SelectItem>
                                           {activeContestants.map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
@@ -782,9 +865,10 @@ export function AdminPanel() {
                               </CardHeader>
                               <CardContent>
                                   <Label>Evicted Player</Label>
-                                   <Select value={eviction?.evictedId}>
+                                   <Select value={evictedId} onValueChange={setEvictedId}>
                                       <SelectTrigger><SelectValue placeholder="Select Evictee..." /></SelectTrigger>
                                       <SelectContent>
+                                          <SelectItem value=''>None</SelectItem>
                                           {contestants.filter(c => c.status === 'active').map(hg => <SelectItem key={hg.id} value={hg.id}>{getContestantDisplayName(hg, 'full')}</SelectItem>)}
                                       </SelectContent>
                                   </Select>
@@ -840,7 +924,7 @@ export function AdminPanel() {
                   </CardContent>
                   <CardFooter className="justify-end gap-2">
                       <Button variant="outline">Reset Week {selectedWeek}</Button>
-                     <Button><Save className="mr-2"/>Save All Event Changes</Button>
+                     <Button onClick={handleSaveWeeklyEvents}><Save className="mr-2"/>Save All Event Changes</Button>
                   </CardFooter>
               </Card>
           </TabsContent>
@@ -1084,6 +1168,82 @@ export function AdminPanel() {
               </Card>
           </TabsContent>
 
+          <TabsContent value="draft" className="mt-6 space-y-6">
+               <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2">Draft Center</CardTitle>
+                      <CardDescription>Assign contestants to teams.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        {teams.map(team => (
+                            <Card key={team.id}>
+                                <CardHeader className="flex-row items-center justify-between p-4">
+                                    <CardTitle className="text-lg">{team.name}</CardTitle>
+                                    <Button size="sm" onClick={() => handleOpenDraftDialog(team)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Draft {contestantTerm.singular}
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="p-4 pt-0">
+                                  {getContestantsForTeam(team.id).length > 0 ? (
+                                    <div className="space-y-2">
+                                        {getContestantsForTeam(team.id).map(contestant => (
+                                            <div key={contestant.id} className="flex items-center justify-between text-sm">
+                                                <span>{getContestantDisplayName(contestant, 'full')}</span>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveContestantFromTeam(contestant.id, team.id)}>
+                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                  ): (
+                                    <p className="text-sm text-muted-foreground">No {contestantTerm.plural} drafted yet.</p>
+                                  )}
+                                </CardContent>
+                            </Card>
+                        ))}
+                      </div>
+                      <Card>
+                          <CardHeader>
+                              <CardTitle>Undrafted {contestantTerm.plural}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="flex flex-wrap gap-2">
+                              {undraftedContestants.map(c => (
+                                  <Badge key={c.id} variant="secondary">{getContestantDisplayName(c, 'short')}</Badge>
+                              ))}
+                              {undraftedContestants.length === 0 && <p className="text-sm text-muted-foreground">All {contestantTerm.plural} have been drafted.</p>}
+                          </CardContent>
+                      </Card>
+                  </CardContent>
+              </Card>
+
+              <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+                  <DialogContent>
+                      <DialogHeader>
+                          <DialogTitle>Drafting to {draftingTeam?.name}</DialogTitle>
+                          <DialogDescription>Select a {contestantTerm.singular} to add to this team.</DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                          <Select value={draftSelection} onValueChange={setDraftSelection}>
+                              <SelectTrigger>
+                                  <SelectValue placeholder={`Select a ${contestantTerm.singular}...`} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {undraftedContestants.map(c => (
+                                      <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                      </div>
+                      <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsDraftDialogOpen(false)}>Cancel</Button>
+                          <Button onClick={handleDraftContestant}>Draft</Button>
+                      </DialogFooter>
+                  </DialogContent>
+              </Dialog>
+          </TabsContent>
+
+
           <TabsContent value="league" className="mt-6 space-y-6">
               <Card>
                   <CardHeader>
@@ -1187,7 +1347,7 @@ export function AdminPanel() {
                                     <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
                                         <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
                                         <SelectContent>
-                                            {displayedTeams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
+                                            {teams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -1201,7 +1361,7 @@ export function AdminPanel() {
                   </div>
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {displayedTeams.map((team, index) => (
+                            {teams.map((team, index) => (
                                 <Card key={team.id}>
                                     <CardHeader className="p-4 flex-row items-center justify-between">
                                         <CardTitle className="text-base flex-grow mr-2">
@@ -1270,3 +1430,5 @@ export function AdminPanel() {
     </div>
   );
 }
+
+    
