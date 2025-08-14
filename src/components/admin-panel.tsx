@@ -542,10 +542,6 @@ export function AdminPanel() {
     return createElement(IconComponent, { className });
   };
 
-  if (!leagueSettings || !activeSeason) {
-    return <div>Loading...</div>;
-  }
-
   const getTeamForUser = (user: UserType): Team | undefined => {
     return teams.find(team => team.ownerUserIds.includes(user.id));
   };
@@ -556,13 +552,13 @@ export function AdminPanel() {
       return users.filter(u => team.ownerUserIds.includes(u.id));
   };
 
-  const contestantTerm = leagueSettings.contestantTerm;
+  const contestantTerm = leagueSettings?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
 
   const handleOpenContestantDialog = (contestantOrNew: Contestant | 'new') => {
     if (contestantOrNew === 'new') {
         const newContestant: Contestant = {
             id: `new_contestant_${Date.now()}`,
-            seasonId: activeSeason.id,
+            seasonId: activeSeason?.id || '',
             firstName: '',
             lastName: '',
             nickname: '',
@@ -611,18 +607,20 @@ export function AdminPanel() {
   
   const handleDeleteContestant = async () => {
     if (!editingContestant || editingContestant.id.startsWith('new_contestant_')) return;
-    
-    if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}? This action cannot be undone.`)) return;
+
+    if (!window.confirm(`Are you sure you want to delete ${getContestantDisplayName(editingContestant, 'full')}? This action cannot be undone.`)) {
+        return;
+    }
     
     try {
         const contestantId = editingContestant.id;
         await deleteDoc(doc(db, 'contestants', contestantId));
         
-        // Optimistically update local state for immediate UI feedback
-        setContestants(prev => prev.filter(c => c.id !== contestantId));
-        
         toast({ title: "Contestant Deleted", description: `${getContestantDisplayName(editingContestant, 'full')} has been permanently removed.` });
+        
+        // This will close the dialog. The onSnapshot listener will handle removing the contestant from the UI.
         setEditingContestant(null);
+
     } catch (error) {
         console.error("Error deleting contestant: ", error);
         toast({ title: "Error", description: "Could not delete contestant.", variant: "destructive" });
@@ -633,6 +631,14 @@ export function AdminPanel() {
   const unassignedUsers = users.filter(u => !allAssignedUserIds.includes(u.id));
   
   const isEditingNewContestant = editingContestant?.id.startsWith('new_contestant_');
+  
+  if (!leagueSettings || !activeSeason) {
+    return (
+        <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto items-center justify-center">
+            <div>Loading...</div>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-y-auto">
@@ -1019,7 +1025,7 @@ export function AdminPanel() {
                                 <div key={catIndex} className="flex items-center gap-2 p-3 border rounded-lg">
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color.replace('text-', 'bg-') || 'bg-gray-500')}>
+                                            <Button variant="outline" size="icon" className={cn("w-10 h-10", category.color ? category.color.replace('text-','bg-') : 'bg-gray-500' )}>
                                                <DynamicIcon name={category.icon} className="h-5 w-5 text-white" />
                                             </Button>
                                         </PopoverTrigger>
@@ -1265,5 +1271,3 @@ export function AdminPanel() {
     </div>
   );
 }
-
-    
