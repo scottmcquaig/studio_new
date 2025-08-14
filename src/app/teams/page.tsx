@@ -11,11 +11,11 @@ import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
 import { getFirestore, collection, onSnapshot, doc, Unsubscribe, query } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User, Pick } from '@/lib/data';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 
-const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], competitions: Competition[], contestants: Contestant[]) => {
+const calculateKpis = (teamPicks: Pick[], league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
     const breakdownCategories = league.settings.scoringBreakdownCategories || [];
     const kpis: { [key: string]: number } = {};
     
@@ -24,9 +24,9 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
     });
 
     const rules = scoringRules || [];
-    if (!rules.length || !breakdownCategories.length) return { ...kpis, total: team.total_score || 0 };
+    if (!rules.length || !breakdownCategories.length) return { ...kpis };
 
-    const teamContestantIds = contestants.filter(c => team.contestantIds?.includes(c.id)).map(c => c.id);
+    const teamContestantIds = teamPicks.map(p => p.contestantId);
 
     competitions.forEach(comp => {
         const processEvent = (contestantId: string, eventCode: string) => {
@@ -65,15 +65,14 @@ const calculateKpis = (team: Team, league: League, scoringRules: ScoringRule[], 
         }
         
         if (comp.type === 'EVICTION' && comp.evictedId) {
-            processEvent(comp.evictedId, 'EVICTED');
+             const juryStartWeek = league?.settings.juryStartWeek;
+             const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+             processEvent(comp.evictedId, eventCode);
         }
     });
 
-    const totalCalculated = Object.values(kpis).reduce((acc, val) => acc + val, 0);
-
-    return { ...kpis, total: totalCalculated };
+    return { ...kpis };
 };
-
 
 const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
     const IconComponent = (LucideIcons as any)[name];
@@ -83,16 +82,17 @@ const DynamicIcon = ({ name, className }: { name: string; className?: string }) 
     return createElement(IconComponent, { className });
 };
 
-const TeamCard = ({ team, league, rules, competitions, contestants, users }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[], users: User[] }) => {
+const TeamCard = ({ team, league, rules, competitions, contestants, users, picks, totalScore }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[], users: User[], picks: Pick[], totalScore: number }) => {
     const owners = (team.ownerUserIds || []).map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
-    
-    const teamContestants = contestants.filter(hg => (team.contestantIds || []).includes(hg.id));
+    const teamPicks = picks.filter(p => p.teamId === team.id);
+    const teamContestantIds = teamPicks.map(p => p.contestantId);
+    const teamContestants = contestants.filter(hg => teamContestantIds.includes(hg.id));
     const breakdownCategories = (league.settings.scoringBreakdownCategories || []).filter(c => c.displayName);
 
     const kpis = useMemo(() => {
-        if (!league || !rules.length || !contestants.length) return { total: team.total_score || 0 };
-        return calculateKpis(team, league, rules, competitions, contestants);
-    }, [team, league, rules, competitions, contestants]);
+        if (!league || !rules.length || !contestants.length) return {};
+        return calculateKpis(teamPicks, league, rules, competitions);
+    }, [teamPicks, league, rules, competitions, contestants]);
     
     return (
         <Card>
@@ -104,7 +104,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users }: { t
                             Owned by {owners.length > 0 ? owners.map(o => o.displayName).join(' & ') : 'Unassigned'}
                         </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="text-lg font-bold">{(kpis.total || 0).toLocaleString()} pts</Badge>
+                    <Badge variant="secondary" className="text-lg font-bold">{totalScore.toLocaleString()} pts</Badge>
                 </div>
             </CardHeader>
             <CardContent>
@@ -163,79 +163,90 @@ export default function TeamsPage() {
     const [contestants, setContestants] = useState<Contestant[]>([]);
     const [competitions, setCompetitions] = useState<Competition[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [picks, setPicks] = useState<Pick[]>([]);
 
     const db = getFirestore(app);
 
     useEffect(() => {
         const unsubscribes: Unsubscribe[] = [];
 
-        const leagueDocRef = doc(db, "leagues", "bb27");
-        const unsubscribeLeague = onSnapshot(leagueDocRef, (docSnap) => {
+        unsubscribes.push(onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
             if (docSnap.exists()) {
                 const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-                
                 if (leagueData.settings.scoringRuleSetId) {
-                    const ruleSetDocRef = doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId);
-                    const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
-                        if (ruleSnap.exists()) {
-                            setScoringRuleSet({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
-                        }
-                    });
-                    unsubscribes.push(unsubscribeRules);
+                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
+                        if (ruleSnap.exists()) setScoringRuleSet({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                    }));
                 }
                 setLeague(leagueData);
             }
-        });
-        unsubscribes.push(unsubscribeLeague);
-
-        const teamsCol = collection(db, "teams");
-        const unsubscribeTeams = onSnapshot(query(teamsCol), (querySnapshot) => {
-            const teamsData: Team[] = [];
-            querySnapshot.forEach((doc) => {
-                teamsData.push({ ...doc.data(), id: doc.id } as Team);
-            });
-            setTeams(teamsData);
-        });
-        unsubscribes.push(unsubscribeTeams);
-
-        const contestantsCol = collection(db, "contestants");
-        const unsubscribeContestants = onSnapshot(query(contestantsCol), (querySnapshot) => {
-            const contestantsData: Contestant[] = [];
-            querySnapshot.forEach((doc) => {
-                contestantsData.push({ ...doc.data(), id: doc.id } as Contestant);
-            });
-            setContestants(contestantsData);
-        });
-        unsubscribes.push(unsubscribeContestants);
+        }));
         
-        const competitionsCol = collection(db, "competitions");
-        const unsubscribeCompetitions = onSnapshot(query(competitionsCol), (querySnapshot) => {
-            const competitionsData: Competition[] = [];
-            querySnapshot.forEach((doc) => {
-                competitionsData.push({ ...doc.data(), id: doc.id } as Competition);
-            });
-            setCompetitions(competitionsData);
-        });
-        unsubscribes.push(unsubscribeCompetitions);
+        unsubscribes.push(onSnapshot(query(collection(db, "teams")), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "picks")), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
         
-        const usersCol = collection(db, "users");
-        const unsubscribeUsers = onSnapshot(query(usersCol), (querySnapshot) => {
-            const usersData: User[] = [];
-            querySnapshot.forEach((doc) => {
-                usersData.push({ ...doc.data(), id: doc.id } as User);
-            });
-            setUsers(usersData);
-        });
-        unsubscribes.push(unsubscribeUsers);
-        
-        return () => {
-            unsubscribes.forEach(unsub => unsub());
-        };
+        return () => unsubscribes.forEach(unsub => unsub());
     }, [db]);
+    
+    const calculateTeamScore = (team: Team, rules: ScoringRule[], teamPicks: Pick[], competitions: Competition[]): number => {
+        let score = 0;
+        if (!rules.length || !teamPicks.length) return 0;
+
+        const teamContestantIds = teamPicks.map(p => p.contestantId);
+
+        competitions.forEach(comp => {
+            const processEvent = (contestantId: string, eventCode: string) => {
+                if (teamContestantIds.includes(contestantId)) {
+                    const rule = rules.find(r => r.code === eventCode);
+                    if (rule) {
+                        score += rule.points;
+                    }
+                }
+            };
+            
+            if (comp.winnerId) {
+                let code = '';
+                if (comp.type === 'HOH') code = 'HOH_WIN';
+                else if (comp.type === 'VETO') code = 'VETO_WIN';
+                else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
+                else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
+                if (code) processEvent(comp.winnerId, code);
+
+                if (comp.type === 'VETO' && comp.used) {
+                    processEvent(comp.winnerId, 'VETO_USED');
+                }
+            }
+
+            if (comp.type === 'NOMINATIONS' && comp.nominees) {
+                comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
+            }
+            
+            if (comp.type === 'EVICTION' && comp.evictedId) {
+                const juryStartWeek = league?.settings.juryStartWeek;
+                const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+                processEvent(comp.evictedId, eventCode);
+            }
+        });
+        return score;
+    };
+
+    const teamsWithScores = useMemo(() => {
+        if (!teams.length || !scoringRules?.rules.length || !picks.length) return [];
+        
+        return teams.map(team => {
+          const teamPicks = picks.filter(p => p.teamId === team.id);
+          const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
+          return { ...team, total_score };
+        });
+    }, [teams, scoringRules, picks, competitions, league]);
+
 
     const sortedTeams = useMemo(() => {
-        return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder)
-    }, [teams]);
+        return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder)
+    }, [teamsWithScores]);
 
     const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
     
@@ -246,6 +257,14 @@ export default function TeamsPage() {
         </div>
     );
   }
+
+   const getOwnerNames = (team: Team) => {
+    if (!users.length) return '...';
+    return (team.ownerUserIds || [])
+        .map(id => users.find(u => u.id === id)?.displayName)
+        .filter(Boolean)
+        .join(' & ') || 'Unassigned';
+  };
 
   return (
     <>
@@ -275,7 +294,7 @@ export default function TeamsPage() {
                             )}>{index + 1}</span>
                             <div>
                                 <p className="font-semibold text-sm truncate">{team.name}</p>
-                                <p className="text-xs text-muted-foreground">{(team.total_score || 0).toLocaleString()} pts</p>
+                                <p className="text-xs text-muted-foreground">{team.total_score.toLocaleString()} pts</p>
                             </div>
                         </div>
                     ))}
@@ -292,6 +311,8 @@ export default function TeamsPage() {
                         competitions={competitions}
                         contestants={contestants}
                         users={users}
+                        picks={picks}
+                        totalScore={team.total_score}
                     />
                 ))}
             </div>
@@ -302,5 +323,3 @@ export default function TeamsPage() {
     </>
   );
 }
-
-    

@@ -32,9 +32,9 @@ import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/app-header";
 import { BottomNavBar } from "@/components/bottom-nav-bar";
 import { useState, useEffect, useMemo } from 'react';
-import { getFirestore, collection, onSnapshot, query, doc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet, Competition, Contestant, Season } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, Competition, Contestant, Season, User, Pick, ScoringRule } from '@/lib/data';
 import { MOCK_SEASONS } from "@/lib/data"; // Keep for activeSeason until seasons are in Firestore
 
 export default function DashboardPage() {
@@ -45,68 +45,92 @@ export default function DashboardPage() {
   const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [picks, setPicks] = useState<Pick[]>([]);
 
   // Using mock for now, will be dynamic later
   const activeSeason = MOCK_SEASONS[0]; 
 
   useEffect(() => {
-    // Fetch League and dependent data
-    const leagueDocRef = doc(db, "leagues", "bb27");
-    const unsubscribeLeague = onSnapshot(leagueDocRef, (docSnap) => {
+    const unsubscribes: Unsubscribe[] = [];
+
+    unsubscribes.push(onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
         if (docSnap.exists()) {
             const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
             setLeague(leagueData);
-
             if (leagueData.settings.scoringRuleSetId) {
-                const ruleSetDocRef = doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId);
-                const unsubscribeRules = onSnapshot(ruleSetDocRef, (ruleSnap) => {
-                    if (ruleSnap.exists()) {
-                        setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
-                    }
-                });
-                // Note: Consider how to manage this nested subscription's cleanup
+                unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
+                    if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                }));
             }
         }
-    });
+    }));
+    
+    unsubscribes.push(onSnapshot(query(collection(db, "teams")), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "picks")), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
 
-    // Fetch Teams
-    const teamsCol = collection(db, "teams");
-    const unsubscribeTeams = onSnapshot(query(teamsCol), (querySnapshot) => {
-        const teamsData: Team[] = [];
-        querySnapshot.forEach((doc) => {
-            teamsData.push({ ...doc.data(), id: doc.id } as Team);
-        });
-        setTeams(teamsData);
-    });
-
-    // Fetch Contestants
-    const contestantsCol = collection(db, "contestants");
-    const unsubscribeContestants = onSnapshot(query(contestantsCol), (querySnapshot) => {
-        const contestantsData: Contestant[] = [];
-        querySnapshot.forEach((doc) => {
-            contestantsData.push({ ...doc.data(), id: doc.id } as Contestant);
-        });
-        setContestants(contestantsData);
-    });
-
-    // Fetch Competitions
-    const competitionsCol = collection(db, "competitions");
-    const unsubscribeCompetitions = onSnapshot(query(competitionsCol), (querySnapshot) => {
-        const competitionsData: Competition[] = [];
-        querySnapshot.forEach((doc) => {
-            competitionsData.push({ ...doc.data(), id: doc.id } as Competition);
-        });
-        setCompetitions(competitionsData);
-    });
-
-    return () => {
-      unsubscribeLeague();
-      unsubscribeTeams();
-      unsubscribeContestants();
-      unsubscribeCompetitions();
-      // Add cleanup for nested rule subscription if needed
-    };
+    return () => unsubscribes.forEach(unsub => unsub());
   }, [db]);
+
+  const calculateTeamScore = (team: Team, rules: ScoringRule[], teamPicks: Pick[], competitions: Competition[]): number => {
+    let score = 0;
+    if (!rules.length || !teamPicks.length) return 0;
+
+    const teamContestantIds = teamPicks.map(p => p.contestantId);
+
+    competitions.forEach(comp => {
+        const processEvent = (contestantId: string, eventCode: string) => {
+            if (teamContestantIds.includes(contestantId)) {
+                const rule = rules.find(r => r.code === eventCode);
+                if (rule) {
+                    score += rule.points;
+                }
+            }
+        };
+        
+        if (comp.winnerId) {
+            let code = '';
+            if (comp.type === 'HOH') code = 'HOH_WIN';
+            else if (comp.type === 'VETO') code = 'VETO_WIN';
+            else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
+            else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
+            if (code) processEvent(comp.winnerId, code);
+
+            if (comp.type === 'VETO' && comp.used) {
+                processEvent(comp.winnerId, 'VETO_USED');
+            }
+        }
+
+        if (comp.type === 'NOMINATIONS' && comp.nominees) {
+            comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
+        }
+        
+        if (comp.type === 'EVICTION' && comp.evictedId) {
+            const juryStartWeek = league?.settings.juryStartWeek;
+            const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+            processEvent(comp.evictedId, eventCode);
+        }
+    });
+    return score;
+  };
+
+  const teamsWithScores = useMemo(() => {
+    if (!teams.length || !scoringRules?.rules.length || !picks.length) return [];
+    
+    return teams.map(team => {
+      const teamPicks = picks.filter(p => p.teamId === team.id);
+      const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
+      return { ...team, total_score };
+    });
+  }, [teams, scoringRules, picks, competitions, league]);
+
+  const sortedTeams = useMemo(() => {
+    return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
+  }, [teamsWithScores]);
+
 
   const currentWeekEvents = useMemo(() => 
     competitions.filter((c) => c.week === activeSeason.currentWeek),
@@ -129,10 +153,6 @@ export default function DashboardPage() {
 
   const eviction = useMemo(() => currentWeekEvents.find((c) => c.type === "EVICTION"), [currentWeekEvents]);
   const evictedPlayer = useMemo(() => contestants.find((hg) => hg.id === eviction?.evictedId), [contestants, eviction]);
-
-  const sortedTeams = useMemo(() => {
-    return [...teams].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
-  }, [teams]);
   
   const weeklyActivity = useMemo(() => {
     if (!scoringRules?.rules || !contestants.length) return [];
@@ -183,6 +203,14 @@ export default function DashboardPage() {
         </div>
     );
   }
+
+  const getOwnerNames = (team: Team) => {
+    if (!users.length) return '...';
+    return (team.ownerUserIds || [])
+        .map(id => users.find(u => u.id === id)?.displayName)
+        .filter(Boolean)
+        .join(' & ') || 'Unassigned';
+  };
 
   return (
     <>
@@ -404,7 +432,7 @@ export default function DashboardPage() {
                                     )}>{index + 1}</span>
                                     <div>
                                         <p className="font-medium">{team.name}</p>
-                                        <p className="text-sm text-muted-foreground">{team.ownerUserIds.join(', ')}</p>
+                                        <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
                                     </div>
                                 </div>
                                 <Badge variant="secondary" className="w-20 justify-center text-base">
@@ -463,5 +491,3 @@ export default function DashboardPage() {
     </>
   );
 }
-
-    
