@@ -1,20 +1,49 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, User, Lock, Building } from "lucide-react";
-import { MOCK_USERS } from "@/lib/data";
 import Link from 'next/link';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
+import { getFirestore, collection, onSnapshot, query, doc } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import type { User as UserType } from '@/lib/data';
 
 export default function SettingsPage() {
-  const currentUser = MOCK_USERS.find(u => u.role === 'site_admin');
+  const db = getFirestore(app);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   
+  useEffect(() => {
+    // This simulates fetching the currently logged-in user.
+    // In a real app, you'd get the user's ID from an auth context.
+    const adminUserId = 'user_admin'; // Hardcoded for demonstration
+    const userDocRef = doc(db, 'users', adminUserId);
+    
+    const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setCurrentUser({ ...docSnap.data(), id: docSnap.id } as UserType);
+        } else {
+            console.log("Admin user not found!");
+        }
+    });
+
+    return () => unsubscribe();
+  }, [db]);
+
+
+  if (!currentUser) {
+      return (
+          <div className="flex flex-1 items-center justify-center">
+              <div>Loading Settings...</div>
+          </div>
+      );
+  }
+
   return (
     <>
       <AppHeader />

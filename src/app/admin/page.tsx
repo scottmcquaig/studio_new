@@ -184,7 +184,9 @@ export default function AdminPage() {
   useEffect(() => {
     // This would be replaced with actual auth state
     if (users.length > 0) {
-        const adminUser = users.find(u => u.role === 'site_admin');
+        // For demonstration, we'll set the current user to a known admin ID.
+        // In a real app, this would come from an authentication context.
+        const adminUser = users.find(u => u.id === 'user_admin');
         setCurrentUser(adminUser || null);
 
         if (adminUser?.role !== 'site_admin') {
@@ -634,13 +636,13 @@ export default function AdminPage() {
 
       (updatedCategories[catIndex] as any)[field] = finalValue;
       
-      setLeagueSettings({
-          ...leagueSettings,
+      setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {
+          ...l,
           settings: {
-              ...leagueSettings.settings,
+              ...l.settings,
               scoringBreakdownCategories: updatedCategories,
           },
-      });
+      } : l));
   };
 
   const handleBreakdownRuleCodeChange = (catIndex: number, ruleIndex: number, value: string) => {
@@ -649,26 +651,26 @@ export default function AdminPage() {
       const newRuleCodes = [...updatedCategories[catIndex].ruleCodes];
       newRuleCodes[ruleIndex] = value;
       updatedCategories[catIndex].ruleCodes = newRuleCodes;
-       setLeagueSettings({
-          ...leagueSettings,
+       setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {
+          ...l,
           settings: {
-              ...leagueSettings.settings,
+              ...l.settings,
               scoringBreakdownCategories: updatedCategories,
           },
-      });
+      }: l));
   };
 
   const addBreakdownRuleCode = (catIndex: number) => {
       if (!leagueSettings) return;
       const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
       updatedCategories[catIndex].ruleCodes.push('');
-       setLeagueSettings({
-          ...leagueSettings,
+       setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {
+          ...l,
           settings: {
-              ...leagueSettings.settings,
+              ...l.settings,
               scoringBreakdownCategories: updatedCategories,
           },
-      });
+      }: l));
   };
   
   const removeBreakdownRuleCode = (catIndex: number, ruleIndex: number) => {
@@ -676,13 +678,13 @@ export default function AdminPage() {
       const updatedCategories = [...leagueSettings.settings.scoringBreakdownCategories];
       const newRuleCodes = updatedCategories[catIndex].ruleCodes.filter((_, i) => i !== ruleIndex);
       updatedCategories[catIndex].ruleCodes = newRuleCodes;
-       setLeagueSettings({
-          ...leagueSettings,
+       setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {
+          ...l,
           settings: {
-              ...leagueSettings.settings,
+              ...l.settings,
               scoringBreakdownCategories: updatedCategories,
           },
-      });
+      }: l));
   };
   
   const DynamicIcon = ({ name, className }: { name: string, className?: string }) => {
@@ -1766,7 +1768,7 @@ export default function AdminPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="leagueName">League Name</Label>
-                                <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setLeagueSettings({...leagueSettings, name: e.target.value})} />
+                                <Input id="leagueName" value={leagueSettings.name} onChange={(e) => setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, name: e.target.value} : l))} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="seasonName">Season Name</Label>
@@ -1783,7 +1785,7 @@ export default function AdminPage() {
                                             {leagueSettings.settings.seasonStartDate ? format(new Date(leagueSettings.settings.seasonStartDate), 'PPP') : <span>Pick a date</span>}
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(leagueSettings.settings.seasonStartDate || '')} onSelect={(date) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonStartDate: date?.toISOString()}})}/></PopoverContent>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(leagueSettings.settings.seasonStartDate || '')} onSelect={(date) => setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, settings: {...l.settings, seasonStartDate: date?.toISOString()}} : l))}/></PopoverContent>
                                 </Popover>
                             </div>
                              <div className="space-y-2">
@@ -1795,14 +1797,14 @@ export default function AdminPage() {
                                             {leagueSettings.settings.seasonEndDate ? format(new Date(leagueSettings.settings.seasonEndDate), 'PPP') : <span>Pick a date</span>}
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(leagueSettings.settings.seasonEndDate || '')} onSelect={(date) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, seasonEndDate: date?.toISOString()}})}/></PopoverContent>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(leagueSettings.settings.seasonEndDate || '')} onSelect={(date) => setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, settings: {...l.settings, seasonEndDate: date?.toISOString()}} : l))}/></PopoverContent>
                                 </Popover>
                             </div>
                             <div className="space-y-2">
                                 <Label>Jury Start Week</Label>
                                 <Select 
                                     value={String(leagueSettings.settings.juryStartWeek || 'none')} 
-                                    onValueChange={(val) => setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, juryStartWeek: val === 'none' ? undefined : Number(val) }})}
+                                    onValueChange={(val) => setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, settings: {...l.settings, juryStartWeek: val === 'none' ? undefined : Number(val) }} : l))}
                                 >
                                     <SelectTrigger><SelectValue placeholder="Select week..."/></SelectTrigger>
                                     <SelectContent>
@@ -1815,11 +1817,11 @@ export default function AdminPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="termSingular">Contestant (Singular)</Label>
-                                <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, singular: e.target.value}})} />
+                                <Input id="termSingular" value={leagueSettings.contestantTerm.singular} onChange={(e) => setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, contestantTerm: {...l.contestantTerm, singular: e.target.value}} : l))} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="termPlural">Contestant (Plural)</Label>
-                                <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setLeagueSettings({...leagueSettings, contestantTerm: {...leagueSettings.contestantTerm, plural: e.target.value}})} />
+                                <Input id="termPlural" value={leagueSettings.contestantTerm.plural} onChange={(e) => setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, contestantTerm: {...l.contestantTerm, plural: e.target.value}} : l))} />
                             </div>
                         </div>
                         <div className="flex items-center gap-4">
@@ -1833,7 +1835,7 @@ export default function AdminPage() {
                                     value={leagueSettings.maxTeams} 
                                     onChange={(e) => {
                                         const val = Math.max(4, Math.min(12, Number(e.target.value)));
-                                        setLeagueSettings({...leagueSettings, maxTeams: val});
+                                        setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, maxTeams: val} : l));
                                     }}
                                 />
                             </div>
@@ -1847,7 +1849,7 @@ export default function AdminPage() {
                                     value={leagueSettings.settings.draftRounds || 4} 
                                     onChange={(e) => {
                                         const val = Math.max(1, Math.min(10, Number(e.target.value)));
-                                        setLeagueSettings({...leagueSettings, settings: {...leagueSettings.settings, draftRounds: val}});
+                                        setAllLeagues(allLeagues.map(l => l.id === leagueSettings.id ? {...l, settings: {...l.settings, draftRounds: val}} : l));
                                     }}
                                 />
                             </div>
