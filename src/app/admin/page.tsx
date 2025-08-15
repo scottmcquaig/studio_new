@@ -2000,4 +2000,4 @@ function AdminPage() {
   );
 }
 
-export default withAuth(AdminPage);
+export default withAuth(AdminPage, ['site_admin']);
