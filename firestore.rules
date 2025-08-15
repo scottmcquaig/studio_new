@@ -1,26 +1,32 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin role
+    // Helper functions
     function isAdmin() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
     }
 
-    // Users can create their own profile, but can only read/update their own.
-    // They cannot see other users' profiles.
+    // Users can create their own user document, but not assign roles
+    // Users can read and update their own document
     match /users/{userId} {
       allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId && !('role' in request.resource.data);
     }
-
-    // For all other collections, allow reads for any authenticated user,
-    // but only allow writes for site admins.
+    
+    // Admins can manage all user documents
+    match /users/{userId} {
+        allow write: if isAdmin();
+    }
+    
+    // Read access for authenticated users, write access only for admins
     match /{document=**} {
-       allow read: if request.auth != null;
-       allow write: if isAdmin();
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }
+
+    

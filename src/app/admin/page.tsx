@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
@@ -36,6 +36,7 @@ import { format } from 'date-fns';
 import withAuth from '@/components/withAuth';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { seedDatabase } from '@/lib/seed';
 
 
 const iconSelection = [
@@ -988,7 +989,24 @@ function AdminPage() {
         return picks;
 
     }, [teams, totalDraftPicks, leagueSettings]);
-  
+    
+    const handleSeedDatabase = async () => {
+        try {
+            await seedDatabase(db);
+            toast({
+                title: 'Database Seeded',
+                description: 'Your database has been populated with sample data.',
+            });
+        } catch (error) {
+            console.error('Error seeding database:', error);
+            toast({
+                title: 'Seeding Failed',
+                description: 'Could not seed the database. Check console for errors.',
+                variant: 'destructive',
+            });
+        }
+    };
+
   if (!activeSeason || !currentUser) {
     return (
         <div className="flex flex-1 items-center justify-center">
@@ -1037,7 +1055,26 @@ function AdminPage() {
                         <CardHeader>
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
-                                <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New League</Button>
+                                <div>
+                                    <Button size="sm" variant="outline" className="mr-2"><PlusCircle className="mr-2"/> New League</Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button size="sm" variant="destructive"><Database className="mr-2"/> Seed Database</Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will populate your database with sample data. This could overwrite existing data. This action is not reversible.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={handleSeedDatabase}>Seed</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
