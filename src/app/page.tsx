@@ -515,8 +515,23 @@ function DashboardPage() {
                                 <div key={score} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                     <div className="flex items-center gap-3">
                                       {contestants.length > 1 ? (
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                                          <span className="text-lg font-bold">{contestants.length}</span>
+                                        <div className="flex -space-x-4">
+                                          {contestants.slice(0, 3).map((c, i) => (
+                                            <Image
+                                              key={c.id}
+                                              src={c.photoUrl || "https://placehold.co/100x100.png"}
+                                              alt={getContestantDisplayName(c, 'full')}
+                                              width={40}
+                                              height={40}
+                                              className="rounded-full border-2 border-background"
+                                              data-ai-hint="portrait person"
+                                            />
+                                          ))}
+                                          {contestants.length > 3 && (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted border-2 border-background">
+                                              <span className="text-sm font-bold">+{contestants.length - 3}</span>
+                                            </div>
+                                          )}
                                         </div>
                                       ) : (
                                         <Image
@@ -529,7 +544,7 @@ function DashboardPage() {
                                         />
                                       )}
                                       <div className="flex-1">
-                                        <p className="font-medium truncate">
+                                        <p className="font-medium truncate text-sm">
                                             {contestants.map(c => getContestantDisplayName(c, 'short')).join(', ')}
                                         </p>
                                       </div>
