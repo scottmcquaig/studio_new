@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick, User } from '@/lib/data';
-import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff, TriangleAlert, Ban, Blocks, Skull } from "lucide-react";
+import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldCheck, RotateCcw, UserCheck, ShieldOff, TriangleAlert, Ban, BrickWall, Skull } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AppHeader } from '@/components/app-header';
@@ -320,7 +320,7 @@ function ScoringPage() {
 
                 <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                   <h3 className="font-semibold flex items-center gap-1 text-sky-500">
-                    <Blocks className="h-4 w-4" /> Block Buster
+                    <BrickWall className="h-4 w-4" /> Block Buster
                   </h3>
                   {blockBusterWinner ? (
                     <>

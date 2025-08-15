@@ -19,7 +19,7 @@ import {
   RotateCcw,
   UserCheck,
   Ban,
-  Blocks,
+  BrickWall,
   Skull,
   TriangleAlert,
 } from "lucide-react";
@@ -357,7 +357,7 @@ function DashboardPage() {
 
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
               <h3 className="font-semibold flex items-center gap-1 text-sky-500">
-                <Blocks className="h-4 w-4" /> Block Buster
+                <BrickWall className="h-4 w-4" /> Block Buster
               </h3>
               {blockBusterWinner ? (
                 <>
