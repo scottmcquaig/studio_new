@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
@@ -12,12 +12,21 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const router = useRouter();
   const { toast } = useToast();
+  const { appUser, loading } = useAuth();
+
+  useEffect(() => {
+    // If the user is already logged in, redirect them to the dashboard.
+    if (!loading && appUser) {
+      router.push('/');
+    }
+  }, [appUser, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +42,14 @@ export default function LoginPage() {
       });
     }
   };
+
+  if (loading || appUser) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+          <div>Loading...</div>
+        </div>
+      );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
