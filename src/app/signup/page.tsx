@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getFirestore, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getFirestore } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,7 @@ export default function SignUpPage() {
       toast({ title: "Error", description: "All fields are required.", variant: "destructive" });
       return;
     }
+
     try {
       // 1. Create the user with Firebase Auth.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -35,25 +36,17 @@ export default function SignUpPage() {
       // 2. Update the user's display name in their Auth profile.
       await updateProfile(user, { displayName });
 
-      // 3. Check if a user document already exists (e.g., the pre-seeded admin).
+      // 3. Create the user's document in Firestore.
+      // This will trigger the backend Cloud Function to assign a role.
       const userDocRef = doc(db, 'users', user.uid);
-      const docSnap = await getDoc(userDocRef);
-
-      if (docSnap.exists()) {
-        // The document exists (likely the admin user), so we don't need to create it.
-        // The AuthProvider will handle linking them.
-        console.log("User document already exists, linking account.");
-      } else {
-        // Standard new user, create their Firestore document with 'player' role.
-        await setDoc(userDocRef, {
-          displayName: displayName,
-          email: user.email,
-          photoURL: user.photoURL || '',
-          createdAt: new Date().toISOString(),
-          role: 'player', // Default role for new sign-ups
-          status: 'active',
-        });
-      }
+      await setDoc(userDocRef, {
+        displayName: displayName,
+        email: user.email,
+        photoURL: user.photoURL || '',
+        createdAt: new Date().toISOString(),
+        role: 'player', // Default role for new sign-ups
+        status: 'active',
+      });
 
       toast({ title: "Success", description: "Account created successfully! Please log in." });
       router.push('/login');
