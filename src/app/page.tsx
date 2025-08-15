@@ -358,7 +358,7 @@ function DashboardPage() {
                 )}
               </div>
               
-              <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+              <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                 <div className="flex flex-col items-center flex-grow">
                   <h3 className="font-semibold flex items-center gap-1 text-amber-500">
                     <Ban className="h-4 w-4" /> POV
@@ -515,7 +515,7 @@ function DashboardPage() {
                                     <div className="flex items-center gap-3">
                                       {contestants.length > 1 ? (
                                         <div className="flex -space-x-4">
-                                          {contestants.slice(0, 3).map((c, i) => (
+                                          {contestants.slice(0, 3).map((c) => (
                                             <Image
                                               key={c.id}
                                               src={c.photoUrl || "https://placehold.co/100x100.png"}
