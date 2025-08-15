@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
@@ -25,7 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch, where } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch, where, getDocs } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
@@ -54,6 +54,7 @@ const colorSelection = [
 
 const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPECIAL_POWER'];
 
+const USERS_PER_PAGE = 5;
 
 // Component to manage a single rule row, preventing input focus loss
 const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index: number, onUpdate: (index: number, field: keyof ScoringRule, value: string | number) => void, onRemove: (code: string) => void }) => {
@@ -117,10 +118,14 @@ function AdminPage() {
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const leagueSettings = useMemo(() => allLeagues.find(l => l.id === selectedLeagueId), [allLeagues, selectedLeagueId]);
+  const [leagueToDelete, setLeagueToDelete] = useState<League | null>(null);
 
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
+  
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
 
   const [activeSeason, setActiveSeason] = useState<Season | null>(MOCK_SEASONS[0]);
 
@@ -185,6 +190,21 @@ function AdminPage() {
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
   const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
   const teams = useMemo(() => allTeams.filter(t => t.leagueId === selectedLeagueId).sort((a,b) => a.draftOrder - b.draftOrder), [allTeams, selectedLeagueId]);
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => 
+        user.displayName.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+    );
+  }, [users, userSearchTerm]);
+
+  const totalUserPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (userCurrentPage - 1) * USERS_PER_PAGE;
+    const endIndex = startIndex + USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, userCurrentPage]);
 
 
   useEffect(() => {
@@ -1006,6 +1026,46 @@ function AdminPage() {
             });
         }
     };
+    
+    const handleDeleteLeague = async () => {
+        if (!leagueToDelete) return;
+        const batch = writeBatch(db);
+        try {
+            // Delete the league
+            const leagueDocRef = doc(db, 'leagues', leagueToDelete.id);
+            batch.delete(leagueDocRef);
+
+            // Find and delete associated teams
+            const teamsQuery = query(collection(db, 'teams'), where('leagueId', '==', leagueToDelete.id));
+            const teamsSnapshot = await getDocs(teamsQuery);
+            teamsSnapshot.forEach(doc => batch.delete(doc.ref));
+
+            // Find and delete associated picks
+            const picksQuery = query(collection(db, 'picks'), where('leagueId', '==', leagueToDelete.id));
+            const picksSnapshot = await getDocs(picksQuery);
+            picksSnapshot.forEach(doc => batch.delete(doc.ref));
+
+            await batch.commit();
+
+            toast({
+                title: 'League Deleted',
+                description: `The league "${leagueToDelete.name}" and all its data have been removed.`,
+            });
+            
+            if (selectedLeagueId === leagueToDelete.id) {
+                setSelectedLeagueId(null);
+            }
+        } catch (error) {
+            console.error('Error deleting league:', error);
+            toast({
+                title: 'Deletion Failed',
+                description: 'Could not delete the league. Check console for errors.',
+                variant: 'destructive',
+            });
+        } finally {
+            setLeagueToDelete(null);
+        }
+    };
 
   if (!activeSeason || !currentUser) {
     return (
@@ -1055,26 +1115,7 @@ function AdminPage() {
                         <CardHeader>
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
-                                <div>
-                                    <Button size="sm" variant="outline" className="mr-2"><PlusCircle className="mr-2"/> New League</Button>
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button size="sm" variant="destructive"><Database className="mr-2"/> Seed Database</Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This will populate your database with sample data. This could overwrite existing data. This action is not reversible.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleSeedDatabase}>Seed</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </div>
+                                <Button size="sm" variant="outline" className="mr-2"><PlusCircle className="mr-2"/> New League</Button>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -1099,6 +1140,25 @@ function AdminPage() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="outline" size="sm" onClick={() => {setSelectedLeagueId(l.id); setActiveTab('scoring');}}>Manage</Button>
+                                             <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="ml-2" onClick={() => setLeagueToDelete(l)}>
+                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete League?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Are you sure you want to delete the league "{leagueToDelete?.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel onClick={() => setLeagueToDelete(null)}>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleDeleteLeague}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </TableCell>
                                     </TableRow>
                                     ))}
@@ -1138,6 +1198,19 @@ function AdminPage() {
                             </div>
                         </CardHeader>
                          <CardContent>
+                            <div className="relative mb-4">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search by name or email..."
+                                    className="w-full rounded-lg bg-background pl-8"
+                                    value={userSearchTerm}
+                                    onChange={(e) => {
+                                        setUserSearchTerm(e.target.value);
+                                        setUserCurrentPage(1);
+                                    }}
+                                />
+                            </div>
                              <Table>
                                  <TableHeader>
                                      <TableRow>
@@ -1149,7 +1222,7 @@ function AdminPage() {
                                      </TableRow>
                                  </TableHeader>
                                  <TableBody>
-                                     {users.map(u => (
+                                     {paginatedUsers.map(u => (
                                      <TableRow key={u.id}>
                                          <TableCell className="font-medium">{u.displayName}</TableCell>
                                          <TableCell>{u.email}</TableCell>
@@ -1166,6 +1239,29 @@ function AdminPage() {
                                  </TableBody>
                              </Table>
                          </CardContent>
+                         <CardFooter className="flex items-center justify-end space-x-2 py-4">
+                            <span className="text-sm text-muted-foreground">
+                                Page {userCurrentPage} of {totalUserPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUserCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={userCurrentPage === 1}
+                            >
+                                <ChevronLeftIcon className="h-4 w-4" />
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUserCurrentPage(prev => Math.min(totalUserPages, prev + 1))}
+                                disabled={userCurrentPage === totalUserPages}
+                            >
+                                Next
+                                <ChevronRightIcon className="h-4 w-4" />
+                            </Button>
+                        </CardFooter>
                      </Card>
                   </CardContent>
                 </Card>
@@ -2066,5 +2162,7 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin']);
+
+    
 
     
