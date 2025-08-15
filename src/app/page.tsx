@@ -292,7 +292,7 @@ function DashboardPage() {
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                 <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                   <Crown className="h-4 w-4" /> HOH
@@ -319,7 +319,7 @@ function DashboardPage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                 <h3 className="font-semibold flex items-center gap-1 text-red-400">
                   <TriangleAlert className="h-4 w-4" /> Noms
                 </h3>
@@ -597,7 +597,6 @@ function DashboardPage() {
           </div>
         </div>
       </main>
-      <BottomNavBar />
     </PageLayout>
   );
 }
