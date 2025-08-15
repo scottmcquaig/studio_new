@@ -29,22 +29,17 @@ export default function SignUpPage() {
     }
 
     try {
-      // 1. Create the user with Firebase Auth.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // 2. Update the user's display name in their Auth profile.
       await updateProfile(user, { displayName });
 
-      // 3. Create the user's document in Firestore.
-      // This will trigger the backend Cloud Function to assign a role.
       const userDocRef = doc(db, 'users', user.uid);
       await setDoc(userDocRef, {
         displayName: displayName,
         email: user.email,
         photoURL: user.photoURL || '',
         createdAt: new Date().toISOString(),
-        role: 'player', // Default role for new sign-ups
         status: 'active',
       });
 
