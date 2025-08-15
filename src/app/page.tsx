@@ -291,8 +291,8 @@ function DashboardPage() {
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+            <CardContent className="flex flex-wrap justify-center gap-4">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                   <Crown className="h-4 w-4" /> HOH
                 </h3>
@@ -318,7 +318,7 @@ function DashboardPage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-red-400">
                   <TriangleAlert className="h-4 w-4" /> Noms
                 </h3>
@@ -358,8 +358,8 @@ function DashboardPage() {
                 )}
               </div>
               
-              <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
-                <div className="flex flex-col items-center flex-grow">
+              <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
+                <div className="flex flex-col items-center justify-center flex-grow">
                   <h3 className="font-semibold flex items-center gap-1 text-amber-500">
                     <Ban className="h-4 w-4" /> POV
                   </h3>
@@ -385,35 +385,35 @@ function DashboardPage() {
                   )}
                 </div>
                 <Separator orientation="vertical" className="h-auto"/>
-                 <div className="flex flex-col items-center justify-center flex-shrink-0 px-2">
+                 <div className="flex flex-col items-center justify-center flex-shrink-0 px-2 min-w-fit">
                   {pov?.used === false && (
                       <div className="flex flex-col items-center gap-1">
                         <Ban className="h-8 w-8 text-muted-foreground"/>
-                        <span className="text-xs text-muted-foreground">Not Used</span>
+                        <span className="text-xs text-muted-foreground text-center">Not Used</span>
                       </div>
                     )}
                     {pov?.used === true && savedPlayer && (
                        <div className="flex flex-col items-center gap-2">
                          <div className="flex flex-col items-center">
                             <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
-                            <span className="text-xs">{getContestantDisplayName(savedPlayer, 'short')}</span>
+                            <span className="text-xs text-center">{getContestantDisplayName(savedPlayer, 'short')}</span>
                          </div>
                          <div className="flex flex-col items-center mt-1">
                              <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
-                             <span className="text-xs">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
+                             <span className="text-xs text-center">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
                          </div>
                        </div>
                     )}
                     {pov?.used === undefined && povWinner && (
                        <div className="flex flex-col items-center gap-1">
                         <HelpCircle className="h-8 w-8 text-muted-foreground"/>
-                        <span className="text-xs text-muted-foreground">TBD</span>
+                        <span className="text-xs text-muted-foreground text-center">TBD</span>
                       </div>
                     )}
                 </div>
               </div>
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-sky-500">
                   <BrickWall className="h-4 w-4" /> Block Buster
                 </h3>
@@ -440,7 +440,7 @@ function DashboardPage() {
               </div>
 
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
                   <Skull className="h-4 w-4" /> Evicted
                 </h3>
