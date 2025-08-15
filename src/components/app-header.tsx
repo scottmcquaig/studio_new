@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "./ui/button";
-import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus } from "lucide-react";
+import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getFirestore, doc, onSnapshot, Unsubscribe, collection, query } from 'firebase/firestore';
 import { app, auth } from '@/lib/firebase';
@@ -21,6 +21,7 @@ import type { User as UserType, League, Season } from '@/lib/data';
 import { MOCK_SEASONS } from "@/lib/data";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { Badge } from "./ui/badge";
 
 const LEAGUE_ID = 'bb27';
 
@@ -60,7 +61,8 @@ export function AppHeader() {
     }
   };
 
-  const canShowAdminView = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
+  const canManageLeague = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
+  const isSiteAdmin = currentUser?.role === 'site_admin';
 
   if (loading || !activeLeague || !activeSeason) {
       return (
@@ -85,10 +87,18 @@ export function AppHeader() {
         </div>
       </Link>
       
-      {canShowAdminView && (
-        <Button asChild variant="ghost" size="icon" className="ml-2">
+      {canManageLeague && (
+        <Button asChild variant="ghost" size="sm" className="ml-2">
             <Link href="/admin">
-                <Settings className="h-5 w-5"/>
+                <Settings className="mr-2 h-4 w-4"/> League Admin
+            </Link>
+        </Button>
+      )}
+      
+      {isSiteAdmin && (
+         <Button asChild variant="outline" size="sm">
+            <Link href="/admin?view=site">
+                <Shield className="mr-2 h-4 w-4"/> Site Admin
             </Link>
         </Button>
       )}
