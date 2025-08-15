@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Button } from "./ui/button";
-import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus, Shield, ChevronsRight } from "lucide-react";
+import { Settings, LogOut, User as UserIcon, LogIn, UserPlus, Shield, ChevronsRight } from "lucide-react";
 import { createElement, useEffect, useState } from "react";
 import { getFirestore, doc, onSnapshot, Unsubscribe, collection, query } from 'firebase/firestore';
 import { app, auth } from '@/lib/firebase';
@@ -89,7 +89,7 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
+    <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:px-6">
       <div className="flex items-center gap-2">
         <Link href="/" className="flex items-center gap-2">
             <Logo className="h-7 w-7" />
