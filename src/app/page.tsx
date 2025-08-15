@@ -146,18 +146,52 @@ function DashboardPage() {
     return teams.map(team => {
       const teamPicks = picks.filter(p => p.teamId === team.id);
       const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
-      const weekly_score = calculateTeamScore(team, scoringRules.rules, teamPicks, currentWeekEvents);
-      return { ...team, total_score, weekly_score };
+      return { ...team, total_score };
     });
-  }, [teams, scoringRules, picks, competitions, currentWeekEvents, league]);
+  }, [teams, scoringRules, picks, competitions, league]);
 
   const sortedTeams = useMemo(() => {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
   }, [teamsWithScores]);
+  
+  const topPerformers = useMemo(() => {
+    if (!scoringRules?.rules.length || !contestants.length || !currentWeekEvents.length) return [];
+    
+    const weeklyScores: {[key: string]: number} = {};
+    
+    contestants.forEach(c => weeklyScores[c.id] = 0);
 
-  const topMovers = useMemo(() => {
-    return [...teamsWithScores].sort((a,b) => (b.weekly_score || 0) - (a.weekly_score || 0)).slice(0, 3);
-  }, [teamsWithScores]);
+    currentWeekEvents.forEach(comp => {
+        const processEvent = (contestantId: string, eventCode: string) => {
+            const rule = scoringRules.rules.find(r => r.code === eventCode);
+            if (rule && weeklyScores[contestantId] !== undefined) {
+                weeklyScores[contestantId] += rule.points;
+            }
+        };
+
+        if (comp.winnerId) {
+            let code = '';
+            if (comp.type === 'HOH') code = 'HOH_WIN';
+            else if (comp.type === 'VETO') code = 'VETO_WIN';
+            else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
+            else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
+            if (code) processEvent(comp.winnerId, code);
+
+            if (comp.type === 'VETO' && comp.used) {
+                processEvent(comp.winnerId, 'VETO_USED');
+            }
+        }
+        if (comp.type === 'NOMINATIONS' && comp.nominees) {
+            comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
+        }
+    });
+    
+    return contestants
+        .map(c => ({...c, weekly_score: weeklyScores[c.id]}))
+        .filter(c => c.weekly_score !== 0)
+        .sort((a, b) => b.weekly_score - a.weekly_score)
+        .slice(0, 3);
+  }, [contestants, scoringRules, currentWeekEvents]);
   
   const weeklyActivity = useMemo(() => {
     if (!scoringRules?.rules || !contestants.length) return [];
@@ -452,19 +486,28 @@ function DashboardPage() {
             <div className="space-y-4 md:space-y-8">
               <Card>
                   <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Flame /> Top Movers</CardTitle>
-                      <CardDescription>Top scoring teams for Week {activeSeason.currentWeek}.</CardDescription>
+                      <CardTitle className="flex items-center gap-2"><Flame /> Top Performers</CardTitle>
+                      <CardDescription>Top scoring {league.contestantTerm.plural.toLowerCase()} for Week {activeSeason.currentWeek}.</CardDescription>
                   </CardHeader>
                   <CardContent>
                       <div className="space-y-4">
-                          {topMovers.map((team) => (
-                              <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                                  <div>
-                                      <p className="font-medium">{team.name}</p>
-                                      <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
+                          {topPerformers.map((contestant) => (
+                              <div key={contestant.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                  <div className="flex items-center gap-3">
+                                    <Image
+                                      src={contestant.photoUrl || "https://placehold.co/100x100.png"}
+                                      alt={getContestantDisplayName(contestant, 'full')}
+                                      width={40}
+                                      height={40}
+                                      className="rounded-full"
+                                      data-ai-hint="portrait person"
+                                    />
+                                    <div>
+                                      <p className="font-medium">{getContestantDisplayName(contestant, 'full')}</p>
+                                    </div>
                                   </div>
-                                  <Badge variant="default" className="w-20 justify-center text-base bg-green-100 text-green-800 hover:bg-green-200">
-                                    <span>+{team.weekly_score || 0}</span>
+                                  <Badge variant="default" className={cn("w-20 justify-center text-base", contestant.weekly_score > 0 ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200")}>
+                                    <span>{contestant.weekly_score > 0 ? '+':''}{contestant.weekly_score || 0}</span>
                                   </Badge>
                               </div>
                           ))}
