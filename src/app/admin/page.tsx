@@ -146,6 +146,7 @@ function AdminPage() {
   
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
+  const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
 
   const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
@@ -158,6 +159,13 @@ function AdminPage() {
   const [addUserToLeagueData, setAddUserToLeagueData] = useState({ userId: '', teamId: '' });
   const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
+  const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
+      name: '',
+      seasonId: MOCK_SEASONS[0]?.id,
+      maxTeams: 8,
+      contestantTerm: { singular: 'Contestant', plural: 'Contestants' },
+      settings: { draftRounds: 4 }
+  });
   
   const [teamNames, setTeamNames] = useState<{[id: string]: string}>({});
 
@@ -1070,7 +1078,8 @@ function AdminPage() {
             });
             
             if (selectedLeagueId === leagueToDelete.id) {
-                setSelectedLeagueId(null);
+                const nextLeague = allLeagues.find(l => l.id !== leagueToDelete.id);
+                setSelectedLeagueId(nextLeague ? nextLeague.id : null);
             }
         } catch (error) {
             console.error('Error deleting league:', error);
@@ -1081,6 +1090,46 @@ function AdminPage() {
             });
         } finally {
             setLeagueToDelete(null);
+        }
+    };
+
+    const handleCreateLeague = async () => {
+        if (!newLeagueData.name || !newLeagueData.seasonId) {
+            toast({ title: "Error", description: "League Name and Season are required.", variant: 'destructive' });
+            return;
+        }
+
+        const leagueId = newLeagueData.name.toLowerCase().replace(/\s+/g, '_');
+
+        const newLeague: Omit<League, 'id'> = {
+            name: newLeagueData.name,
+            abbreviatedName: newLeagueData.name,
+            show: "Big Brother", // Assuming default for now
+            seasonId: newLeagueData.seasonId,
+            visibility: 'private',
+            maxTeams: newLeagueData.maxTeams || 8,
+            waivers: 'FAAB',
+            createdAt: new Date().toISOString(),
+            contestantTerm: newLeagueData.contestantTerm || { singular: 'Contestant', plural: 'Contestants' },
+            settings: {
+                draftRounds: newLeagueData.settings?.draftRounds || 4,
+                allowMidSeasonDraft: false,
+                scoringRuleSetId: 'bb27_ruleset', // Default ruleset for now
+                transactionLockDuringEpisodes: true,
+                scoringBreakdownCategories: [],
+            },
+        };
+
+        try {
+            await setDoc(doc(db, 'leagues', leagueId), newLeague);
+            toast({ title: "League Created!", description: `The league "${newLeague.name}" has been created.` });
+            setIsNewLeagueDialogOpen(false);
+            setNewLeagueData({ name: '', seasonId: MOCK_SEASONS[0]?.id, maxTeams: 8, contestantTerm: { singular: 'Contestant', plural: 'Contestants' }, settings: { draftRounds: 4 } });
+            setSelectedLeagueId(leagueId);
+            setActiveTab('league');
+        } catch (error) {
+            console.error("Error creating league:", error);
+            toast({ title: "Error", description: "Could not create the new league.", variant: "destructive" });
         }
     };
 
@@ -1104,7 +1153,56 @@ function AdminPage() {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
-                        <Button size="sm" variant="outline" className="mr-2"><PlusCircle className="mr-2"/> New League</Button>
+                        <Dialog open={isNewLeagueDialogOpen} onOpenChange={setIsNewLeagueDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New League</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Create New League</DialogTitle>
+                                    <DialogDescription>Set up a new fantasy league for a season.</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>League Name</Label>
+                                        <Input value={newLeagueData.name} onChange={(e) => setNewLeagueData({...newLeagueData, name: e.target.value})} placeholder="e.g., Big Brother 26" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Season</Label>
+                                        <Select value={newLeagueData.seasonId} onValueChange={(val) => setNewLeagueData({...newLeagueData, seasonId: val})}>
+                                            <SelectTrigger><SelectValue placeholder="Select a season..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {MOCK_SEASONS.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Number of Teams</Label>
+                                            <Input type="number" value={newLeagueData.maxTeams} onChange={(e) => setNewLeagueData({...newLeagueData, maxTeams: Number(e.target.value)})} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Draft Rounds</Label>
+                                            <Input type="number" value={newLeagueData.settings?.draftRounds} onChange={(e) => setNewLeagueData({...newLeagueData, settings: {...newLeagueData.settings, draftRounds: Number(e.target.value)}})} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Contestant (Singular)</Label>
+                                            <Input value={newLeagueData.contestantTerm?.singular} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...newLeagueData.contestantTerm, singular: e.target.value}})} placeholder="e.g., Houseguest" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Contestant (Plural)</Label>
+                                            <Input value={newLeagueData.contestantTerm?.plural} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...newLeagueData.contestantTerm, plural: e.target.value}})} placeholder="e.g., Houseguests" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setIsNewLeagueDialogOpen(false)}>Cancel</Button>
+                                    <Button onClick={handleCreateLeague}>Create League</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -1139,7 +1237,7 @@ function AdminPage() {
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>Delete League?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    Are you sure you want to delete the league "{leagueToDelete?.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
+                                                    Are you sure you want to delete the league "{l.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -1280,9 +1378,16 @@ function AdminPage() {
           <Building className="h-5 w-5" />
           Admin Panel
         </h1>
-        <Button asChild variant="outline" size="sm">
-            <Link href="/"><Home className="mr-2 h-4 w-4" /> Back to App</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+            {currentUser?.role === 'site_admin' && (
+                 <Button variant="outline" size="sm" onClick={() => handleTabChange('site_admin')}>
+                    <Shield className="mr-2 h-4 w-4" /> Site Admin
+                </Button>
+            )}
+            <Button asChild variant="outline" size="sm">
+                <Link href="/"><Home className="mr-2 h-4 w-4" /> Back to App</Link>
+            </Button>
+        </div>
       </header>
       <main className="flex-1 p-4 md:p-8">
         {activeTab === 'site_admin' && currentUser?.role === 'site_admin' ? siteAdminView : (
