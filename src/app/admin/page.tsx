@@ -212,16 +212,19 @@ function AdminPage() {
 
 
   useEffect(() => {
-    if (currentUser?.role !== 'site_admin' || !initialView) {
-      setActiveTab('scoring'); // Fallback for non-site-admins
+    if (initialView === 'site') {
+        setActiveTab('site_admin');
+    } else {
+        const lastTab = sessionStorage.getItem('adminActiveTab');
+        if (lastTab && lastTab !== 'site_admin') {
+            setActiveTab(lastTab);
+        } else {
+            setActiveTab('scoring');
+        }
     }
-  }, [currentUser, initialView]);
+  }, [initialView]);
 
   useEffect(() => {
-    const lastTab = sessionStorage.getItem('adminActiveTab');
-    if (lastTab) {
-      setActiveTab(lastTab);
-    }
     const lastWeek = sessionStorage.getItem('adminSelectedWeek');
     if (lastWeek && activeSeason && Number(lastWeek) <= activeSeason.currentWeek) {
         setSelectedWeek(Number(lastWeek));
@@ -621,7 +624,7 @@ function AdminPage() {
         createEvent('NOMINATIONS', { nominees: nominees.filter(n => n), airDate: (nomsDate || new Date()).toISOString() });
     }
     if (vetoWinnerId) {
-        createEvent('VETO', { winnerId: vetoWinnerId, used: vetoUsed, usedOnId, replacementNomId, airDate: (vetoDate || new Date()).toISOString() });
+        createEvent('VETO', { winnerId: vetoWinnerId, used: vetoUsed, usedOnId: vetoUsedOnId, replacementNomId: vetoReplacementNomId, airDate: (vetoDate || new Date()).toISOString() });
         if (vetoUsed && vetoUsedOnId) {
              createEvent('SPECIAL_EVENT', {
                 specialEventCode: 'SAVED',
@@ -1282,7 +1285,7 @@ function AdminPage() {
         </Button>
       </header>
       <main className="flex-1 p-4 md:p-8">
-        {currentUser?.role === 'site_admin' && initialView === 'site' ? siteAdminView : (
+        {activeTab === 'site_admin' && currentUser?.role === 'site_admin' ? siteAdminView : (
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="scoring">Scoring</TabsTrigger>
