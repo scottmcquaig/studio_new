@@ -76,6 +76,7 @@ export interface League {
     maxTeams: number;
     waivers: 'FAAB' | 'Standard';
     createdAt: string;
+    adminUserIds?: string[];
     contestantTerm: {
         singular: string;
         plural: string;
@@ -224,6 +225,7 @@ export const MOCK_LEAGUES: League[] = [
       "maxTeams":4,
       "waivers":"FAAB",
       "createdAt":"2025-08-01T12:00:00Z",
+      "adminUserIds": ["user_admin"],
       "contestantTerm": {
         "singular": "Houseguest",
         "plural": "Houseguests"

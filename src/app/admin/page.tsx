@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
@@ -25,7 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch, where, getDocs, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
@@ -120,7 +120,18 @@ function AdminPage() {
   
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
-  const leagueSettings = useMemo(() => allLeagues.find(l => l.id === selectedLeagueId), [allLeagues, selectedLeagueId]);
+  
+  const manageableLeagues = useMemo(() => {
+    if (currentUser?.role === 'site_admin') {
+      return allLeagues;
+    }
+    if (currentUser?.role === 'league_admin') {
+      return allLeagues.filter(l => l.adminUserIds?.includes(currentUser.id));
+    }
+    return [];
+  }, [allLeagues, currentUser]);
+
+  const leagueSettings = useMemo(() => manageableLeagues.find(l => l.id === selectedLeagueId), [manageableLeagues, selectedLeagueId]);
   const [leagueToDelete, setLeagueToDelete] = useState<League | null>(null);
 
   const [allTeams, setAllTeams] = useState<Team[]>([]);
@@ -147,6 +158,8 @@ function AdminPage() {
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
+  const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
+  const [leagueToManageAdmins, setLeagueToManageAdmins] = useState<League | null>(null);
 
   const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
@@ -164,7 +177,8 @@ function AdminPage() {
       seasonId: MOCK_SEASONS[0]?.id,
       maxTeams: 8,
       contestantTerm: { singular: 'Contestant', plural: 'Contestants' },
-      settings: { draftRounds: 4 }
+      settings: { draftRounds: 4 },
+      adminUserIds: [],
   });
   
   const [teamNames, setTeamNames] = useState<{[id: string]: string}>({});
@@ -220,7 +234,7 @@ function AdminPage() {
 
 
   useEffect(() => {
-    if (initialView === 'site') {
+    if (initialView === 'site' && currentUser?.role === 'site_admin') {
         setActiveTab('site_admin');
     } else {
         const lastTab = sessionStorage.getItem('adminActiveTab');
@@ -230,7 +244,7 @@ function AdminPage() {
             setActiveTab('scoring');
         }
     }
-  }, [initialView]);
+  }, [initialView, currentUser]);
 
   useEffect(() => {
     const lastWeek = sessionStorage.getItem('adminSelectedWeek');
@@ -289,9 +303,6 @@ function AdminPage() {
             leagueData.push({ ...doc.data(), id: doc.id } as League);
         });
         setAllLeagues(leagueData);
-        if (!selectedLeagueId && leagueData.length > 0) {
-            setSelectedLeagueId(leagueData[0].id);
-        }
     });
     
     const usersCol = collection(db, "users");
@@ -331,6 +342,12 @@ function AdminPage() {
         unsubscribeAllTeams();
     };
   }, [db]);
+
+  useEffect(() => {
+    if (!selectedLeagueId && manageableLeagues.length > 0) {
+        setSelectedLeagueId(manageableLeagues[0].id);
+    }
+  }, [manageableLeagues, selectedLeagueId]);
   
   useEffect(() => {
     if (!selectedLeagueId) return;
@@ -346,7 +363,7 @@ function AdminPage() {
     });
     
     return () => {
-      unsubscribePicks();
+      if (unsubscribePicks) unsubscribePicks();
     }
   }, [db, selectedLeagueId]);
 
@@ -1111,6 +1128,7 @@ function AdminPage() {
             waivers: 'FAAB',
             createdAt: new Date().toISOString(),
             contestantTerm: newLeagueData.contestantTerm || { singular: 'Contestant', plural: 'Contestants' },
+            adminUserIds: newLeagueData.adminUserIds || [],
             settings: {
                 draftRounds: newLeagueData.settings?.draftRounds || 4,
                 allowMidSeasonDraft: false,
@@ -1124,7 +1142,7 @@ function AdminPage() {
             await setDoc(doc(db, 'leagues', leagueId), newLeague);
             toast({ title: "League Created!", description: `The league "${newLeague.name}" has been created.` });
             setIsNewLeagueDialogOpen(false);
-            setNewLeagueData({ name: '', seasonId: MOCK_SEASONS[0]?.id, maxTeams: 8, contestantTerm: { singular: 'Contestant', plural: 'Contestants' }, settings: { draftRounds: 4 } });
+            setNewLeagueData({ name: '', seasonId: MOCK_SEASONS[0]?.id, maxTeams: 8, contestantTerm: { singular: 'Contestant', plural: 'Contestants' }, settings: { draftRounds: 4 }, adminUserIds: [] });
             setSelectedLeagueId(leagueId);
             setActiveTab('league');
         } catch (error) {
@@ -1132,6 +1150,49 @@ function AdminPage() {
             toast({ title: "Error", description: "Could not create the new league.", variant: "destructive" });
         }
     };
+
+    const handleManageLeagueAdmins = (league: League) => {
+        setLeagueToManageAdmins(league);
+        setIsManageAdminsDialogOpen(true);
+    };
+
+    const handleAddAdmin = async (userId: string) => {
+        if (!leagueToManageAdmins) return;
+        const leagueDocRef = doc(db, 'leagues', leagueToManageAdmins.id);
+        try {
+            await updateDoc(leagueDocRef, {
+                adminUserIds: arrayUnion(userId)
+            });
+            toast({ title: "Admin Added", description: `User has been made a league admin.` });
+        } catch (error) {
+            console.error("Error adding admin:", error);
+            toast({ title: "Error", description: "Could not add admin.", variant: "destructive" });
+        }
+    };
+
+    const handleRemoveAdmin = async (userId: string) => {
+        if (!leagueToManageAdmins) return;
+        const leagueDocRef = doc(db, 'leagues', leagueToManageAdmins.id);
+        try {
+            await updateDoc(leagueDocRef, {
+                adminUserIds: arrayRemove(userId)
+            });
+            toast({ title: "Admin Removed", description: `User is no longer a league admin.` });
+        } catch (error) {
+            console.error("Error removing admin:", error);
+            toast({ title: "Error", description: "Could not remove admin.", variant: "destructive" });
+        }
+    };
+
+    const leagueAdmins = useMemo(() => {
+        if (!leagueToManageAdmins) return [];
+        return users.filter(u => leagueToManageAdmins.adminUserIds?.includes(u.id));
+    }, [users, leagueToManageAdmins]);
+
+    const potentialAdmins = useMemo(() => {
+        if (!leagueToManageAdmins) return [];
+        return users.filter(u => !leagueToManageAdmins.adminUserIds?.includes(u.id));
+    }, [users, leagueToManageAdmins]);
 
   if (!activeSeason || !currentUser) {
     return (
@@ -1186,6 +1247,15 @@ function AdminPage() {
                                             <Input type="number" value={newLeagueData.settings?.draftRounds} onChange={(e) => setNewLeagueData({...newLeagueData, settings: {...newLeagueData.settings, draftRounds: Number(e.target.value)}})} />
                                         </div>
                                     </div>
+                                     <div className="space-y-2">
+                                        <Label>League Admin (Optional)</Label>
+                                        <Select value={(newLeagueData.adminUserIds || [])[0]} onValueChange={(val) => setNewLeagueData({...newLeagueData, adminUserIds: val ? [val] : [] })}>
+                                            <SelectTrigger><SelectValue placeholder="Select an admin..." /></SelectTrigger>
+                                            <SelectContent>
+                                                {users.map(u => <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Contestant (Singular)</Label>
@@ -1227,6 +1297,9 @@ function AdminPage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="outline" size="sm" onClick={() => {setSelectedLeagueId(l.id); setActiveTab('scoring');}}>Manage</Button>
+                                    <Button variant="ghost" size="icon" className="ml-2" onClick={() => handleManageLeagueAdmins(l)}>
+                                        <ShieldAlert className="h-4 w-4" />
+                                    </Button>
                                      <AlertDialog>
                                         <AlertDialogTrigger asChild>
                                             <Button variant="ghost" size="icon" className="ml-2" onClick={() => setLeagueToDelete(l)}>
@@ -2326,6 +2399,43 @@ function AdminPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+        
+        <Dialog open={isManageAdminsDialogOpen} onOpenChange={setIsManageAdminsDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Manage Admins for {leagueToManageAdmins?.name}</DialogTitle>
+                    <DialogDescription>Assign or remove league administrators.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                    <div>
+                        <Label>Current Admins</Label>
+                        <div className="space-y-2 mt-2">
+                            {leagueAdmins.map(admin => (
+                                <div key={admin.id} className="flex items-center justify-between p-2 border rounded-md">
+                                    <span>{admin.displayName} ({admin.email})</span>
+                                    <Button variant="destructive" size="sm" onClick={() => handleRemoveAdmin(admin.id)}>Remove</Button>
+                                </div>
+                            ))}
+                            {leagueAdmins.length === 0 && <p className="text-sm text-muted-foreground">No admins assigned.</p>}
+                        </div>
+                    </div>
+                     <div>
+                        <Label>Add New Admin</Label>
+                         <Select onValueChange={handleAddAdmin}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a user to make admin..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {potentialAdmins.map(user => (
+                                    <SelectItem key={user.id} value={user.id}>{user.displayName}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+
     </div>
   );
 }
