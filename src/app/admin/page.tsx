@@ -267,8 +267,8 @@ function AdminPage() {
         setUsers(usersData);
     });
     
-    const teamsQuery = query(collection(db, "teams"));
-    const unsubscribeTeams = onSnapshot(teamsQuery, (querySnapshot) => {
+    const allTeamsQuery = query(collection(db, "teams"));
+    const unsubscribeAllTeams = onSnapshot(allTeamsQuery, (querySnapshot) => {
         const teamsData: Team[] = [];
         const teamNamesData: {[id: string]: string} = {};
         const draftOrderData: {[id: string]: number} = {};
@@ -291,7 +291,7 @@ function AdminPage() {
         unsubscribeContestants();
         unsubscribeLeagues();
         unsubscribeUsers();
-        unsubscribeTeams();
+        unsubscribeAllTeams();
     };
   }, [db]);
   
@@ -381,20 +381,20 @@ function AdminPage() {
       return;
     }
     try {
-      const newUserId = `pending_${new Date().getTime()}`;
-      await setDoc(doc(db, "users", newUserId), {
-        id: newUserId,
+      const newUserRef = doc(collection(db, "users"));
+      await setDoc(newUserRef, {
+        id: newUserRef.id,
         ...newUserData,
         createdAt: new Date().toISOString(),
         role: 'player',
         status: 'pending'
       });
-      toast({ title: "User Created", description: `An invitation can be sent to ${newUserData.displayName}.` });
+      toast({ title: "User Invited", description: `An invitation can be sent to ${newUserData.displayName}.` });
       setIsNewUserDialogOpen(false);
       setNewUserData({ displayName: '', email: '' });
     } catch (error) {
       console.error("Error creating user: ", error);
-      toast({ title: "Error", description: "Could not create new user.", variant: "destructive" });
+      toast({ title: "Error", description: "Could not invite new user.", variant: "destructive" });
     }
   };
   
@@ -1052,7 +1052,7 @@ function AdminPage() {
                          <CardHeader>
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-lg flex items-center gap-2"><Users/> Global Users</CardTitle>
-                                <Button size="sm" variant="outline" onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> New User</Button>
+                                <Button size="sm" variant="outline" onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> Invite User</Button>
                             </div>
                         </CardHeader>
                          <CardContent>
@@ -1874,12 +1874,12 @@ function AdminPage() {
                     <div className="flex justify-end gap-2">
                         <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
+                                <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Create New User</DialogTitle>
-                                    <DialogDescription>Create a new global user profile. This does not add them to any league.</DialogDescription>
+                                    <DialogTitle>Invite New User</DialogTitle>
+                                    <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
@@ -1893,7 +1893,7 @@ function AdminPage() {
                                 </div>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create User</Button>
+                                    <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
@@ -1905,7 +1905,7 @@ function AdminPage() {
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>Add User to League</DialogTitle>
-                                    <DialogDescription>Invite an existing user to this league and assign them to a team.</DialogDescription>
+                                    <DialogDescription>Assign an existing user to a team in this league.</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
