@@ -381,9 +381,7 @@ function AdminPage() {
       return;
     }
     try {
-      const newUserRef = doc(collection(db, "users"));
-      await setDoc(newUserRef, {
-        id: newUserRef.id,
+      await addDoc(collection(db, "users"), {
         ...newUserData,
         createdAt: new Date().toISOString(),
         role: 'player',
@@ -399,18 +397,16 @@ function AdminPage() {
   };
   
   const handleAddUserToLeague = async () => {
-     if (!addUserToLeagueData.userId || !addUserToLeagueData.teamId) {
-        toast({ title: "Error", description: "Please select a user and a team.", variant: 'destructive' });
+     if (!addUserToLeagueData.userId || !selectedLeagueId) {
+        toast({ title: "Error", description: "Please select a user.", variant: 'destructive' });
         return;
     }
     const user = users.find(u => u.id === addUserToLeagueData.userId);
-    const team = teams.find(t => t.id === addUserToLeagueData.teamId);
-
-    if (!user || !team) return;
+    if (!user) return;
 
     const batch = writeBatch(db);
 
-    // Remove user from any other team first
+    // Remove user from any other team first in this league
     teams.forEach(t => {
         if ((t.ownerUserIds || []).includes(user.id)) {
             const teamDocRef = doc(db, 'teams', t.id);
@@ -418,15 +414,37 @@ function AdminPage() {
             batch.update(teamDocRef, { ownerUserIds: updatedOwners });
         }
     });
+    
+    let teamToAssign = teams.find(t => t.id === addUserToLeagueData.teamId);
 
-    // Add user to the selected team
-    const teamDocRef = doc(db, 'teams', team.id);
-    const newOwners = [...(team.ownerUserIds || []), user.id];
-    batch.update(teamDocRef, { ownerUserIds: newOwners });
+    if (addUserToLeagueData.teamId && teamToAssign) {
+        // Add user to the selected team
+        const teamDocRef = doc(db, 'teams', teamToAssign.id);
+        const newOwners = [...(teamToAssign.ownerUserIds || []), user.id];
+        batch.update(teamDocRef, { ownerUserIds: newOwners });
+    } else {
+        // Create a new team for the user
+        const newTeamRef = doc(collection(db, 'teams'));
+        const newTeam: Omit<Team, 'id'> = {
+            leagueId: selectedLeagueId,
+            name: `${user.displayName}'s Team`,
+            ownerUserIds: [user.id],
+            draftOrder: (teams.length || 0) + 1,
+            contestantIds: [],
+            faab: 100,
+            createdAt: new Date().toISOString(),
+            total_score: 0,
+            weekly_score: 0,
+            weekly_score_breakdown: { week4: [] }, // This is a placeholder
+        };
+        batch.set(newTeamRef, newTeam);
+        teamToAssign = { ...newTeam, id: newTeamRef.id };
+    }
+
 
     try {
         await batch.commit();
-        toast({ title: "User Assigned", description: `${user?.displayName} has been assigned to ${team?.name}.` });
+        toast({ title: "User Assigned", description: `${user?.displayName} has been assigned to ${teamToAssign?.name}.` });
         setIsAddUserToLeagueDialogOpen(false);
         setAddUserToLeagueData({ userId: '', teamId: '' });
     } catch(error) {
@@ -1920,7 +1938,7 @@ function AdminPage() {
                                     <div className="space-y-2">
                                         <Label>Team Assignment</Label>
                                         <Select value={addUserToLeagueData.teamId} onValueChange={(value) => setAddUserToLeagueData({...addUserToLeagueData, teamId: value})}>
-                                            <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
+                                            <SelectTrigger><SelectValue placeholder="Select a team or create new..." /></SelectTrigger>
                                             <SelectContent>
                                                 {teams.map(team => <SelectItem key={team.id} value={team.id}>{teamNames[team.id]}</SelectItem>)}
                                             </SelectContent>
