@@ -27,7 +27,7 @@ function SettingsPage() {
   return (
     <>
       <AppHeader pageTitle="Settings" pageIcon={Settings} />
-      <main className="flex-1 pb-20 p-4 md:p-8">
+      <main className="flex-1 pb-24 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-6 md:gap-8">
           <div className="space-y-6">
             <Card>

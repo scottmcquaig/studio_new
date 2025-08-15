@@ -171,7 +171,7 @@ function ScoringPage() {
   return (
     <>
       <AppHeader pageTitle="Scoring" pageIcon={ClipboardList} />
-      <main className="flex-1 pb-20 p-4 md:p-8">
+      <main className="flex-1 pb-24 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-4 md:gap-8">
           <div className="absolute top-16 right-4">
               <div className="w-40">
