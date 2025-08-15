@@ -4,53 +4,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin role
-    function isAdmin() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
-    }
-
-    // Rules for the 'users' collection
+    // User Profile Rules
+    // - Anyone can create their own user profile (upon signup).
+    // - Users can only read and update their own profile.
     match /users/{userId} {
-      // Allow a user to create their own document. This is key for sign-up.
-      // It's secure because the userId must match their authentication UID.
-      allow create: if request.auth != null && request.auth.uid == userId;
-
-      // Allow a user to read or update their own data.
-      // Admins can read/write any user document.
-      allow read, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow delete, write: if isAdmin(); // Only admins can delete or write to any user doc.
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
     }
 
-    // Rules for game-data collections
-    // Allow any authenticated user to read, but only admins to write.
-    match /leagues/{leagueId} {
+    // Game Data Rules (all other collections)
+    // - Any authenticated user can read game data.
+    // - Only site_admins can write to game data collections.
+    match /{collection}/{docId} {
       allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    match /teams/{teamId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    match /contestants/{contestantId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    match /competitions/{competitionId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    match /scoring_rules/{ruleSetId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-     match /picks/{pickId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-
-    // By default, deny all other access
-    match /{document=**} {
-      allow read, write: if false;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
     }
   }
 }
