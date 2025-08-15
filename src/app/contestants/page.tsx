@@ -10,7 +10,6 @@ import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pic
 import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck, TriangleAlert, Ban, Blocks, Skull } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { AppHeader } from '@/components/app-header';
-import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
@@ -221,7 +220,6 @@ function ContestantsPage() {
           </Dialog>
         </div>
       </main>
-      <BottomNavBar />
     </PageLayout>
   );
 }

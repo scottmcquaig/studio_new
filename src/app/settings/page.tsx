@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Settings, User, Lock, Building } from "lucide-react";
 import Link from 'next/link';
 import { AppHeader } from '@/components/app-header';
-import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { useAuth } from '@/context/AuthContext';
 import withAuth from '@/components/withAuth';
 import { PageLayout } from '@/components/page-layout';
@@ -77,7 +76,6 @@ function SettingsPage() {
           </div>
         </div>
       </main>
-      <BottomNavBar />
     </PageLayout>
   );
 }

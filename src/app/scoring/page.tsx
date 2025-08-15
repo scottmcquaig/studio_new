@@ -12,7 +12,6 @@ import { ClipboardList, Filter, Crown, Users, Shield, UserX, HelpCircle, ShieldC
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AppHeader } from '@/components/app-header';
-import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
@@ -475,7 +474,6 @@ function ScoringPage() {
 
         </div>
       </main>
-      <BottomNavBar />
     </PageLayout>
   );
 }

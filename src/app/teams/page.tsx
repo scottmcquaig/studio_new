@@ -13,7 +13,6 @@ import { getFirestore, collection, onSnapshot, doc, Unsubscribe, query, where } 
 import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User, Pick } from '@/lib/data';
 import { AppHeader } from '@/components/app-header';
-import { BottomNavBar } from '@/components/bottom-nav-bar';
 import withAuth from '@/components/withAuth';
 import { PageLayout } from '@/components/page-layout';
 
@@ -315,7 +314,6 @@ function TeamsPage() {
           </div>
         </div>
       </main>
-      <BottomNavBar />
     </PageLayout>
   );
 }

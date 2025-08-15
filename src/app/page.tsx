@@ -28,7 +28,6 @@ import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/app-header";
-import { BottomNavBar } from "@/components/bottom-nav-bar";
 import { useState, useEffect, useMemo } from 'react';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
