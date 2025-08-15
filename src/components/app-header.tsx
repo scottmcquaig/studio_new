@@ -94,25 +94,6 @@ export function AppHeader() {
       </Link>
       
       <div className="ml-auto flex items-center gap-2">
-         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              Leagues
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Active Leagues</DropdownMenuLabel>
-            {allLeagues.map(league => (
-                <DropdownMenuItem key={league.id} onSelect={() => setActiveLeague(league)}>
-                    {league.name}
-                </DropdownMenuItem>
-            ))}
-             <DropdownMenuSeparator />
-             <DropdownMenuItem disabled>Past Leagues</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
         <TooltipProvider>
             {canManageLeague && (
                 <Tooltip>
@@ -152,6 +133,13 @@ export function AppHeader() {
                     <>
                         <DropdownMenuLabel>{currentUser.email}</DropdownMenuLabel>
                         <DropdownMenuSeparator/>
+                        <DropdownMenuLabel>Active Leagues</DropdownMenuLabel>
+                        {allLeagues.map(league => (
+                            <DropdownMenuItem key={league.id} onSelect={() => setActiveLeague(league)}>
+                                {league.name}
+                            </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => router.push('/settings')}>
                             <Settings className="mr-2"/> Settings
                         </DropdownMenuItem>
