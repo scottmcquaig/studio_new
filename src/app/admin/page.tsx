@@ -116,7 +116,7 @@ function AdminPage() {
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const leagueSettings = useMemo(() => allLeagues.find(l => l.id === selectedLeagueId), [allLeagues, selectedLeagueId]);
 
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
 
@@ -182,6 +182,8 @@ function AdminPage() {
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
   const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
+  const teams = useMemo(() => allTeams.filter(t => t.leagueId === selectedLeagueId).sort((a,b) => a.draftOrder - b.draftOrder), [allTeams, selectedLeagueId]);
+
 
   useEffect(() => {
     if (currentUser?.role !== 'site_admin') {
@@ -264,12 +266,32 @@ function AdminPage() {
         });
         setUsers(usersData);
     });
+    
+    const teamsQuery = query(collection(db, "teams"));
+    const unsubscribeTeams = onSnapshot(teamsQuery, (querySnapshot) => {
+        const teamsData: Team[] = [];
+        const teamNamesData: {[id: string]: string} = {};
+        const draftOrderData: {[id: string]: number} = {};
+
+        querySnapshot.forEach((doc) => {
+            const team = { ...doc.data(), id: doc.id } as Team;
+            teamsData.push(team);
+            teamNamesData[team.id] = team.name;
+            draftOrderData[team.id] = team.draftOrder;
+        });
+
+        setAllTeams(teamsData);
+        setTeamNames(teamNamesData);
+        setTeamDraftOrders(draftOrderData);
+    });
+
 
     return () => {
         unsubscribeComps();
         unsubscribeContestants();
         unsubscribeLeagues();
         unsubscribeUsers();
+        unsubscribeTeams();
     };
   }, [db]);
   
@@ -286,27 +308,8 @@ function AdminPage() {
         setCurrentPickNumber(picksData.length + 1);
     });
     
-    const teamsQuery = query(collection(db, "teams"), where("leagueId", "==", selectedLeagueId));
-    const unsubscribeTeams = onSnapshot(teamsQuery, (querySnapshot) => {
-        const teamsData: Team[] = [];
-        const teamNamesData: {[id: string]: string} = {};
-        const draftOrderData: {[id: string]: number} = {};
-
-        querySnapshot.forEach((doc) => {
-            const team = { ...doc.data(), id: doc.id } as Team;
-            teamsData.push(team);
-            teamNamesData[team.id] = team.name;
-            draftOrderData[team.id] = team.draftOrder;
-        });
-
-        setTeams(teamsData.sort((a,b) => a.draftOrder - b.draftOrder));
-        setTeamNames(teamNamesData);
-        setTeamDraftOrders(draftOrderData);
-    });
-
     return () => {
       unsubscribePicks();
-      unsubscribeTeams();
     }
   }, [db, selectedLeagueId]);
 
@@ -1032,7 +1035,7 @@ function AdminPage() {
                                     <TableRow key={l.id} className={cn(l.id === selectedLeagueId && "bg-muted/50")}>
                                         <TableCell className="font-medium">{l.name}</TableCell>
                                         <TableCell>{MOCK_SEASONS.find(s=>s.id === l.seasonId)?.title}</TableCell>
-                                        <TableCell>{teams.filter(t=>t.leagueId === l.id).length} / {l.maxTeams}</TableCell>
+                                        <TableCell>{allTeams.filter(t=>t.leagueId === l.id).length} / {l.maxTeams}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
                                         </TableCell>
@@ -2007,3 +2010,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin']);
+
+    
