@@ -285,7 +285,7 @@ function ScoringPage() {
                   )}
                 </div>
                 <Separator orientation="vertical" className="h-auto"/>
-                <div className="flex flex-col items-center justify-center w-[35%] min-w-fit">
+                <div className="flex flex-col items-center justify-center flex-shrink-0 px-2">
                   {pov?.used === false && (
                       <div className="flex flex-col items-center gap-1">
                         <ShieldOff className="h-8 w-8 text-muted-foreground"/>

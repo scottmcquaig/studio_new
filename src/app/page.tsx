@@ -291,7 +291,7 @@ function DashboardPage() {
                 </span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
               <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
                 <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                   <Crown className="h-4 w-4" /> HOH
@@ -385,7 +385,7 @@ function DashboardPage() {
                   )}
                 </div>
                 <Separator orientation="vertical" className="h-auto"/>
-                 <div className="flex flex-col items-center justify-center w-[35%] min-w-fit">
+                 <div className="flex flex-col items-center justify-center flex-shrink-0 px-2">
                   {pov?.used === false && (
                       <div className="flex flex-col items-center gap-1">
                         <Ban className="h-8 w-8 text-muted-foreground"/>
