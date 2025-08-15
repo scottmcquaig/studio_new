@@ -8,9 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { MOCK_SEASONS } from "@/lib/data";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -141,8 +140,9 @@ function AdminPage() {
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [userCurrentPage, setUserCurrentPage] = useState(1);
   const [userToDelete, setUserToDelete] = useState<UserType | null>(null);
-
-  const [activeSeason, setActiveSeason] = useState<Season | null>(MOCK_SEASONS[0]);
+  
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
 
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -152,7 +152,7 @@ function AdminPage() {
   const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
   const [contestantToDelete, setContestantToDelete] = useState<Contestant | null>(null);
   
-  const [selectedWeek, setSelectedWeek] = useState(activeSeason?.currentWeek || 1);
+  const [selectedWeek, setSelectedWeek] = useState(1);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
@@ -160,6 +160,7 @@ function AdminPage() {
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
   const [leagueToManageAdmins, setLeagueToManageAdmins] = useState<League | null>(null);
+  const [isNewSeasonDialogOpen, setIsNewSeasonDialogOpen] = useState(false);
 
   const [isAddRuleDialogOpen, setIsAddRuleDialogOpen] = useState(false);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
@@ -174,11 +175,17 @@ function AdminPage() {
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
   const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
       name: '',
-      seasonId: MOCK_SEASONS[0]?.id,
+      seasonId: '',
       maxTeams: 8,
       contestantTerm: { singular: 'Contestant', plural: 'Contestants' },
       settings: { draftRounds: 4 },
       adminUserIds: [],
+  });
+  const [newSeasonData, setNewSeasonData] = useState<Partial<Season>>({
+      franchise: 'Big Brother US',
+      status: 'upcoming',
+      currentWeek: 1,
+      year: new Date().getFullYear(),
   });
   
   const [teamNames, setTeamNames] = useState<{[id: string]: string}>({});
@@ -278,6 +285,16 @@ function AdminPage() {
   };
   
   useEffect(() => {
+    const seasonsCol = collection(db, "seasons");
+    const unsubscribeSeasons = onSnapshot(seasonsCol, (snapshot) => {
+        const seasonsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Season))
+            .sort((a, b) => b.year - a.year || (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0));
+        setSeasons(seasonsData);
+        if (!activeSeason && seasonsData.length > 0) {
+            setActiveSeason(seasonsData[0]);
+        }
+    });
+
     const compCol = collection(db, "competitions");
     const unsubscribeComps = onSnapshot(compCol, (querySnapshot) => {
       const compData: Competition[] = [];
@@ -335,13 +352,14 @@ function AdminPage() {
 
 
     return () => {
+        unsubscribeSeasons();
         unsubscribeComps();
         unsubscribeContestants();
         unsubscribeLeagues();
         unsubscribeUsers();
         unsubscribeAllTeams();
     };
-  }, [db]);
+  }, [db, activeSeason]);
 
   useEffect(() => {
     if (!selectedLeagueId && manageableLeagues.length > 0) {
@@ -1142,12 +1160,40 @@ function AdminPage() {
             await setDoc(doc(db, 'leagues', leagueId), newLeague);
             toast({ title: "League Created!", description: `The league "${newLeague.name}" has been created.` });
             setIsNewLeagueDialogOpen(false);
-            setNewLeagueData({ name: '', seasonId: MOCK_SEASONS[0]?.id, maxTeams: 8, contestantTerm: { singular: 'Contestant', plural: 'Contestants' }, settings: { draftRounds: 4 }, adminUserIds: [] });
+            setNewLeagueData({ name: '', seasonId: '', maxTeams: 8, contestantTerm: { singular: 'Contestant', plural: 'Contestants' }, settings: { draftRounds: 4 }, adminUserIds: [] });
             setSelectedLeagueId(leagueId);
             setActiveTab('league');
         } catch (error) {
             console.error("Error creating league:", error);
             toast({ title: "Error", description: "Could not create the new league.", variant: "destructive" });
+        }
+    };
+
+    const handleCreateSeason = async () => {
+        if (!newSeasonData.title || !newSeasonData.seasonNumber || !newSeasonData.year) {
+            toast({ title: "Error", description: "Title, Season Number, and Year are required.", variant: 'destructive' });
+            return;
+        }
+
+        const newSeason: Omit<Season, 'id'> = {
+            franchise: newSeasonData.franchise || 'Big Brother US',
+            seasonNumber: newSeasonData.seasonNumber,
+            title: newSeasonData.title,
+            year: newSeasonData.year,
+            status: newSeasonData.status || 'upcoming',
+            currentWeek: newSeasonData.currentWeek || 1,
+            premiereDate: newSeasonData.premiereDate || new Date().toISOString(),
+            endDate: newSeasonData.endDate || new Date().toISOString(),
+        };
+
+        try {
+            await addDoc(collection(db, 'seasons'), newSeason);
+            toast({ title: "Season Created!", description: `The season "${newSeason.title}" has been created.` });
+            setIsNewSeasonDialogOpen(false);
+            setNewSeasonData({ franchise: 'Big Brother US', status: 'upcoming', currentWeek: 1, year: new Date().getFullYear() });
+        } catch (error) {
+            console.error("Error creating season:", error);
+            toast({ title: "Error", description: "Could not create the new season.", variant: "destructive" });
         }
     };
 
@@ -1207,125 +1253,188 @@ function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Globe /> Site Administration</CardTitle>
-            <CardDescription>Manage global users and leagues across the entire application.</CardDescription>
+            <CardDescription>Manage global users, leagues, and seasons across the entire application.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-             <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
-                        <Dialog open={isNewLeagueDialogOpen} onOpenChange={setIsNewLeagueDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New League</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Create New League</DialogTitle>
-                                    <DialogDescription>Set up a new fantasy league for a season.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>League Name</Label>
-                                        <Input value={newLeagueData.name} onChange={(e) => setNewLeagueData({...newLeagueData, name: e.target.value})} placeholder="e.g., Big Brother 26" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Season</Label>
-                                        <Select value={newLeagueData.seasonId} onValueChange={(val) => setNewLeagueData({...newLeagueData, seasonId: val})}>
-                                            <SelectTrigger><SelectValue placeholder="Select a season..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {MOCK_SEASONS.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+             <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
+                            <Dialog open={isNewLeagueDialogOpen} onOpenChange={setIsNewLeagueDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New League</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Create New League</DialogTitle>
+                                        <DialogDescription>Set up a new fantasy league for a season.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
                                         <div className="space-y-2">
-                                            <Label>Number of Teams</Label>
-                                            <Input type="number" value={newLeagueData.maxTeams} onChange={(e) => setNewLeagueData({...newLeagueData, maxTeams: Number(e.target.value)})} />
+                                            <Label>League Name</Label>
+                                            <Input value={newLeagueData.name} onChange={(e) => setNewLeagueData({...newLeagueData, name: e.target.value})} placeholder="e.g., Big Brother 26" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Draft Rounds</Label>
-                                            <Input type="number" value={newLeagueData.settings?.draftRounds} onChange={(e) => setNewLeagueData({...newLeagueData, settings: {...newLeagueData.settings, draftRounds: Number(e.target.value)}})} />
+                                            <Label>Season</Label>
+                                            <Select value={newLeagueData.seasonId} onValueChange={(val) => setNewLeagueData({...newLeagueData, seasonId: val})}>
+                                                <SelectTrigger><SelectValue placeholder="Select a season..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    </div>
-                                     <div className="space-y-2">
-                                        <Label>League Admin (Optional)</Label>
-                                        <Select value={(newLeagueData.adminUserIds || [])[0]} onValueChange={(val) => setNewLeagueData({...newLeagueData, adminUserIds: val ? [val] : [] })}>
-                                            <SelectTrigger><SelectValue placeholder="Select an admin..." /></SelectTrigger>
-                                            <SelectContent>
-                                                {users.map(u => <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Number of Teams</Label>
+                                                <Input type="number" value={newLeagueData.maxTeams} onChange={(e) => setNewLeagueData({...newLeagueData, maxTeams: Number(e.target.value)})} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Draft Rounds</Label>
+                                                <Input type="number" value={newLeagueData.settings?.draftRounds} onChange={(e) => setNewLeagueData({...newLeagueData, settings: {...newLeagueData.settings, draftRounds: Number(e.target.value)}})} />
+                                            </div>
+                                        </div>
                                         <div className="space-y-2">
-                                            <Label>Contestant (Singular)</Label>
-                                            <Input value={newLeagueData.contestantTerm?.singular} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...newLeagueData.contestantTerm, singular: e.target.value}})} placeholder="e.g., Houseguest" />
+                                            <Label>League Admin (Optional)</Label>
+                                            <Select value={(newLeagueData.adminUserIds || [])[0]} onValueChange={(val) => setNewLeagueData({...newLeagueData, adminUserIds: val ? [val] : [] })}>
+                                                <SelectTrigger><SelectValue placeholder="Select an admin..." /></SelectTrigger>
+                                                <SelectContent>
+                                                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Contestant (Plural)</Label>
-                                            <Input value={newLeagueData.contestantTerm?.plural} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...newLeagueData.contestantTerm, plural: e.target.value}})} placeholder="e.g., Houseguests" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Contestant (Singular)</Label>
+                                                <Input value={newLeagueData.contestantTerm?.singular} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...(newLeagueData.contestantTerm || {}), singular: e.target.value}})} placeholder="e.g., Houseguest" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Contestant (Plural)</Label>
+                                                <Input value={newLeagueData.contestantTerm?.plural} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...(newLeagueData.contestantTerm || {}), plural: e.target.value}})} placeholder="e.g., Houseguests" />
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsNewLeagueDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleCreateLeague}>Create League</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>League Name</TableHead>
-                                <TableHead>Season</TableHead>
-                                <TableHead>Teams</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {allLeagues.map(l => (
-                            <TableRow key={l.id} className={cn(l.id === selectedLeagueId && "bg-muted/50")}>
-                                <TableCell className="font-medium">{l.name}</TableCell>
-                                <TableCell>{MOCK_SEASONS.find(s=>s.id === l.seasonId)?.title}</TableCell>
-                                <TableCell>{allTeams.filter(t=>t.leagueId === l.id).length} / {l.maxTeams}</TableCell>
-                                <TableCell>
-                                    <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button variant="outline" size="sm" onClick={() => {setSelectedLeagueId(l.id); setActiveTab('scoring');}}>Manage</Button>
-                                    <Button variant="ghost" size="icon" className="ml-2" onClick={() => handleManageLeagueAdmins(l)}>
-                                        <ShieldAlert className="h-4 w-4" />
-                                    </Button>
-                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="ml-2" onClick={() => setLeagueToDelete(l)}>
-                                                <Trash2 className="h-4 w-4 text-red-500" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Delete League?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    Are you sure you want to delete the league "{l.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={() => setLeagueToDelete(null)}>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleDeleteLeague}>Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-             </Card>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsNewLeagueDialogOpen(false)}>Cancel</Button>
+                                        <Button onClick={handleCreateLeague}>Create League</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>League Name</TableHead>
+                                    <TableHead>Season</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {allLeagues.map(l => (
+                                <TableRow key={l.id} className={cn(l.id === selectedLeagueId && "bg-muted/50")}>
+                                    <TableCell className="font-medium">{l.name}</TableCell>
+                                    <TableCell>{seasons.find(s=>s.id === l.seasonId)?.title}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="outline" size="sm" onClick={() => {setSelectedLeagueId(l.id); setActiveTab('scoring');}}>Manage</Button>
+                                        <Button variant="ghost" size="icon" className="ml-2" onClick={() => handleManageLeagueAdmins(l)}>
+                                            <ShieldAlert className="h-4 w-4" />
+                                        </Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="ml-2" onClick={() => setLeagueToDelete(l)}>
+                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Delete League?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        Are you sure you want to delete the league "{l.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel onClick={() => setLeagueToDelete(null)}>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDeleteLeague}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-lg flex items-center gap-2"><Tv/> Manage Seasons</CardTitle>
+                            <Dialog open={isNewSeasonDialogOpen} onOpenChange={setIsNewSeasonDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New Season</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Create New Season</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Show Franchise</Label>
+                                                <Input value={newSeasonData.franchise} onChange={(e) => setNewSeasonData({...newSeasonData, franchise: e.target.value})} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Season Title</Label>
+                                                <Input value={newSeasonData.title} onChange={(e) => setNewSeasonData({...newSeasonData, title: e.target.value})} placeholder="e.g., Big Brother 26" />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                             <div className="space-y-2">
+                                                <Label>Season Number</Label>
+                                                <Input type="number" value={newSeasonData.seasonNumber} onChange={(e) => setNewSeasonData({...newSeasonData, seasonNumber: Number(e.target.value)})} />
+                                            </div>
+                                             <div className="space-y-2">
+                                                <Label>Year</Label>
+                                                <Input type="number" value={newSeasonData.year} onChange={(e) => setNewSeasonData({...newSeasonData, year: Number(e.target.value)})} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsNewSeasonDialogOpen(false)}>Cancel</Button>
+                                        <Button onClick={handleCreateSeason}>Create Season</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Season Title</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {seasons.map(s => (
+                                <TableRow key={s.id}>
+                                    <TableCell className="font-medium">{s.title}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={s.status === 'in_progress' ? 'default' : 'outline'}>{s.status}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon"><Pencil className="h-4 w-4"/></Button>
+                                    </TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+             </div>
              <Card>
                  <CardHeader>
                     <div className="flex justify-between items-center">
@@ -2160,7 +2269,7 @@ function AdminPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="seasonName">Season Name</Label>
-                                    <Input id="seasonName" value={activeSeason.title} onChange={(e) => setActiveSeason({...activeSeason, title: e.target.value})} />
+                                    <Input id="seasonName" value={activeSeason.title} disabled />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
