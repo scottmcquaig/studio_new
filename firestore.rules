@@ -1,19 +1,30 @@
+
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can create their own user document, and can only update their own.
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId;
+  
+    // Helper function to check for admin role
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
     }
 
-    // Admins can read and write all other collections.
-    // Logged-in users can only read them.
-    match /{collection}/{docId} {
+    // USERS
+    // 1. Allow any authenticated user to create their OWN user document.
+    // 2. Allow users to read their own data.
+    // 3. Deny all other reads/writes to the users collection.
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if false;
+    }
+    
+    // PUBLIC READ, ADMIN WRITE
+    // For collections that anyone can view but only admins can modify.
+    match /{collection}/{docId} 
+    where collection in ['leagues', 'seasons', 'contestants', 'competitions', 'teams', 'picks', 'scoring_rules'] {
       allow read: if request.auth != null;
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
+      allow write: if isAdmin();
     }
   }
 }
