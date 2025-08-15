@@ -88,8 +88,8 @@ export function AppHeader() {
       <Link href="/" className="flex items-center gap-2">
         <Logo className="h-7 w-7" />
         <div className="flex flex-col -space-y-1.5">
-           <h1 className="font-headline text-lg font-semibold tracking-tight">{activeLeague.name}</h1>
-           <p className="text-xs text-muted-foreground">{activeSeason?.title}</p>
+           <h1 className="font-headline text-lg font-semibold tracking-tight">{activeSeason?.title}</h1>
+           <p className="text-xs text-muted-foreground">{activeLeague.name}</p>
         </div>
       </Link>
       
