@@ -35,6 +35,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import withAuth from '@/components/withAuth';
 import { useAuth } from '@/context/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const iconSelection = [
@@ -471,6 +472,8 @@ function AdminPage() {
 
 
   const handleUserAction = (action: 'resend' | 'reset', user: UserType) => {
+    // In a real app, these would trigger backend actions (e.g., Cloud Functions)
+    // For this mock, we'll just show a toast.
     if (action === 'resend') {
         toast({ title: "Invitation Resent", description: `Invitation has been resent to ${user.email}.` });
     }
@@ -1070,7 +1073,31 @@ function AdminPage() {
                          <CardHeader>
                             <div className="flex justify-between items-center">
                                 <CardTitle className="text-lg flex items-center gap-2"><Users/> Global Users</CardTitle>
-                                <Button size="sm" variant="outline" onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> Invite User</Button>
+                                 <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Invite New User</DialogTitle>
+                                            <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label>Name</Label>
+                                                <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Email</Label>
+                                                <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                                            <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         </CardHeader>
                          <CardContent>
@@ -1890,32 +1917,6 @@ function AdminPage() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                     <div className="flex justify-end gap-2">
-                        <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Invite New User</DialogTitle>
-                                    <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Name</Label>
-                                        <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
                         <Dialog open={isAddUserToLeagueDialogOpen} onOpenChange={setIsAddUserToLeagueDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button size="sm"><UserPlus2 className="mr-2 h-4 w-4" /> Add User to League</Button>
