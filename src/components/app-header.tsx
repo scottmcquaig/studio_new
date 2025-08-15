@@ -22,6 +22,7 @@ import { MOCK_SEASONS } from "@/lib/data";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
+const LEAGUE_ID = 'bb27';
 
 export function AppHeader() {
   const db = getFirestore(app);
@@ -43,7 +44,7 @@ export function AppHeader() {
         setAllLeagues(leaguesData);
         // Set the active league (e.g., the first one, or from user preferences)
         if (leaguesData.length > 0) {
-            setActiveLeague(leaguesData[0]);
+            setActiveLeague(leaguesData.find(l => l.id === LEAGUE_ID) || leaguesData[0]);
         }
     }));
 

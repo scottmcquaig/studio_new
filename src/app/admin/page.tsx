@@ -25,7 +25,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
-import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, query, getDoc, writeBatch, where } from 'firebase/firestore';
 import { getStorage, ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
@@ -243,35 +243,6 @@ function AdminPage() {
         setContestants(contestantData.sort((a,b) => (a.firstName || '').localeCompare(b.firstName || '')));
     });
 
-    const picksCol = collection(db, "picks");
-    const unsubscribePicks = onSnapshot(picksCol, (querySnapshot) => {
-        const picksData: Pick[] = [];
-        querySnapshot.forEach((doc) => {
-            picksData.push({ ...doc.data(), id: doc.id } as Pick);
-        });
-        setPicks(picksData.sort((a,b) => a.pick - b.pick));
-        setCurrentPickNumber(picksData.length + 1);
-    });
-    
-    const teamsCol = collection(db, "teams");
-    const qTeams = query(teamsCol);
-    const unsubscribeTeams = onSnapshot(qTeams, (querySnapshot) => {
-        const teamsData: Team[] = [];
-        const teamNamesData: {[id: string]: string} = {};
-        const draftOrderData: {[id: string]: number} = {};
-
-        querySnapshot.forEach((doc) => {
-            const team = { ...doc.data(), id: doc.id } as Team;
-            teamsData.push(team);
-            teamNamesData[team.id] = team.name;
-            draftOrderData[team.id] = team.draftOrder;
-        });
-
-        setTeams(teamsData.sort((a,b) => a.draftOrder - b.draftOrder));
-        setTeamNames(teamNamesData);
-        setTeamDraftOrders(draftOrderData);
-    });
-
     const leaguesCol = collection(db, "leagues");
     const unsubscribeLeagues = onSnapshot(leaguesCol, (querySnapshot) => {
         const leagueData: League[] = [];
@@ -298,10 +269,45 @@ function AdminPage() {
         unsubscribeComps();
         unsubscribeContestants();
         unsubscribeLeagues();
-        unsubscribeTeams();
         unsubscribeUsers();
-        unsubscribePicks();
     };
+  }, [db]);
+  
+  useEffect(() => {
+    if (!selectedLeagueId) return;
+
+    const picksQuery = query(collection(db, "picks"), where("leagueId", "==", selectedLeagueId));
+    const unsubscribePicks = onSnapshot(picksQuery, (querySnapshot) => {
+        const picksData: Pick[] = [];
+        querySnapshot.forEach((doc) => {
+            picksData.push({ ...doc.data(), id: doc.id } as Pick);
+        });
+        setPicks(picksData.sort((a,b) => a.pick - b.pick));
+        setCurrentPickNumber(picksData.length + 1);
+    });
+    
+    const teamsQuery = query(collection(db, "teams"), where("leagueId", "==", selectedLeagueId));
+    const unsubscribeTeams = onSnapshot(teamsQuery, (querySnapshot) => {
+        const teamsData: Team[] = [];
+        const teamNamesData: {[id: string]: string} = {};
+        const draftOrderData: {[id: string]: number} = {};
+
+        querySnapshot.forEach((doc) => {
+            const team = { ...doc.data(), id: doc.id } as Team;
+            teamsData.push(team);
+            teamNamesData[team.id] = team.name;
+            draftOrderData[team.id] = team.draftOrder;
+        });
+
+        setTeams(teamsData.sort((a,b) => a.draftOrder - b.draftOrder));
+        setTeamNames(teamNamesData);
+        setTeamDraftOrders(draftOrderData);
+    });
+
+    return () => {
+      unsubscribePicks();
+      unsubscribeTeams();
+    }
   }, [db, selectedLeagueId]);
 
   useEffect(() => {

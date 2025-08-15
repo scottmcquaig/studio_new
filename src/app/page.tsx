@@ -29,11 +29,13 @@ import { Separator } from "@/components/ui/separator";
 import { AppHeader } from "@/components/app-header";
 import { BottomNavBar } from "@/components/bottom-nav-bar";
 import { useState, useEffect, useMemo } from 'react';
-import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, Competition, Contestant, Season, User, Pick, ScoringRule } from '@/lib/data';
 import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from "@/components/withAuth";
+
+const LEAGUE_ID = 'bb27';
 
 function DashboardPage() {
   const db = getFirestore(app);
@@ -52,7 +54,7 @@ function DashboardPage() {
   useEffect(() => {
     const unsubscribes: Unsubscribe[] = [];
 
-    unsubscribes.push(onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
+    unsubscribes.push(onSnapshot(doc(db, "leagues", LEAGUE_ID), (docSnap) => {
         if (docSnap.exists()) {
             const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
             setLeague(leagueData);
@@ -64,11 +66,11 @@ function DashboardPage() {
         }
     }));
     
-    unsubscribes.push(onSnapshot(query(collection(db, "teams")), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", LEAGUE_ID)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
     unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
     unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
     unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
-    unsubscribes.push(onSnapshot(query(collection(db, "picks")), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", LEAGUE_ID)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
 
     return () => unsubscribes.forEach(unsub => unsub());
   }, [db]);

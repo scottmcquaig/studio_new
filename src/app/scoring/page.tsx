@@ -13,11 +13,12 @@ import { cn, getContestantDisplayName } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
-import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from '@/components/withAuth';
 
+const LEAGUE_ID = 'bb27';
 
 type ScoringEvent = {
   week: number;
@@ -54,7 +55,7 @@ function ScoringPage() {
   useEffect(() => {
         const unsubscribes: Unsubscribe[] = [];
         
-        const leagueDocRef = doc(db, "leagues", "bb27");
+        const leagueDocRef = doc(db, "leagues", LEAGUE_ID);
         unsubscribes.push(onSnapshot(leagueDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
@@ -69,8 +70,8 @@ function ScoringPage() {
 
         unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
         unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "teams")), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "picks")), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", LEAGUE_ID)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", LEAGUE_ID)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
 
         return () => unsubscribes.forEach(unsub => unsub());
   }, [db]);
