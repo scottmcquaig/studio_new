@@ -246,10 +246,10 @@ export const MOCK_LEAGUES: League[] = [
 ];
 
 export const MOCK_TEAMS: Team[] = [
-    {"id":"team_1","leagueId":"yac_bb27_public","name":"Team 1","ownerUserIds":[],"contestantIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 182, weekly_score: 18, draftOrder: 1, weekly_score_breakdown: { week4: [{contestantId: 'mickey_lee', points: 10}, {contestantId: 'keanu_soto', points: 8}]}},
-    {"id":"team_2","leagueId":"yac_bb27_public","name":"Team 2","ownerUserIds":[],"contestantIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 195, weekly_score: -8, draftOrder: 2, weekly_score_breakdown: { week4: [{contestantId: 'jimmy_heagerty', points: -8}]}},
-    {"id":"team_3","leagueId":"yac_bb27_public","name":"Team 3","ownerUserIds":[],"contestantIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 175, weekly_score: 4, draftOrder: 3, weekly_score_breakdown: { week4: [{contestantId: 'rylie_jeffries', points: 4}]}},
-    {"id":"team_4","leagueId":"yac_bb27_public","name":"Team 4","ownerUserIds":[],"contestantIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 164, weekly_score: 0, draftOrder: 4, weekly_score_breakdown: { week4: []}}
+    {"id":"team_1","leagueId":"bb27","name":"Team 1","ownerUserIds":[],"contestantIds":["keanu_soto", "ashley_hollis", "vince_panaro", "mickey_lee"],"faab":100,"createdAt":"2025-08-01T12:05:00Z", total_score: 182, weekly_score: 18, draftOrder: 1, weekly_score_breakdown: { week4: [{contestantId: 'mickey_lee', points: 10}, {contestantId: 'keanu_soto', points: 8}]}},
+    {"id":"team_2","leagueId":"bb27","name":"Team 2","ownerUserIds":[],"contestantIds":["jimmy_heagerty", "kelley_jorgensen", "zae_frederich", "amy_bingham"],"faab":100,"createdAt":"2025-08-01T12:06:00Z", total_score: 195, weekly_score: -8, draftOrder: 2, weekly_score_breakdown: { week4: [{contestantId: 'jimmy_heagerty', points: -8}]}},
+    {"id":"team_3","leagueId":"bb27","name":"Team 3","ownerUserIds":[],"contestantIds":["lauren_domingue", "rylie_jeffries", "katherine_woodman", "will_williams"],"faab":100,"createdAt":"2025-08-01T12:07:00Z", total_score: 175, weekly_score: 4, draftOrder: 3, weekly_score_breakdown: { week4: [{contestantId: 'rylie_jeffries', points: 4}]}},
+    {"id":"team_4","leagueId":"bb27","name":"Team 4","ownerUserIds":[],"contestantIds":["zach_cornell", "morgan_pope", "adrian_rocha", "rachel_reilly"],"faab":100,"createdAt":"2025-08-01T12:08:00Z", total_score: 164, weekly_score: 0, draftOrder: 4, weekly_score_breakdown: { week4: []}}
 ];
 
 export const MOCK_USERS: User[] = [
