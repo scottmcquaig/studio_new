@@ -17,6 +17,7 @@ import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } 
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from '@/components/withAuth';
+import { PageLayout } from '@/components/page-layout';
 
 const LEAGUE_ID = 'bb27';
 
@@ -169,9 +170,9 @@ function ScoringPage() {
   }
 
   return (
-    <>
+    <PageLayout>
       <AppHeader pageTitle="Scoring" pageIcon={ClipboardList} />
-      <main className="flex-1 pb-24 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-4 md:gap-8">
           <div className="absolute top-16 right-4">
               <div className="w-40">
@@ -475,7 +476,7 @@ function ScoringPage() {
         </div>
       </main>
       <BottomNavBar />
-    </>
+    </PageLayout>
   );
 }
 

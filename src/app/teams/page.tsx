@@ -15,6 +15,7 @@ import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant
 import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import withAuth from '@/components/withAuth';
+import { PageLayout } from '@/components/page-layout';
 
 const LEAGUE_ID = 'bb27';
 
@@ -270,9 +271,9 @@ function TeamsPage() {
   };
 
   return (
-    <>
+    <PageLayout>
       <AppHeader pageTitle="Teams & Standings" pageIcon={Users}/>
-      <main className="flex-1 pb-24 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-4 md:gap-8">
           
           <Card>
@@ -315,7 +316,7 @@ function TeamsPage() {
         </div>
       </main>
       <BottomNavBar />
-    </>
+    </PageLayout>
   );
 }
 

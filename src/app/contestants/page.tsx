@@ -15,6 +15,7 @@ import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } 
 import { app } from '@/lib/firebase';
 import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from '@/components/withAuth';
+import { PageLayout } from '@/components/page-layout';
 
 const LEAGUE_ID = 'bb27';
 
@@ -135,9 +136,9 @@ function ContestantsPage() {
   const contestantTerm = league.contestantTerm;
 
   return (
-    <>
+    <PageLayout>
       <AppHeader pageTitle={contestantTerm.plural} pageIcon={UserSquare} />
-      <main className="flex-1 pb-24 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-4 md:gap-8">
           <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedContestant(null)}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -221,7 +222,7 @@ function ContestantsPage() {
         </div>
       </main>
       <BottomNavBar />
-    </>
+    </PageLayout>
   );
 }
 

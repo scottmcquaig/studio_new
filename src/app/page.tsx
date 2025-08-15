@@ -35,6 +35,7 @@ import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, Competition, Contestant, Season, User, Pick, ScoringRule } from '@/lib/data';
 import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from "@/components/withAuth";
+import { PageLayout } from "@/components/page-layout";
 
 const LEAGUE_ID = 'bb27';
 
@@ -278,9 +279,9 @@ function DashboardPage() {
   };
 
   return (
-    <>
+    <PageLayout>
       <AppHeader pageTitle="Dashboard" pageIcon={Home} />
-      <main className="flex-1 pb-24 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-4 md:gap-8">
           <Card className="bg-card/50">
             <CardHeader>
@@ -582,7 +583,7 @@ function DashboardPage() {
         </div>
       </main>
       <BottomNavBar />
-    </>
+    </PageLayout>
   );
 }
 

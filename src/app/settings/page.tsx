@@ -12,6 +12,7 @@ import { AppHeader } from '@/components/app-header';
 import { BottomNavBar } from '@/components/bottom-nav-bar';
 import { useAuth } from '@/context/AuthContext';
 import withAuth from '@/components/withAuth';
+import { PageLayout } from '@/components/page-layout';
 
 function SettingsPage() {
   const { appUser } = useAuth();
@@ -25,9 +26,9 @@ function SettingsPage() {
   }
 
   return (
-    <>
+    <PageLayout>
       <AppHeader pageTitle="Settings" pageIcon={Settings} />
-      <main className="flex-1 pb-24 p-4 md:p-8">
+      <main className="flex-1 p-4 md:p-8">
         <div className="flex flex-1 flex-col gap-6 md:gap-8">
           <div className="space-y-6">
             <Card>
@@ -77,7 +78,7 @@ function SettingsPage() {
         </div>
       </main>
       <BottomNavBar />
-    </>
+    </PageLayout>
   );
 }
 
