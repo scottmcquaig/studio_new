@@ -22,6 +22,7 @@ import {
   BrickWall,
   Skull,
   TriangleAlert,
+  Flame,
 } from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +76,28 @@ function DashboardPage() {
     return () => unsubscribes.forEach(unsub => unsub());
   }, [db]);
 
+  const currentWeekEvents = useMemo(() => 
+    competitions.filter((c) => c.week === activeSeason.currentWeek),
+    [competitions, activeSeason.currentWeek]
+  );
+  
+  const hoh = useMemo(() => currentWeekEvents.find((c) => c.type === "HOH"), [currentWeekEvents]);
+  const hohWinner = useMemo(() => contestants.find((hg) => hg.id === hoh?.winnerId), [contestants, hoh]);
+
+  const noms = useMemo(() => currentWeekEvents.find((c) => c.type === "NOMINATIONS"), [currentWeekEvents]);
+  const nomWinners = useMemo(() => contestants.filter((hg) => noms?.nominees?.includes(hg.id)), [contestants, noms]);
+
+  const pov = useMemo(() => currentWeekEvents.find((c) => c.type === "VETO"), [currentWeekEvents]);
+  const povWinner = useMemo(() => contestants.find((hg) => hg.id === pov?.winnerId), [contestants, pov]);
+  const savedPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.usedOnId), [contestants, pov]);
+  const renomPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.replacementNomId), [contestants, pov]);
+
+  const blockBuster = useMemo(() => currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER"), [currentWeekEvents]);
+  const blockBusterWinner = useMemo(() => contestants.find((hg) => hg.id === blockBuster?.winnerId), [contestants, blockBuster]);
+
+  const eviction = useMemo(() => currentWeekEvents.find((c) => c.type === "EVICTION"), [currentWeekEvents]);
+  const evictedPlayer = useMemo(() => contestants.find((hg) => hg.id === eviction?.evictedId), [contestants, eviction]);
+  
   const calculateTeamScore = (team: Team, rules: ScoringRule[], teamPicks: Pick[], competitions: Competition[]): number => {
     let score = 0;
     if (!rules.length || !teamPicks.length) return 0;
@@ -123,36 +146,18 @@ function DashboardPage() {
     return teams.map(team => {
       const teamPicks = picks.filter(p => p.teamId === team.id);
       const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
-      return { ...team, total_score };
+      const weekly_score = calculateTeamScore(team, scoringRules.rules, teamPicks, currentWeekEvents);
+      return { ...team, total_score, weekly_score };
     });
-  }, [teams, scoringRules, picks, competitions, league]);
+  }, [teams, scoringRules, picks, competitions, currentWeekEvents, league]);
 
   const sortedTeams = useMemo(() => {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
   }, [teamsWithScores]);
 
-
-  const currentWeekEvents = useMemo(() => 
-    competitions.filter((c) => c.week === activeSeason.currentWeek),
-    [competitions, activeSeason.currentWeek]
-  );
-  
-  const hoh = useMemo(() => currentWeekEvents.find((c) => c.type === "HOH"), [currentWeekEvents]);
-  const hohWinner = useMemo(() => contestants.find((hg) => hg.id === hoh?.winnerId), [contestants, hoh]);
-
-  const noms = useMemo(() => currentWeekEvents.find((c) => c.type === "NOMINATIONS"), [currentWeekEvents]);
-  const nomWinners = useMemo(() => contestants.filter((hg) => noms?.nominees?.includes(hg.id)), [contestants, noms]);
-
-  const pov = useMemo(() => currentWeekEvents.find((c) => c.type === "VETO"), [currentWeekEvents]);
-  const povWinner = useMemo(() => contestants.find((hg) => hg.id === pov?.winnerId), [contestants, pov]);
-  const savedPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.usedOnId), [contestants, pov]);
-  const renomPlayer = useMemo(() => contestants.find((hg) => hg.id === pov?.replacementNomId), [contestants, pov]);
-
-  const blockBuster = useMemo(() => currentWeekEvents.find((c) => c.type === "BLOCK_BUSTER"), [currentWeekEvents]);
-  const blockBusterWinner = useMemo(() => contestants.find((hg) => hg.id === blockBuster?.winnerId), [contestants, blockBuster]);
-
-  const eviction = useMemo(() => currentWeekEvents.find((c) => c.type === "EVICTION"), [currentWeekEvents]);
-  const evictedPlayer = useMemo(() => contestants.find((hg) => hg.id === eviction?.evictedId), [contestants, eviction]);
+  const topMovers = useMemo(() => {
+    return [...teamsWithScores].sort((a,b) => (b.weekly_score || 0) - (a.weekly_score || 0)).slice(0, 3);
+  }, [teamsWithScores]);
   
   const weeklyActivity = useMemo(() => {
     if (!scoringRules?.rules || !contestants.length) return [];
@@ -410,8 +415,8 @@ function DashboardPage() {
           </CardContent>
         </Card>
         
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2">
-            <Card>
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+            <Card className="xl:col-span-2">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><TrendingUp /> Current Standings</CardTitle>
                     <CardDescription>Team rankings and weekly performance.</CardDescription>
@@ -443,45 +448,66 @@ function DashboardPage() {
                     </div>
                 </CardContent>
             </Card>
+            
+            <div className="space-y-4 md:space-y-8">
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><Flame /> Top Movers</CardTitle>
+                      <CardDescription>Top scoring teams for Week {activeSeason.currentWeek}.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="space-y-4">
+                          {topMovers.map((team) => (
+                              <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                  <div>
+                                      <p className="font-medium">{team.name}</p>
+                                      <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
+                                  </div>
+                                  <Badge variant="default" className="w-20 justify-center text-base bg-green-100 text-green-800 hover:bg-green-200">
+                                    <span>+{team.weekly_score || 0}</span>
+                                  </Badge>
+                              </div>
+                          ))}
+                      </div>
+                  </CardContent>
+              </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><ListOrdered /> Week {activeSeason.currentWeek} Scoring Activity</CardTitle>
-                    <CardDescription>A log of all point-scoring events from this week.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                    {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                        <div className="flex items-center gap-3">
-                            <Image
-                            src={activity.player.photoUrl || "https://placehold.co/100x100.png"}
-                            alt={getContestantDisplayName(activity.player, 'full')}
-                            width={40}
-                            height={40}
-                            className="rounded-full"
-                            data-ai-hint="portrait person"
-                            />
-                            <div>
-                            <p className="font-medium">{activity.description}</p>
-                            <p className="text-sm text-muted-foreground">
-                                {activity.type}
-                            </p>
-                            </div>
-                        </div>
-                        <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
-                                "w-12 justify-center",
-                                activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
-                                activity.points! < 0 && "bg-red-100 text-red-800")}>
-                                <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
-                        </Badge>
-                        </div>
-                    )) : (
-                        <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged for this week yet.</p>
-                    )}
-                    </div>
-                </CardContent>
-            </Card>
+              <Card>
+                  <CardHeader>
+                      <CardTitle className="flex items-center gap-2"><ListOrdered /> Weekly Activity</CardTitle>
+                      <CardDescription>A log of all point-scoring events.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="space-y-4">
+                      {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                          <div className="flex items-center gap-3">
+                              <Image
+                              src={activity.player.photoUrl || "https://placehold.co/100x100.png"}
+                              alt={getContestantDisplayName(activity.player, 'full')}
+                              width={40}
+                              height={40}
+                              className="rounded-full"
+                              data-ai-hint="portrait person"
+                              />
+                              <div>
+                              <p className="text-sm">{activity.description}</p>
+                              </div>
+                          </div>
+                          <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
+                                  "w-12 justify-center text-xs",
+                                  activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                                  activity.points! < 0 && "bg-red-100 text-red-800")}>
+                                  <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
+                          </Badge>
+                          </div>
+                      )) : (
+                          <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged yet.</p>
+                      )}
+                      </div>
+                  </CardContent>
+              </Card>
+            </div>
         </div>
 
       </div>
