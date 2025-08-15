@@ -11,6 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { Button } from "./ui/button";
 import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -87,22 +93,6 @@ export function AppHeader() {
         </div>
       </Link>
       
-      {canManageLeague && (
-        <Button asChild variant="ghost" size="sm" className="ml-2">
-            <Link href="/admin">
-                <Settings className="mr-2 h-4 w-4"/> League Admin
-            </Link>
-        </Button>
-      )}
-      
-      {isSiteAdmin && (
-         <Button asChild variant="outline" size="sm">
-            <Link href="/admin?view=site">
-                <Shield className="mr-2 h-4 w-4"/> Site Admin
-            </Link>
-        </Button>
-      )}
-
       <div className="ml-auto flex items-center gap-2">
          <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -122,6 +112,34 @@ export function AppHeader() {
              <DropdownMenuItem disabled>Past Leagues</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        
+        <TooltipProvider>
+            {canManageLeague && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild variant="ghost" size="icon">
+                            <Link href="/admin"><Settings className="h-5 w-5"/></Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>League Admin</p>
+                    </TooltipContent>
+                </Tooltip>
+            )}
+            
+            {isSiteAdmin && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button asChild variant="ghost" size="icon">
+                            <Link href="/admin?view=site"><Shield className="h-5 w-5"/></Link>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Site Admin</p>
+                    </TooltipContent>
+                </Tooltip>
+            )}
+        </TooltipProvider>
 
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
