@@ -12,63 +12,96 @@ import { cn, getContestantDisplayName } from '@/lib/utils';
 import { AppHeader } from '@/components/app-header';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from '@/components/withAuth';
 import { PageLayout } from '@/components/page-layout';
-
-const LEAGUE_ID = 'bb27';
-
-type ContestantWithStats = Contestant & {
-  teamName: string;
-  totalWins: number;
-  totalNoms: number;
-  totalPoints: number;
-  evictionWeek?: number;
-};
+import { useAuth } from '@/context/AuthContext';
 
 function ContestantsPage() {
   const [selectedContestant, setSelectedContestant] = useState<ContestantWithStats | null>(null);
   
   const db = getFirestore(app);
+  const { appUser } = useAuth();
+  
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [league, setLeague] = useState<League | null>(null);
+  const [leagues, setLeagues] = useState<League[]>([]);
+  const [activeLeague, setActiveLeague] = useState<League | null>(null);
   const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
-  
-  const activeSeason = useMemo(() => MOCK_SEASONS[0], []);
-  
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
+
   useEffect(() => {
-        const unsubscribes: Unsubscribe[] = [];
-        
-        const leagueDocRef = doc(db, "leagues", LEAGUE_ID);
-        unsubscribes.push(onSnapshot(leagueDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-                setLeague(leagueData);
-                if (leagueData.settings.scoringRuleSetId) {
-                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
-                        if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
-                    }));
-                }
-            }
-        }));
-
-        unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", LEAGUE_ID)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", LEAGUE_ID)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
-
-        return () => unsubscribes.forEach(unsub => unsub());
+    const unsub = onSnapshot(collection(db, "leagues"), (snap) => {
+        const allLeagues = snap.docs.map(d => ({ ...d.data(), id: d.id } as League));
+        setLeagues(allLeagues);
+        // This logic needs to be enhanced with a league switcher
+        const currentLeague = allLeagues.find(l => l.id === 'bb27');
+        setActiveLeague(currentLeague || allLeagues[0] || null);
+    });
+    return () => unsub();
   }, [db]);
 
-  const weekEvents = useMemo(() => competitions.filter(c => c.week === activeSeason.currentWeek), [competitions, activeSeason.currentWeek]);
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "seasons"), (snap) => {
+        const allSeasons = snap.docs.map(d => ({...d.data(), id: d.id } as Season));
+        setSeasons(allSeasons);
+    });
+    return () => unsub();
+  }, [db]);
+  
+  useEffect(() => {
+    if (activeLeague) {
+        const season = seasons.find(s => s.id === activeLeague.seasonId);
+        setActiveSeason(season || null);
+    }
+  }, [activeLeague, seasons]);
+  
+  useEffect(() => {
+        if (!activeLeague || !activeSeason) return;
+
+        const unsubscribes: Unsubscribe[] = [];
+        
+        if (activeLeague.settings.scoringRuleSetId) {
+            unsubscribes.push(onSnapshot(doc(db, "scoring_rules", activeLeague.settings.scoringRuleSetId), (ruleSnap) => {
+                if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+            }));
+        }
+
+        const qContestants = query(collection(db, "contestants"), where("seasonId", "==", activeSeason.id));
+        unsubscribes.push(onSnapshot(qContestants, (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+        
+        const qCompetitions = query(collection(db, "competitions"), where("seasonId", "==", activeSeason.id));
+        unsubscribes.push(onSnapshot(qCompetitions, (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+        
+        const qTeams = query(collection(db, "teams"), where("leagueId", "==", activeLeague.id));
+        unsubscribes.push(onSnapshot(qTeams, (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        
+        const qPicks = query(collection(db, "picks"), where("leagueId", "==", activeLeague.id));
+        unsubscribes.push(onSnapshot(qPicks, (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+
+        return () => unsubscribes.forEach(unsub => unsub());
+  }, [db, activeLeague, activeSeason]);
+
+  const weekEvents = useMemo(() => {
+      if (!activeSeason) return [];
+      return competitions.filter(c => c.week === activeSeason.currentWeek);
+  }, [competitions, activeSeason]);
+
   
   const hoh = useMemo(() => weekEvents.find(c => c.type === 'HOH'), [weekEvents]);
   const pov = useMemo(() => weekEvents.find(c => c.type === 'VETO'), [weekEvents]);
   const noms = useMemo(() => weekEvents.find(c => c.type === 'NOMINATIONS'), [weekEvents]);
   const blockBuster = useMemo(() => weekEvents.find(c => c.type === 'BLOCK_BUSTER'), [weekEvents]);
+
+  type ContestantWithStats = Contestant & {
+    teamName: string;
+    totalWins: number;
+    totalNoms: number;
+    totalPoints: number;
+    evictionWeek?: number;
+  };
 
   const contestantStats: ContestantWithStats[] = useMemo(() => {
     return contestants.map(hg => {
@@ -124,7 +157,7 @@ function ContestantsPage() {
     });
   }, [contestantStats, hoh, pov, noms]);
 
-  if (!league || !contestants.length) {
+  if (!activeLeague || !contestants.length || !activeSeason) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Contestants...</div>
@@ -132,7 +165,7 @@ function ContestantsPage() {
     );
   }
 
-  const contestantTerm = league.contestantTerm;
+  const contestantTerm = activeLeague.contestantTerm;
 
   return (
     <PageLayout>

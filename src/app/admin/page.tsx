@@ -143,6 +143,7 @@ function AdminPage() {
   
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [activeSeason, setActiveSeason] = useState<Season | null>(null);
+  const [editingSeason, setEditingSeason] = useState<Season | null>(null);
 
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -254,6 +255,16 @@ function AdminPage() {
   }, [initialView, currentUser]);
 
   useEffect(() => {
+    if (leagueSettings) {
+        const seasonForLeague = seasons.find(s => s.id === leagueSettings.seasonId);
+        setActiveSeason(seasonForLeague || null);
+    } else {
+        setActiveSeason(null);
+    }
+  }, [leagueSettings, seasons]);
+
+
+  useEffect(() => {
     const lastWeek = sessionStorage.getItem('adminSelectedWeek');
     if (lastWeek && activeSeason && Number(lastWeek) <= activeSeason.currentWeek) {
         setSelectedWeek(Number(lastWeek));
@@ -290,27 +301,6 @@ function AdminPage() {
         const seasonsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Season))
             .sort((a, b) => b.year - a.year || (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0));
         setSeasons(seasonsData);
-        if (!activeSeason && seasonsData.length > 0) {
-            setActiveSeason(seasonsData[0]);
-        }
-    });
-
-    const compCol = collection(db, "competitions");
-    const unsubscribeComps = onSnapshot(compCol, (querySnapshot) => {
-      const compData: Competition[] = [];
-      querySnapshot.forEach((doc) => {
-        compData.push({ ...doc.data(), id: doc.id } as Competition);
-      });
-      setCompetitions(compData);
-    });
-
-    const contestantsCol = collection(db, "contestants");
-    const unsubscribeContestants = onSnapshot(contestantsCol, (querySnapshot) => {
-        const contestantData: Contestant[] = [];
-        querySnapshot.forEach((doc) => {
-            contestantData.push({ ...doc.data(), id: doc.id } as Contestant);
-        });
-        setContestants(contestantData.sort((a,b) => (a.firstName || '').localeCompare(b.firstName || '')));
     });
 
     const leaguesCol = collection(db, "leagues");
@@ -353,13 +343,11 @@ function AdminPage() {
 
     return () => {
         unsubscribeSeasons();
-        unsubscribeComps();
-        unsubscribeContestants();
         unsubscribeLeagues();
         unsubscribeUsers();
         unsubscribeAllTeams();
     };
-  }, [db, activeSeason]);
+  }, [db]);
 
   useEffect(() => {
     if (!selectedLeagueId && manageableLeagues.length > 0) {
@@ -368,7 +356,12 @@ function AdminPage() {
   }, [manageableLeagues, selectedLeagueId]);
   
   useEffect(() => {
-    if (!selectedLeagueId) return;
+    if (!selectedLeagueId || !activeSeason) {
+        setContestants([]);
+        setCompetitions([]);
+        setPicks([]);
+        return;
+    };
 
     const picksQuery = query(collection(db, "picks"), where("leagueId", "==", selectedLeagueId));
     const unsubscribePicks = onSnapshot(picksQuery, (querySnapshot) => {
@@ -380,10 +373,30 @@ function AdminPage() {
         setCurrentPickNumber(picksData.length + 1);
     });
     
+    const contestantsQuery = query(collection(db, "contestants"), where("seasonId", "==", activeSeason.id));
+    const unsubscribeContestants = onSnapshot(contestantsQuery, (querySnapshot) => {
+        const contestantData: Contestant[] = [];
+        querySnapshot.forEach((doc) => {
+            contestantData.push({ ...doc.data(), id: doc.id } as Contestant);
+        });
+        setContestants(contestantData.sort((a,b) => (a.firstName || '').localeCompare(b.firstName || '')));
+    });
+
+    const competitionsQuery = query(collection(db, "competitions"), where("seasonId", "==", activeSeason.id));
+    const unsubscribeComps = onSnapshot(competitionsQuery, (querySnapshot) => {
+      const compData: Competition[] = [];
+      querySnapshot.forEach((doc) => {
+        compData.push({ ...doc.data(), id: doc.id } as Competition);
+      });
+      setCompetitions(compData);
+    });
+    
     return () => {
       if (unsubscribePicks) unsubscribePicks();
+      if (unsubscribeContestants) unsubscribeContestants();
+      if (unsubscribeComps) unsubscribeComps();
     }
-  }, [db, selectedLeagueId]);
+  }, [db, selectedLeagueId, activeSeason]);
 
   useEffect(() => {
       if (leagueSettings?.settings?.scoringRuleSetId) {
@@ -1196,6 +1209,20 @@ function AdminPage() {
             toast({ title: "Error", description: "Could not create the new season.", variant: "destructive" });
         }
     };
+    
+     const handleSaveSeason = async () => {
+        if (!editingSeason) return;
+        const { id, ...dataToSave } = editingSeason;
+        try {
+            await updateDoc(doc(db, 'seasons', id), dataToSave);
+            toast({ title: 'Season Updated', description: `${editingSeason.title} has been updated.` });
+        } catch (error) {
+            console.error("Error updating season:", error);
+            toast({ title: "Error", description: "Could not update season.", variant: "destructive" });
+        } finally {
+            setEditingSeason(null);
+        }
+    };
 
     const handleManageLeagueAdmins = (league: League) => {
         setLeagueToManageAdmins(league);
@@ -1240,7 +1267,7 @@ function AdminPage() {
         return users.filter(u => !leagueToManageAdmins.adminUserIds?.includes(u.id));
     }, [users, leagueToManageAdmins]);
 
-  if (!activeSeason || !currentUser) {
+  if (!currentUser) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Admin Panel...</div>
@@ -1426,7 +1453,9 @@ function AdminPage() {
                                         <Badge variant={s.status === 'in_progress' ? 'default' : 'outline'}>{s.status}</Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon"><Pencil className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => setEditingSeason(s)}>
+                                            <Pencil className="h-4 w-4"/>
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                                 ))}
@@ -1582,7 +1611,7 @@ function AdminPage() {
                     <TabsTrigger value="league">League Settings</TabsTrigger>
                 </TabsList>
                 
-                {leagueSettings && (
+                {leagueSettings && activeSeason && (
                 <>
                 <TabsContent value="scoring" className="mt-6 space-y-6">
                     <Card>
@@ -2542,6 +2571,48 @@ function AdminPage() {
                         </Select>
                     </div>
                 </div>
+            </DialogContent>
+        </Dialog>
+        
+        <Dialog open={!!editingSeason} onOpenChange={(isOpen) => !isOpen && setEditingSeason(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Season</DialogTitle>
+                    <DialogDescription>Update the details for {editingSeason?.title}.</DialogDescription>
+                </DialogHeader>
+                {editingSeason && (
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Season Title</Label>
+                            <Input value={editingSeason.title} onChange={(e) => setEditingSeason({...editingSeason, title: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Season Number</Label>
+                                <Input type="number" value={editingSeason.seasonNumber} onChange={(e) => setEditingSeason({...editingSeason, seasonNumber: Number(e.target.value)})} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Year</Label>
+                                <Input type="number" value={editingSeason.year} onChange={(e) => setEditingSeason({...editingSeason, year: Number(e.target.value)})} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Status</Label>
+                            <Select value={editingSeason.status} onValueChange={(val) => setEditingSeason({...editingSeason, status: val as Season['status']})}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="upcoming">Upcoming</SelectItem>
+                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                )}
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditingSeason(null)}>Cancel</Button>
+                    <Button onClick={handleSaveSeason}><Save className="mr-2" /> Save Changes</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
 

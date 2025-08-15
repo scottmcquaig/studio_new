@@ -11,79 +11,10 @@ import { cn, getContestantDisplayName } from "@/lib/utils";
 import Image from "next/image";
 import { getFirestore, collection, onSnapshot, doc, Unsubscribe, query, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User, Pick } from '@/lib/data';
+import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant, User, Pick, Season } from '@/lib/data';
 import { AppHeader } from '@/components/app-header';
 import withAuth from '@/components/withAuth';
 import { PageLayout } from '@/components/page-layout';
-
-const LEAGUE_ID = 'bb27';
-
-const calculateKpis = (teamPicks: Pick[], league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
-    const breakdownCategories = league.settings.scoringBreakdownCategories || [];
-    const kpis: { [key: string]: number } = {};
-    
-    breakdownCategories.forEach(category => {
-        kpis[category.displayName] = 0;
-    });
-
-    const rules = scoringRules || [];
-    if (!rules.length || !breakdownCategories.length) return { ...kpis };
-
-    const teamContestantIds = teamPicks.map(p => p.contestantId);
-
-    competitions.forEach(comp => {
-        const processEvent = (contestantId: string, eventCode: string) => {
-            if (teamContestantIds.includes(contestantId)) {
-                const rule = rules.find(r => r.code === eventCode);
-                if (rule) {
-                    breakdownCategories.forEach(category => {
-                        if (category.ruleCodes.includes(rule.code)) {
-                            kpis[category.displayName] = (kpis[category.displayName] || 0) + rule.points;
-                        }
-                    });
-                }
-            }
-        };
-
-        if (comp.winnerId) {
-            let eventCode = '';
-            if (comp.type === 'HOH') eventCode = 'HOH_WIN';
-            else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
-            else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE'; // Example, adjust as needed
-            else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
-            
-            if (eventCode) {
-                processEvent(comp.winnerId, eventCode);
-            }
-        }
-        
-        if (comp.type === 'NOMINATIONS' && comp.nominees) {
-            comp.nominees.forEach(nomId => {
-                const isFinalNom = comp.finalNoms?.includes(nomId);
-                processEvent(nomId, 'NOMINATED');
-                if (isFinalNom) {
-                     processEvent(nomId, 'FINAL_NOM');
-                }
-            });
-        }
-        
-        if (comp.type === 'EVICTION' && comp.evictedId) {
-             const juryStartWeek = league?.settings.juryStartWeek;
-             const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-             processEvent(comp.evictedId, eventCode);
-        }
-    });
-
-    return { ...kpis };
-};
-
-const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
-    const IconComponent = (LucideIcons as any)[name];
-    if (!IconComponent) {
-      return <HelpCircle className={className} />;
-    }
-    return createElement(IconComponent, { className });
-};
 
 const TeamCard = ({ team, league, rules, competitions, contestants, users, picks, totalScore }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[], users: User[], picks: Pick[], totalScore: number }) => {
     const owners = (team.ownerUserIds || []).map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
@@ -92,10 +23,77 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
     const teamContestants = contestants.filter(hg => teamContestantIds.includes(hg.id));
     const breakdownCategories = (league.settings.scoringBreakdownCategories || []).filter(c => c.displayName);
 
+    const calculateKpis = (teamPicks: Pick[], league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
+        const breakdownCategories = league.settings.scoringBreakdownCategories || [];
+        const kpis: { [key: string]: number } = {};
+        
+        breakdownCategories.forEach(category => {
+            kpis[category.displayName] = 0;
+        });
+
+        const rules = scoringRules || [];
+        if (!rules.length || !breakdownCategories.length) return { ...kpis };
+
+        const teamContestantIds = teamPicks.map(p => p.contestantId);
+
+        competitions.forEach(comp => {
+            const processEvent = (contestantId: string, eventCode: string) => {
+                if (teamContestantIds.includes(contestantId)) {
+                    const rule = rules.find(r => r.code === eventCode);
+                    if (rule) {
+                        breakdownCategories.forEach(category => {
+                            if (category.ruleCodes.includes(rule.code)) {
+                                kpis[category.displayName] = (kpis[category.displayName] || 0) + rule.points;
+                            }
+                        });
+                    }
+                }
+            };
+
+            if (comp.winnerId) {
+                let eventCode = '';
+                if (comp.type === 'HOH') eventCode = 'HOH_WIN';
+                else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
+                else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE'; // Example, adjust as needed
+                else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
+                
+                if (eventCode) {
+                    processEvent(comp.winnerId, eventCode);
+                }
+            }
+            
+            if (comp.type === 'NOMINATIONS' && comp.nominees) {
+                comp.nominees.forEach(nomId => {
+                    const isFinalNom = comp.finalNoms?.includes(nomId);
+                    processEvent(nomId, 'NOMINATED');
+                    if (isFinalNom) {
+                        processEvent(nomId, 'FINAL_NOM');
+                    }
+                });
+            }
+            
+            if (comp.type === 'EVICTION' && comp.evictedId) {
+                const juryStartWeek = league?.settings.juryStartWeek;
+                const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+                processEvent(comp.evictedId, eventCode);
+            }
+        });
+
+        return { ...kpis };
+    };
+
     const kpis = useMemo(() => {
         if (!league || !rules.length || !contestants.length) return {};
         return calculateKpis(teamPicks, league, rules, competitions);
     }, [teamPicks, league, rules, competitions, contestants]);
+
+    const DynamicIcon = ({ name, className }: { name: string; className?: string }) => {
+        const IconComponent = (LucideIcons as any)[name];
+        if (!IconComponent) {
+        return <HelpCircle className={className} />;
+        }
+        return createElement(IconComponent, { className });
+    };
     
     return (
         <Card>
@@ -161,38 +159,69 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
 
 function TeamsPage() {
     const [teams, setTeams] = useState<Team[]>([]);
-    const [league, setLeague] = useState<League | null>(null);
+    const [activeLeague, setActiveLeague] = useState<League | null>(null);
     const [scoringRules, setScoringRuleSet] = useState<ScoringRuleSet | null>(null);
     const [contestants, setContestants] = useState<Contestant[]>([]);
     const [competitions, setCompetitions] = useState<Competition[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [picks, setPicks] = useState<Pick[]>([]);
+    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [activeSeason, setActiveSeason] = useState<Season | null>(null);
 
     const db = getFirestore(app);
 
     useEffect(() => {
+        // This logic should be enhanced with a league switcher
+        const unsubLeagues = onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
+            if (docSnap.exists()) {
+                setActiveLeague({ ...docSnap.data(), id: docSnap.id } as League);
+            }
+        });
+
+        const unsubSeasons = onSnapshot(collection(db, "seasons"), (snap) => {
+            setSeasons(snap.docs.map(d => ({ ...d.data(), id: d.id } as Season)));
+        });
+
+        return () => {
+            unsubLeagues();
+            unsubSeasons();
+        };
+    }, [db]);
+
+    useEffect(() => {
+        if (activeLeague && seasons.length > 0) {
+            const season = seasons.find(s => s.id === activeLeague.seasonId);
+            setActiveSeason(season || null);
+        }
+    }, [activeLeague, seasons]);
+
+    useEffect(() => {
+        if (!activeLeague || !activeSeason) return;
+        
         const unsubscribes: Unsubscribe[] = [];
 
-        unsubscribes.push(onSnapshot(doc(db, "leagues", LEAGUE_ID), (docSnap) => {
-            if (docSnap.exists()) {
-                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-                if (leagueData.settings.scoringRuleSetId) {
-                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
-                        if (ruleSnap.exists()) setScoringRuleSet({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
-                    }));
-                }
-                setLeague(leagueData);
-            }
-        }));
+        if (activeLeague.settings.scoringRuleSetId) {
+            unsubscribes.push(onSnapshot(doc(db, "scoring_rules", activeLeague.settings.scoringRuleSetId), (ruleSnap) => {
+                if (ruleSnap.exists()) setScoringRuleSet({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+            }));
+        }
         
-        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", LEAGUE_ID)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+        const qTeams = query(collection(db, "teams"), where("leagueId", "==", activeLeague.id));
+        unsubscribes.push(onSnapshot(qTeams, (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+
+        const qContestants = query(collection(db, "contestants"), where("seasonId", "==", activeSeason.id));
+        unsubscribes.push(onSnapshot(qContestants, (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+        
+        const qCompetitions = query(collection(db, "competitions"), where("seasonId", "==", activeSeason.id));
+        unsubscribes.push(onSnapshot(qCompetitions, (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+        
         unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", LEAGUE_ID)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+        
+        const qPicks = query(collection(db, "picks"), where("leagueId", "==", activeLeague.id));
+        unsubscribes.push(onSnapshot(qPicks, (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
         
         return () => unsubscribes.forEach(unsub => unsub());
-    }, [db]);
+    }, [db, activeLeague, activeSeason]);
     
     const calculateTeamScore = (team: Team, rules: ScoringRule[], teamPicks: Pick[], competitions: Competition[]): number => {
         let score = 0;
@@ -228,7 +257,7 @@ function TeamsPage() {
             }
             
             if (comp.type === 'EVICTION' && comp.evictedId) {
-                const juryStartWeek = league?.settings.juryStartWeek;
+                const juryStartWeek = activeLeague?.settings.juryStartWeek;
                 const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
                 processEvent(comp.evictedId, eventCode);
             }
@@ -244,7 +273,7 @@ function TeamsPage() {
           const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
           return { ...team, total_score };
         });
-    }, [teams, scoringRules, picks, competitions, league]);
+    }, [teams, scoringRules, picks, competitions, activeLeague]);
 
 
     const sortedTeams = useMemo(() => {
@@ -253,7 +282,7 @@ function TeamsPage() {
 
     const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
     
-  if (!league || !contestants.length) {
+  if (!activeLeague || !contestants.length) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Teams...</div>
@@ -298,11 +327,11 @@ function TeamsPage() {
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {league && sortedTeams.map((team) => (
+              {activeLeague && sortedTeams.map((team) => (
                   <TeamCard 
                       key={team.id}
                       team={team}
-                      league={league}
+                      league={activeLeague}
                       rules={rules}
                       competitions={competitions}
                       contestants={contestants}

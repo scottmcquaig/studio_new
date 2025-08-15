@@ -39,58 +39,68 @@ function DashboardPage() {
   const db = getFirestore(app);
 
   const [teams, setTeams] = useState<Team[]>([]);
-  const [league, setLeague] = useState<League | null>(null);
+  const [activeLeague, setActiveLeague] = useState<League | null>(null);
   const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
-
-  const activeSeason = useMemo(() => {
-    return seasons.find(s => s.status === 'in_progress') || seasons[0];
-  }, [seasons]);
+  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
 
   useEffect(() => {
+    // This logic should be enhanced with a league switcher
+    const unsubLeagues = onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
+        if (docSnap.exists()) {
+            setActiveLeague({ ...docSnap.data(), id: docSnap.id } as League);
+        }
+    });
+
+    const unsubSeasons = onSnapshot(collection(db, "seasons"), (snap) => {
+        setSeasons(snap.docs.map(d => ({ ...d.data(), id: d.id } as Season)));
+    });
+
+    return () => {
+        unsubLeagues();
+        unsubSeasons();
+    };
+  }, [db]);
+
+  useEffect(() => {
+    if (activeLeague && seasons.length > 0) {
+        const season = seasons.find(s => s.id === activeLeague.seasonId);
+        setActiveSeason(season || null);
+    }
+  }, [activeLeague, seasons]);
+
+
+  useEffect(() => {
+    if (!activeLeague || !activeSeason) return;
+
     const unsubscribes: Unsubscribe[] = [];
 
-    unsubscribes.push(onSnapshot(collection(db, "seasons"), (snap) => {
-        const seasonsData = snap.docs.map(d => ({...d.data(), id: d.id } as Season))
-            .sort((a, b) => b.year - a.year || (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0));
-        setSeasons(seasonsData);
-    }));
-
-    if (league?.id) {
-        unsubscribes.push(onSnapshot(doc(db, "leagues", league.id), (docSnap) => {
-            if (docSnap.exists()) {
-                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-                setLeague(leagueData);
-                if (leagueData.settings.scoringRuleSetId) {
-                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
-                        if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
-                    }));
-                }
-            }
-        }));
-        
-        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", league.id)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", league.id)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
-    } else {
-        // A default league loader, replace with a dynamic switcher later
-        unsubscribes.push(onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
-             if (docSnap.exists()) {
-                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-                setLeague(leagueData);
-            }
+    if (activeLeague.settings.scoringRuleSetId) {
+        unsubscribes.push(onSnapshot(doc(db, "scoring_rules", activeLeague.settings.scoringRuleSetId), (ruleSnap) => {
+            if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
         }));
     }
     
-    unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
-    unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+    const qTeams = query(collection(db, "teams"), where("leagueId", "==", activeLeague.id));
+    unsubscribes.push(onSnapshot(qTeams, (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+
+    const qPicks = query(collection(db, "picks"), where("leagueId", "==", activeLeague.id));
+    unsubscribes.push(onSnapshot(qPicks, (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+    
+    const qContestants = query(collection(db, "contestants"), where("seasonId", "==", activeSeason.id));
+    unsubscribes.push(onSnapshot(qContestants, (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
+    
+    const qCompetitions = query(collection(db, "competitions"), where("seasonId", "==", activeSeason.id));
+    unsubscribes.push(onSnapshot(qCompetitions, (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
+    
     unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
 
     return () => unsubscribes.forEach(unsub => unsub());
-  }, [db, league?.id]);
+  }, [db, activeLeague, activeSeason]);
 
   const currentWeekEvents = useMemo(() => {
     if (!activeSeason) return [];
@@ -149,7 +159,7 @@ function DashboardPage() {
         }
         
         if (comp.type === 'EVICTION' && comp.evictedId) {
-            const juryStartWeek = league?.settings.juryStartWeek;
+            const juryStartWeek = activeLeague?.settings.juryStartWeek;
             const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
             processEvent(comp.evictedId, eventCode);
         }
@@ -165,7 +175,7 @@ function DashboardPage() {
       const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
       return { ...team, total_score };
     });
-  }, [teams, scoringRules, picks, competitions, league]);
+  }, [teams, scoringRules, picks, competitions, activeLeague]);
 
   const sortedTeams = useMemo(() => {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
@@ -278,7 +288,7 @@ function DashboardPage() {
   }, [currentWeekEvents, contestants, scoringRules]);
 
 
-  if (!league || !contestants.length || !activeSeason) {
+  if (!activeLeague || !contestants.length || !activeSeason) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Dashboard...</div>
