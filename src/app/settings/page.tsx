@@ -26,15 +26,9 @@ function SettingsPage() {
 
   return (
     <>
-      <AppHeader />
-      <main className="flex-1 pb-20">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
-          <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Settings
-          </h1>
-        </header>
-        <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8">
+      <AppHeader pageTitle="Settings" pageIcon={Settings} />
+      <main className="flex-1 pb-20 p-4 md:p-8">
+        <div className="flex flex-1 flex-col gap-6 md:gap-8">
           <div className="space-y-6">
             <Card>
               <CardHeader>

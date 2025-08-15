@@ -170,25 +170,21 @@ function ScoringPage() {
 
   return (
     <>
-      <AppHeader />
-      <main className="flex-1 pb-20">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
-          <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
-            <ClipboardList className="h-5 w-5" />
-            Scoring
-          </h1>
-          <div className="w-40">
-            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-              <SelectTrigger><SelectValue/></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Weeks</SelectItem>
-                {weekOptions.map(week => <SelectItem key={week} value={week}>Week {week}</SelectItem>)}
-              </SelectContent>
-            </Select>
+      <AppHeader pageTitle="Scoring" pageIcon={ClipboardList} />
+      <main className="flex-1 pb-20 p-4 md:p-8">
+        <div className="flex flex-1 flex-col gap-4 md:gap-8">
+          <div className="absolute top-16 right-4">
+              <div className="w-40">
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                      <SelectTrigger><SelectValue/></SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">All Weeks</SelectItem>
+                          {weekOptions.map(week => <SelectItem key={week} value={week}>Week {week}</SelectItem>)}
+                      </SelectContent>
+                  </Select>
+              </div>
           </div>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-
+          
           <Card className="bg-card/50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">

@@ -18,8 +18,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Button } from "./ui/button";
-import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus, Shield } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDown, Settings, LogOut, User as UserIcon, LogIn, UserPlus, Shield, ChevronsRight } from "lucide-react";
+import { createElement, useEffect, useState } from "react";
 import { getFirestore, doc, onSnapshot, Unsubscribe, collection, query } from 'firebase/firestore';
 import { app, auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
@@ -31,7 +31,12 @@ import { Badge } from "./ui/badge";
 
 const LEAGUE_ID = 'bb27';
 
-export function AppHeader() {
+interface AppHeaderProps {
+    pageTitle: string;
+    pageIcon: React.ElementType;
+}
+
+export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
   const db = getFirestore(app);
   const { appUser: currentUser, loading } = useAuth();
   const router = useRouter();
@@ -84,14 +89,23 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
-      <Link href="/" className="flex items-center gap-2">
-        <Logo className="h-7 w-7" />
-        <div className="flex flex-col -space-y-1.5">
-           <h1 className="font-headline text-lg font-semibold tracking-tight">{activeSeason?.title}</h1>
-           <p className="text-xs text-muted-foreground">{activeLeague.name}</p>
+    <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
+      <div className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
+            <Logo className="h-7 w-7" />
+            <div className="flex flex-col -space-y-1.5">
+            <h1 className="font-headline text-lg font-semibold tracking-tight">{activeSeason?.title}</h1>
+            <p className="text-xs text-muted-foreground">{activeLeague.name}</p>
+            </div>
+        </Link>
+        <ChevronsRight className="h-4 w-4 text-muted-foreground/50 rotate-90 sm:rotate-0" />
+        <div className="flex items-center gap-2">
+            {createElement(pageIcon, { className: "h-5 w-5"})}
+            <h1 className="text-lg font-semibold md:text-xl hidden sm:inline-block">
+                {pageTitle}
+            </h1>
         </div>
-      </Link>
+      </div>
       
       <div className="ml-auto flex items-center gap-2">
         <TooltipProvider>

@@ -279,15 +279,9 @@ function DashboardPage() {
 
   return (
     <>
-      <AppHeader />
-      <main className="flex-1 pb-20">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
-          <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
-            <Home className="h-5 w-5" />
-            Dashboard
-          </h1>
-        </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+      <AppHeader pageTitle="Dashboard" pageIcon={Home} />
+      <main className="flex-1 pb-20 p-4 md:p-8">
+        <div className="flex flex-1 flex-col gap-4 md:gap-8">
           <Card className="bg-card/50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -519,14 +513,20 @@ function DashboardPage() {
                            {topMovers.map(({ score, contestants }) => (
                                 <div key={score} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                     <div className="flex items-center gap-3">
-                                      <Image
-                                        src={contestants[0].photoUrl || "https://placehold.co/100x100.png"}
-                                        alt={getContestantDisplayName(contestants[0], 'full')}
-                                        width={40}
-                                        height={40}
-                                        className="rounded-full"
-                                        data-ai-hint="portrait person"
-                                      />
+                                      {contestants.length > 1 ? (
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                                          <span className="text-lg font-bold">{contestants.length}</span>
+                                        </div>
+                                      ) : (
+                                        <Image
+                                          src={contestants[0].photoUrl || "https://placehold.co/100x100.png"}
+                                          alt={getContestantDisplayName(contestants[0], 'full')}
+                                          width={40}
+                                          height={40}
+                                          className="rounded-full"
+                                          data-ai-hint="portrait person"
+                                        />
+                                      )}
                                       <div className="flex-1">
                                         <p className="font-medium truncate">
                                             {contestants.map(c => getContestantDisplayName(c, 'short')).join(', ')}
