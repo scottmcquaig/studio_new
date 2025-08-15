@@ -14,11 +14,8 @@ import { Separator } from '@/components/ui/separator';
 import { AppHeader } from '@/components/app-header';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from '@/components/withAuth';
 import { PageLayout } from '@/components/page-layout';
-
-const LEAGUE_ID = 'bb27';
 
 type ScoringEvent = {
   week: number;
@@ -40,22 +37,46 @@ function ScoringPage() {
   const [league, setLeague] = useState<League | null>(null);
   const [scoringRules, setScoringRules] = useState<ScoringRuleSet | null>(null);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
   
-  const activeSeason = useMemo(() => MOCK_SEASONS[0], []);
-  const contestantTerm = league?.contestantTerm || { singular: 'Contestant', plural: 'Contestants' };
+  const activeSeason = useMemo(() => {
+    return seasons.find(s => s.status === 'in_progress') || seasons[0];
+  }, [seasons]);
 
-  const [selectedWeek, setSelectedWeek] = useState<string>(String(activeSeason.currentWeek));
+  const [selectedWeek, setSelectedWeek] = useState<string>('all');
   const [selectedContestant, setSelectedContestant] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
   const [selectedEvent, setSelectedEvent] = useState<string>('all');
   
-  const weekOptions = useMemo(() => Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1)).reverse(), [activeSeason.currentWeek]);
-  const displayWeek = selectedWeek === 'all' ? activeSeason.currentWeek : Number(selectedWeek);
+  const weekOptions = useMemo(() => {
+    if (!activeSeason) return [];
+    return Array.from({ length: activeSeason.currentWeek }, (_, i) => String(i + 1)).reverse();
+  }, [activeSeason]);
+  
+  const displayWeek = useMemo(() => {
+      if (!activeSeason) return 1;
+      return selectedWeek === 'all' ? activeSeason.currentWeek : Number(selectedWeek);
+  }, [selectedWeek, activeSeason]);
+  
+  useEffect(() => {
+    if (activeSeason && selectedWeek === 'all') {
+        setSelectedWeek(String(activeSeason.currentWeek));
+    }
+  }, [activeSeason, selectedWeek]);
   
   useEffect(() => {
         const unsubscribes: Unsubscribe[] = [];
         
-        const leagueDocRef = doc(db, "leagues", LEAGUE_ID);
+        unsubscribes.push(onSnapshot(collection(db, "seasons"), (snap) => {
+            const seasonsData = snap.docs.map(d => ({...d.data(), id: d.id } as Season))
+                .sort((a, b) => b.year - a.year || (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0));
+            setSeasons(seasonsData);
+        }));
+        
+        // A default league loader, replace with a dynamic switcher later
+        const leagueId = 'bb27';
+        
+        const leagueDocRef = doc(db, "leagues", leagueId);
         unsubscribes.push(onSnapshot(leagueDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
@@ -70,8 +91,8 @@ function ScoringPage() {
 
         unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
         unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", LEAGUE_ID)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
-        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", LEAGUE_ID)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", leagueId)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", leagueId)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
 
         return () => unsubscribes.forEach(unsub => unsub());
   }, [db]);
@@ -160,13 +181,15 @@ function ScoringPage() {
     }));
   }, [scoringRules]);
 
-  if (!league || !contestants.length) {
+  if (!league || !contestants.length || !activeSeason) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Scoring...</div>
         </div>
     );
   }
+  
+  const contestantTerm = league.contestantTerm;
 
   return (
     <PageLayout>
@@ -192,7 +215,7 @@ function ScoringPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap justify-center gap-4">
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(16.66%-1rem)]">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-purple-600">
                   <Crown className="h-4 w-4" /> HOH
                 </h3>
@@ -218,7 +241,7 @@ function ScoringPage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(33.33%-1rem)]">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-red-400">
                   <TriangleAlert className="h-4 w-4" /> Noms
                 </h3>
@@ -258,7 +281,7 @@ function ScoringPage() {
                 )}
               </div>
 
-              <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(16.66%-1rem)]">
+              <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <div className="flex flex-col items-center justify-center flex-grow">
                   <h3 className="font-semibold flex items-center gap-1 text-amber-500">
                     <Ban className="h-4 w-4" /> POV
@@ -285,7 +308,7 @@ function ScoringPage() {
                   )}
                 </div>
                 <Separator orientation="vertical" className="h-auto"/>
-                <div className="flex flex-col items-center justify-center flex-shrink-0 px-2 min-w-fit">
+                <div className="flex flex-col items-start justify-center flex-shrink-0 px-2 space-y-2">
                   {pov?.used === false && (
                       <div className="flex flex-col items-center gap-1">
                         <ShieldOff className="h-8 w-8 text-muted-foreground"/>
@@ -293,14 +316,24 @@ function ScoringPage() {
                       </div>
                     )}
                     {pov?.used === true && savedPlayer && (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="flex flex-col items-center">
-                            <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
-                            <span className="text-xs text-center">{getContestantDisplayName(savedPlayer, 'short')}</span>
+                      <div className="flex flex-col items-start gap-2">
+                        <div className="flex items-center gap-2">
+                           <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full" data-ai-hint="portrait person"/>
+                           <div>
+                               <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</p>
+                               <p className="text-xs text-left">{getContestantDisplayName(savedPlayer, 'short')}</p>
+                           </div>
                         </div>
-                        <div className="flex flex-col items-center mt-1">
-                            <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
-                            <span className="text-xs text-center">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
+                        <div className="flex items-center gap-2">
+                            {renomPlayer ? (
+                               <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full" data-ai-hint="portrait person"/>
+                            ) : (
+                               <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground"/></div>
+                            )}
+                            <div>
+                               <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</p>
+                               <p className="text-xs text-left">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</p>
+                            </div>
                         </div>
                       </div>
                     )}
@@ -313,7 +346,7 @@ function ScoringPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(16.66%-1rem)]">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-sky-500">
                   <BrickWall className="h-4 w-4" /> Block Buster
                 </h3>
@@ -339,7 +372,7 @@ function ScoringPage() {
                 )}
               </div>
 
-              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(16.66%-1rem)]">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background basis-full md:basis-[calc(50%-1rem)] lg:basis-[calc(33.33%-1rem)] xl:basis-[calc(20%-1rem)]">
                 <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
                   <Skull className="h-4 w-4" /> Evicted
                 </h3>

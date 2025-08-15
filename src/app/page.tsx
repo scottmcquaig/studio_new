@@ -32,11 +32,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import type { Team, League, ScoringRuleSet, Competition, Contestant, Season, User, Pick, ScoringRule } from '@/lib/data';
-import { MOCK_SEASONS } from "@/lib/data";
 import withAuth from "@/components/withAuth";
 import { PageLayout } from "@/components/page-layout";
-
-const LEAGUE_ID = 'bb27';
 
 function DashboardPage() {
   const db = getFirestore(app);
@@ -48,37 +45,57 @@ function DashboardPage() {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
 
-  // Using mock for now, will be dynamic later
-  const activeSeason = MOCK_SEASONS[0]; 
+  const activeSeason = useMemo(() => {
+    return seasons.find(s => s.status === 'in_progress') || seasons[0];
+  }, [seasons]);
 
   useEffect(() => {
     const unsubscribes: Unsubscribe[] = [];
 
-    unsubscribes.push(onSnapshot(doc(db, "leagues", LEAGUE_ID), (docSnap) => {
-        if (docSnap.exists()) {
-            const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
-            setLeague(leagueData);
-            if (leagueData.settings.scoringRuleSetId) {
-                unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
-                    if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
-                }));
-            }
-        }
+    unsubscribes.push(onSnapshot(collection(db, "seasons"), (snap) => {
+        const seasonsData = snap.docs.map(d => ({...d.data(), id: d.id } as Season))
+            .sort((a, b) => b.year - a.year || (b.seasonNumber ?? 0) - (a.seasonNumber ?? 0));
+        setSeasons(seasonsData);
     }));
+
+    if (league?.id) {
+        unsubscribes.push(onSnapshot(doc(db, "leagues", league.id), (docSnap) => {
+            if (docSnap.exists()) {
+                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+                setLeague(leagueData);
+                if (leagueData.settings.scoringRuleSetId) {
+                    unsubscribes.push(onSnapshot(doc(db, "scoring_rules", leagueData.settings.scoringRuleSetId), (ruleSnap) => {
+                        if (ruleSnap.exists()) setScoringRules({ ...ruleSnap.data(), id: ruleSnap.id } as ScoringRuleSet);
+                    }));
+                }
+            }
+        }));
+        
+        unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", league.id)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
+        unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", league.id)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
+    } else {
+        // A default league loader, replace with a dynamic switcher later
+        unsubscribes.push(onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
+             if (docSnap.exists()) {
+                const leagueData = { ...docSnap.data(), id: docSnap.id } as League;
+                setLeague(leagueData);
+            }
+        }));
+    }
     
-    unsubscribes.push(onSnapshot(query(collection(db, "teams"), where("leagueId", "==", LEAGUE_ID)), (snap) => setTeams(snap.docs.map(d => ({...d.data(), id: d.id } as Team)))));
     unsubscribes.push(onSnapshot(query(collection(db, "contestants")), (snap) => setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)))));
     unsubscribes.push(onSnapshot(query(collection(db, "competitions")), (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
     unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
-    unsubscribes.push(onSnapshot(query(collection(db, "picks"), where("leagueId", "==", LEAGUE_ID)), (snap) => setPicks(snap.docs.map(d => ({...d.data(), id: d.id } as Pick)))));
 
     return () => unsubscribes.forEach(unsub => unsub());
-  }, [db]);
+  }, [db, league?.id]);
 
-  const currentWeekEvents = useMemo(() => 
-    competitions.filter((c) => c.week === activeSeason.currentWeek),
-    [competitions, activeSeason.currentWeek]
+  const currentWeekEvents = useMemo(() => {
+    if (!activeSeason) return [];
+    return competitions.filter((c) => c.week === activeSeason.currentWeek);
+   }, [competitions, activeSeason]
   );
   
   const hoh = useMemo(() => currentWeekEvents.find((c) => c.type === "HOH"), [currentWeekEvents]);
@@ -261,7 +278,7 @@ function DashboardPage() {
   }, [currentWeekEvents, contestants, scoringRules]);
 
 
-  if (!league || !contestants.length) {
+  if (!league || !contestants.length || !activeSeason) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Dashboard...</div>
@@ -385,7 +402,7 @@ function DashboardPage() {
                   )}
                 </div>
                 <Separator orientation="vertical" className="h-auto"/>
-                 <div className="flex flex-col items-center justify-center flex-shrink-0 px-2 min-w-fit">
+                 <div className="flex flex-col items-start justify-center flex-shrink-0 px-2 space-y-2">
                   {pov?.used === false && (
                       <div className="flex flex-col items-center gap-1">
                         <Ban className="h-8 w-8 text-muted-foreground"/>
@@ -393,14 +410,24 @@ function DashboardPage() {
                       </div>
                     )}
                     {pov?.used === true && savedPlayer && (
-                       <div className="flex flex-col items-center gap-2">
-                         <div className="flex flex-col items-center">
-                            <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
-                            <span className="text-xs text-center">{getContestantDisplayName(savedPlayer, 'short')}</span>
+                       <div className="flex flex-col items-start gap-2">
+                         <div className="flex items-center gap-2">
+                            <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full" data-ai-hint="portrait person"/>
+                            <div>
+                                <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</p>
+                                <p className="text-xs text-left">{getContestantDisplayName(savedPlayer, 'short')}</p>
+                            </div>
                          </div>
-                         <div className="flex flex-col items-center mt-1">
-                             <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
-                             <span className="text-xs text-center">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
+                         <div className="flex items-center gap-2">
+                             {renomPlayer ? (
+                                <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full" data-ai-hint="portrait person"/>
+                             ) : (
+                                <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground"/></div>
+                             )}
+                             <div>
+                                <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</p>
+                                <p className="text-xs text-left">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</p>
+                             </div>
                          </div>
                        </div>
                     )}
