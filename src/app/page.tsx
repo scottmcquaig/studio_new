@@ -581,7 +581,10 @@ function DashboardPage() {
                                       )}
                                       <div className="flex-1">
                                         <p className="font-medium truncate text-sm">
-                                            {contestants.map(c => getContestantDisplayName(c, 'short')).join(', ')}
+                                            {contestants.length > 1
+                                                ? contestants.map(c => getContestantDisplayName(c, 'short')).join(', ')
+                                                : getContestantDisplayName(contestants[0], 'full')
+                                            }
                                         </p>
                                       </div>
                                     </div>
