@@ -30,15 +30,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
       if (user) {
-        setLoading(true);
+        setCurrentUser(user);
         const db = getFirestore(app);
         const userDocRef = doc(db, 'users', user.uid);
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 setAppUser({ ...docSnap.data(), id: docSnap.id } as AppUser);
             } else {
+                // If the user exists in Auth but not Firestore, wait a moment.
+                // This can happen during sign-up race conditions.
+                // For now, we treat them as not fully logged in.
                 setAppUser(null);
             }
             setLoading(false);
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     currentUser,
     appUser,
-    loading: loading || (!!currentUser && !appUser),
+    loading,
   };
 
   return (

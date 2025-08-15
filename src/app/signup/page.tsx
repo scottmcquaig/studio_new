@@ -41,6 +41,7 @@ export default function SignUpPage() {
         photoURL: user.photoURL || '',
         createdAt: new Date().toISOString(),
         status: 'active',
+        role: 'player', // Default role for new sign-ups
       });
 
       toast({ title: "Success", description: "Account created successfully! Please log in." });
