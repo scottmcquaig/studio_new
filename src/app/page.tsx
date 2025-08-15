@@ -255,306 +255,303 @@ function DashboardPage() {
     <>
       <AppHeader />
       <main className="flex-1 pb-20">
-        <div className="flex flex-col">
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
-        <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
-          <Home className="h-5 w-5" />
-          Dashboard
-        </h1>
-      </header>
-      <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
-        <Card className="bg-card/50">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Week {activeSeason.currentWeek} Status</span>
-              <span className="text-sm font-normal text-muted-foreground">
-                {activeSeason.title}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-6 gap-4">
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
-              <h3 className="font-semibold flex items-center gap-1 text-purple-600">
-                <Crown className="h-4 w-4" /> HOH
-              </h3>
-              {hohWinner ? (
-                <>
-                  <Image
-                    src={hohWinner.photoUrl || "https://placehold.co/100x100.png"}
-                    alt={getContestantDisplayName(hohWinner, 'full')}
-                    width={64}
-                    height={64}
-                    className="rounded-full border-2 border-purple-600"
-                    data-ai-hint="portrait person"
-                  />
-                  <span className="text-sm">{getContestantDisplayName(hohWinner, 'short')}</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">TBD</span>
-                </>
-              )}
-            </div>
-
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
-              <h3 className="font-semibold flex items-center gap-1 text-red-400">
-                <TriangleAlert className="h-4 w-4" /> Noms
-              </h3>
-              <div className="flex items-center justify-center gap-2 min-h-[76px]">
-                {nomWinners.length > 0 ? (
-                  nomWinners.map((nom) => (
-                    <div
-                      key={nom.id}
-                      className="flex flex-col items-center gap-1"
-                    >
-                      <Image
-                        src={nom.photoUrl || "https://placehold.co/100x100.png"}
-                        alt={getContestantDisplayName(nom, 'full')}
-                        width={48}
-                        height={48}
-                        className="rounded-full border-2 border-red-400"
-                        data-ai-hint="portrait person"
-                      />
-                      <span className="text-xs">
-                        {getContestantDisplayName(nom, 'short')}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                      <HelpCircle className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                     <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                      <HelpCircle className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  </>
-                )}
-              </div>
-              {nomWinners.length === 0 && (
-                <span className="text-sm text-muted-foreground -mt-2">TBD</span>
-              )}
-            </div>
-            
-            <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1">
-              <div className="flex flex-col items-center flex-grow">
-                <h3 className="font-semibold flex items-center gap-1 text-amber-500">
-                  <Ban className="h-4 w-4" /> POV
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:px-6">
+          <h1 className="text-lg font-semibold md:text-xl flex items-center gap-2">
+            <Home className="h-5 w-5" />
+            Dashboard
+          </h1>
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+          <Card className="bg-card/50">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Week {activeSeason.currentWeek} Status</span>
+                <span className="text-sm font-normal text-muted-foreground">
+                  {activeSeason.title}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+                <h3 className="font-semibold flex items-center gap-1 text-purple-600">
+                  <Crown className="h-4 w-4" /> HOH
                 </h3>
-                {povWinner ? (
+                {hohWinner ? (
                   <>
                     <Image
-                      src={povWinner.photoUrl || "https://placehold.co/100x100.png"}
-                      alt={getContestantDisplayName(povWinner, 'full')}
+                      src={hohWinner.photoUrl || "https://placehold.co/100x100.png"}
+                      alt={getContestantDisplayName(hohWinner, 'full')}
                       width={64}
                       height={64}
-                      className="rounded-full border-2 border-amber-500 mt-2"
+                      className="rounded-full border-2 border-purple-600"
                       data-ai-hint="portrait person"
                     />
-                    <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
+                    <span className="text-sm">{getContestantDisplayName(hohWinner, 'short')}</span>
                   </>
                 ) : (
                   <>
-                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50 mt-2">
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
                       <HelpCircle className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <span className="text-sm text-muted-foreground mt-1">TBD</span>
+                    <span className="text-sm text-muted-foreground">TBD</span>
                   </>
                 )}
               </div>
-              <Separator orientation="vertical" className="h-auto"/>
-               <div className="flex flex-col items-center justify-center w-[35%] min-w-fit">
-                {pov?.used === false && (
-                    <div className="flex flex-col items-center gap-1">
-                      <Ban className="h-8 w-8 text-muted-foreground"/>
-                      <span className="text-xs text-muted-foreground">Not Used</span>
-                    </div>
+
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-2">
+                <h3 className="font-semibold flex items-center gap-1 text-red-400">
+                  <TriangleAlert className="h-4 w-4" /> Noms
+                </h3>
+                <div className="flex items-center justify-center gap-2 min-h-[76px]">
+                  {nomWinners.length > 0 ? (
+                    nomWinners.map((nom) => (
+                      <div
+                        key={nom.id}
+                        className="flex flex-col items-center gap-1"
+                      >
+                        <Image
+                          src={nom.photoUrl || "https://placehold.co/100x100.png"}
+                          alt={getContestantDisplayName(nom, 'full')}
+                          width={48}
+                          height={48}
+                          className="rounded-full border-2 border-red-400"
+                          data-ai-hint="portrait person"
+                        />
+                        <span className="text-xs">
+                          {getContestantDisplayName(nom, 'short')}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                        <HelpCircle className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                       <div className="w-12 h-12 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                        <HelpCircle className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    </>
                   )}
-                  {pov?.used === true && savedPlayer && (
-                     <div className="flex flex-col items-center gap-2">
-                       <div className="flex flex-col items-center">
-                          <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
-                          <span className="text-xs">{getContestantDisplayName(savedPlayer, 'short')}</span>
-                       </div>
-                       <div className="flex flex-col items-center mt-1">
-                           <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
-                           <span className="text-xs">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
-                       </div>
-                     </div>
-                  )}
-                  {pov?.used === undefined && povWinner && (
-                     <div className="flex flex-col items-center gap-1">
-                      <HelpCircle className="h-8 w-8 text-muted-foreground"/>
-                      <span className="text-xs text-muted-foreground">TBD</span>
-                    </div>
-                  )}
+                </div>
+                {nomWinners.length === 0 && (
+                  <span className="text-sm text-muted-foreground -mt-2">TBD</span>
+                )}
               </div>
-            </div>
+              
+              <div className="flex items-stretch text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+                <div className="flex flex-col items-center flex-grow">
+                  <h3 className="font-semibold flex items-center gap-1 text-amber-500">
+                    <Ban className="h-4 w-4" /> POV
+                  </h3>
+                  {povWinner ? (
+                    <>
+                      <Image
+                        src={povWinner.photoUrl || "https://placehold.co/100x100.png"}
+                        alt={getContestantDisplayName(povWinner, 'full')}
+                        width={64}
+                        height={64}
+                        className="rounded-full border-2 border-amber-500 mt-2"
+                        data-ai-hint="portrait person"
+                      />
+                      <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50 mt-2">
+                        <HelpCircle className="w-8 h-8 text-muted-foreground" />
+                      </div>
+                      <span className="text-sm text-muted-foreground mt-1">TBD</span>
+                    </>
+                  )}
+                </div>
+                <Separator orientation="vertical" className="h-auto"/>
+                 <div className="flex flex-col items-center justify-center w-[35%] min-w-fit">
+                  {pov?.used === false && (
+                      <div className="flex flex-col items-center gap-1">
+                        <Ban className="h-8 w-8 text-muted-foreground"/>
+                        <span className="text-xs text-muted-foreground">Not Used</span>
+                      </div>
+                    )}
+                    {pov?.used === true && savedPlayer && (
+                       <div className="flex flex-col items-center gap-2">
+                         <div className="flex flex-col items-center">
+                            <span className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500"/> Saved</span>
+                            <span className="text-xs">{getContestantDisplayName(savedPlayer, 'short')}</span>
+                         </div>
+                         <div className="flex flex-col items-center mt-1">
+                             <span className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500"/> Renom</span>
+                             <span className="text-xs">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</span>
+                         </div>
+                       </div>
+                    )}
+                    {pov?.used === undefined && povWinner && (
+                       <div className="flex flex-col items-center gap-1">
+                        <HelpCircle className="h-8 w-8 text-muted-foreground"/>
+                        <span className="text-xs text-muted-foreground">TBD</span>
+                      </div>
+                    )}
+                </div>
+              </div>
 
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
-              <h3 className="font-semibold flex items-center gap-1 text-sky-500">
-                <BrickWall className="h-4 w-4" /> Block Buster
-              </h3>
-              {blockBusterWinner ? (
-                <>
-                  <Image
-                    src={blockBusterWinner.photoUrl || "https://placehold.co/100x100.png"}
-                    alt={getContestantDisplayName(blockBusterWinner, 'full')}
-                    width={64}
-                    height={64}
-                    className="rounded-full border-2 border-sky-500"
-                    data-ai-hint="portrait person"
-                  />
-                  <span className="text-sm">{getContestantDisplayName(blockBusterWinner, 'short')}</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">None</span>
-                </>
-              )}
-            </div>
-
-
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
-              <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
-                <Skull className="h-4 w-4" /> Evicted
-              </h3>
-              {evictedPlayer ? (
-                <>
-                  <Image
-                    src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"}
-                    alt={getContestantDisplayName(evictedPlayer, 'full')}
-                    width={64}
-                    height={64}
-                    className="rounded-full border-2 border-muted-foreground"
-                    data-ai-hint="portrait person"
-                  />
-                  <span className="text-sm">{getContestantDisplayName(evictedPlayer, 'short')}</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
-                    <HelpCircle className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">TBD</span>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-            <Card className="xl:col-span-2">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><TrendingUp /> Current Standings</CardTitle>
-                    <CardDescription>Team rankings and weekly performance.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex justify-between items-center px-4 mb-2">
-                        <span className="text-xs font-medium text-muted-foreground">TEAM</span>
-                        <span className="text-xs font-medium text-muted-foreground">POINTS</span>
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+                <h3 className="font-semibold flex items-center gap-1 text-sky-500">
+                  <BrickWall className="h-4 w-4" /> Block Buster
+                </h3>
+                {blockBusterWinner ? (
+                  <>
+                    <Image
+                      src={blockBusterWinner.photoUrl || "https://placehold.co/100x100.png"}
+                      alt={getContestantDisplayName(blockBusterWinner, 'full')}
+                      width={64}
+                      height={64}
+                      className="rounded-full border-2 border-sky-500"
+                      data-ai-hint="portrait person"
+                    />
+                    <span className="text-sm">{getContestantDisplayName(blockBusterWinner, 'short')}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                      <HelpCircle className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <div className="space-y-4">
-                        {sortedTeams.map((team, index) => (
-                             <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                                <div className="flex items-center gap-3">
-                                    <span className={cn("text-lg font-bold w-6 text-center", 
-                                        index === 0 && "text-amber-400",
-                                        index === 1 && "text-slate-300",
-                                        index === 2 && "text-orange-400"
-                                    )}>{index + 1}</span>
-                                    <div>
-                                        <p className="font-medium">{team.name}</p>
-                                        <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
-                                    </div>
-                                </div>
-                                <Badge variant="secondary" className="w-20 justify-center text-base">
-                                  <span>{team.total_score || 0}</span>
-                                </Badge>
-                            </div>
-                        ))}
+                    <span className="text-sm text-muted-foreground">None</span>
+                  </>
+                )}
+              </div>
+
+
+              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background col-span-1">
+                <h3 className="font-semibold flex items-center gap-1 text-muted-foreground">
+                  <Skull className="h-4 w-4" /> Evicted
+                </h3>
+                {evictedPlayer ? (
+                  <>
+                    <Image
+                      src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"}
+                      alt={getContestantDisplayName(evictedPlayer, 'full')}
+                      width={64}
+                      height={64}
+                      className="rounded-full border-2 border-muted-foreground"
+                      data-ai-hint="portrait person"
+                    />
+                    <span className="text-sm">{getContestantDisplayName(evictedPlayer, 'short')}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50">
+                      <HelpCircle className="w-8 h-8 text-muted-foreground" />
                     </div>
-                </CardContent>
-            </Card>
-            
-            <div className="space-y-4 md:space-y-8">
-              <Card>
+                    <span className="text-sm text-muted-foreground">TBD</span>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+              <Card className="xl:col-span-2">
                   <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Flame /> Top Performers</CardTitle>
-                      <CardDescription>Top scoring {league.contestantTerm.plural.toLowerCase()} for Week {activeSeason.currentWeek}.</CardDescription>
+                      <CardTitle className="flex items-center gap-2"><TrendingUp /> Current Standings</CardTitle>
+                      <CardDescription>Team rankings and weekly performance.</CardDescription>
                   </CardHeader>
                   <CardContent>
+                      <div className="flex justify-between items-center px-4 mb-2">
+                          <span className="text-xs font-medium text-muted-foreground">TEAM</span>
+                          <span className="text-xs font-medium text-muted-foreground">POINTS</span>
+                      </div>
                       <div className="space-y-4">
-                          {topPerformers.map((contestant) => (
-                              <div key={contestant.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                          {sortedTeams.map((team, index) => (
+                               <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                   <div className="flex items-center gap-3">
-                                    <Image
-                                      src={contestant.photoUrl || "https://placehold.co/100x100.png"}
-                                      alt={getContestantDisplayName(contestant, 'full')}
-                                      width={40}
-                                      height={40}
-                                      className="rounded-full"
-                                      data-ai-hint="portrait person"
-                                    />
-                                    <div>
-                                      <p className="font-medium">{getContestantDisplayName(contestant, 'full')}</p>
-                                    </div>
+                                      <span className={cn("text-lg font-bold w-6 text-center", 
+                                          index === 0 && "text-amber-400",
+                                          index === 1 && "text-slate-300",
+                                          index === 2 && "text-orange-400"
+                                      )}>{index + 1}</span>
+                                      <div>
+                                          <p className="font-medium">{team.name}</p>
+                                          <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
+                                      </div>
                                   </div>
-                                  <Badge variant="default" className={cn("w-20 justify-center text-base", contestant.weekly_score > 0 ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200")}>
-                                    <span>{contestant.weekly_score > 0 ? '+':''}{contestant.weekly_score || 0}</span>
+                                  <Badge variant="secondary" className="w-20 justify-center text-base">
+                                    <span>{team.total_score || 0}</span>
                                   </Badge>
                               </div>
                           ))}
                       </div>
                   </CardContent>
               </Card>
+              
+              <div className="space-y-4 md:space-y-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Flame /> Top Performers</CardTitle>
+                        <CardDescription>Top scoring {league.contestantTerm.plural.toLowerCase()} for Week {activeSeason.currentWeek}.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {topPerformers.map((contestant) => (
+                                <div key={contestant.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                    <div className="flex items-center gap-3">
+                                      <Image
+                                        src={contestant.photoUrl || "https://placehold.co/100x100.png"}
+                                        alt={getContestantDisplayName(contestant, 'full')}
+                                        width={40}
+                                        height={40}
+                                        className="rounded-full"
+                                        data-ai-hint="portrait person"
+                                      />
+                                      <div>
+                                        <p className="font-medium">{getContestantDisplayName(contestant, 'full')}</p>
+                                      </div>
+                                    </div>
+                                    <Badge variant="default" className={cn("w-20 justify-center text-base", contestant.weekly_score > 0 ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200")}>
+                                      <span>{contestant.weekly_score > 0 ? '+':''}{contestant.weekly_score || 0}</span>
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
 
-              <Card>
-                  <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><ListOrdered /> Weekly Activity</CardTitle>
-                      <CardDescription>A log of all point-scoring events.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                      <div className="space-y-4">
-                      {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                          <div className="flex items-center gap-3">
-                              <Image
-                              src={activity.player.photoUrl || "https://placehold.co/100x100.png"}
-                              alt={getContestantDisplayName(activity.player, 'full')}
-                              width={40}
-                              height={40}
-                              className="rounded-full"
-                              data-ai-hint="portrait person"
-                              />
-                              <div>
-                              <p className="text-sm">{activity.description}</p>
-                              </div>
-                          </div>
-                          <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
-                                  "w-12 justify-center text-xs",
-                                  activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
-                                  activity.points! < 0 && "bg-red-100 text-red-800")}>
-                                  <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
-                          </Badge>
-                          </div>
-                      )) : (
-                          <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged yet.</p>
-                      )}
-                      </div>
-                  </CardContent>
-              </Card>
-            </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><ListOrdered /> Weekly Activity</CardTitle>
+                        <CardDescription>A log of all point-scoring events.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                        {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            <div className="flex items-center gap-3">
+                                <Image
+                                src={activity.player.photoUrl || "https://placehold.co/100x100.png"}
+                                alt={getContestantDisplayName(activity.player, 'full')}
+                                width={40}
+                                height={40}
+                                className="rounded-full"
+                                data-ai-hint="portrait person"
+                                />
+                                <div>
+                                <p className="text-sm">{activity.description}</p>
+                                </div>
+                            </div>
+                            <Badge variant={activity.points! >= 0 ? "default" : "destructive"} className={cn(
+                                    "w-12 justify-center text-xs",
+                                    activity.points! >= 0 && "bg-green-100 text-green-800 hover:bg-green-200", 
+                                    activity.points! < 0 && "bg-red-100 text-red-800")}>
+                                    <span>{activity.points! > 0 ? '+': ''}{activity.points}</span>
+                            </Badge>
+                            </div>
+                        )) : (
+                            <p className="text-muted-foreground text-sm text-center py-4">No scoring activity logged yet.</p>
+                        )}
+                        </div>
+                    </CardContent>
+                </Card>
+              </div>
+          </div>
         </div>
-
-      </div>
-    </div>
       </main>
       <BottomNavBar />
     </>
