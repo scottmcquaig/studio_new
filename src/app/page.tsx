@@ -154,18 +154,18 @@ function DashboardPage() {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
   }, [teamsWithScores]);
   
-  const topPerformers = useMemo(() => {
+  const topMovers = useMemo(() => {
     if (!scoringRules?.rules.length || !contestants.length || !currentWeekEvents.length) return [];
     
-    const weeklyScores: {[key: string]: number} = {};
+    const weeklyScores: {[key: string]: { contestant: Contestant, score: number }} = {};
     
-    contestants.forEach(c => weeklyScores[c.id] = 0);
+    contestants.forEach(c => weeklyScores[c.id] = { contestant: c, score: 0 });
 
     currentWeekEvents.forEach(comp => {
         const processEvent = (contestantId: string, eventCode: string) => {
             const rule = scoringRules.rules.find(r => r.code === eventCode);
             if (rule && weeklyScores[contestantId] !== undefined) {
-                weeklyScores[contestantId] += rule.points;
+                weeklyScores[contestantId].score += rule.points;
             }
         };
 
@@ -186,11 +186,37 @@ function DashboardPage() {
         }
     });
     
-    return contestants
-        .map(c => ({...c, weekly_score: weeklyScores[c.id]}))
-        .filter(c => c.weekly_score !== 0)
-        .sort((a, b) => b.weekly_score - a.weekly_score)
+    const movers = Object.values(weeklyScores)
+        .filter(c => c.score !== 0)
+        .sort((a, b) => {
+            const absA = Math.abs(a.score);
+            const absB = Math.abs(b.score);
+            if (absB !== absA) {
+                return absB - absA; // Sort by absolute value descending
+            }
+            return b.score - a.score; // If absolute values are equal, positive scores come first
+        });
+
+    // Group by score
+    const grouped = movers.reduce((acc, mover) => {
+        const scoreKey = mover.score;
+        if (!acc[scoreKey]) {
+            acc[scoreKey] = [];
+        }
+        acc[scoreKey].push(mover.contestant);
+        return acc;
+    }, {} as Record<number, Contestant[]>);
+
+    return Object.entries(grouped)
+        .map(([score, contestants]) => ({ score: Number(score), contestants }))
+        .sort((a, b) => {
+            const absA = Math.abs(a.score);
+            const absB = Math.abs(b.score);
+            if (absB !== absA) return absB - absA;
+            return b.score - a.score;
+        })
         .slice(0, 3);
+
   }, [contestants, scoringRules, currentWeekEvents]);
   
   const weeklyActivity = useMemo(() => {
@@ -485,28 +511,30 @@ function DashboardPage() {
               <div className="space-y-4 md:space-y-8">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Flame /> Top Performers</CardTitle>
-                        <CardDescription>Top scoring {league.contestantTerm.plural.toLowerCase()} for Week {activeSeason.currentWeek}.</CardDescription>
+                        <CardTitle className="flex items-center gap-2"><Flame /> Top Movers</CardTitle>
+                        <CardDescription>Biggest point swings for Week {activeSeason.currentWeek}.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {topPerformers.map((contestant) => (
-                                <div key={contestant.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                           {topMovers.map(({ score, contestants }) => (
+                                <div key={score} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                     <div className="flex items-center gap-3">
                                       <Image
-                                        src={contestant.photoUrl || "https://placehold.co/100x100.png"}
-                                        alt={getContestantDisplayName(contestant, 'full')}
+                                        src={contestants[0].photoUrl || "https://placehold.co/100x100.png"}
+                                        alt={getContestantDisplayName(contestants[0], 'full')}
                                         width={40}
                                         height={40}
                                         className="rounded-full"
                                         data-ai-hint="portrait person"
                                       />
-                                      <div>
-                                        <p className="font-medium">{getContestantDisplayName(contestant, 'full')}</p>
+                                      <div className="flex-1">
+                                        <p className="font-medium truncate">
+                                            {contestants.map(c => getContestantDisplayName(c, 'short')).join(', ')}
+                                        </p>
                                       </div>
                                     </div>
-                                    <Badge variant="default" className={cn("w-20 justify-center text-base", contestant.weekly_score > 0 ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200")}>
-                                      <span>{contestant.weekly_score > 0 ? '+':''}{contestant.weekly_score || 0}</span>
+                                    <Badge variant="default" className={cn("w-20 justify-center text-base", score > 0 ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-red-100 text-red-800 hover:bg-red-200")}>
+                                      <span>{score > 0 ? '+':''}{score || 0}</span>
                                     </Badge>
                                 </div>
                             ))}
