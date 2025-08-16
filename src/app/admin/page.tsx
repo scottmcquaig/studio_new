@@ -1293,337 +1293,337 @@ function AdminPage() {
   }
 
   const siteAdminView = (
-    <div className="mt-6 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Globe /> Site Administration</CardTitle>
-            <CardDescription>Manage global users, leagues, and seasons across the entire application.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-             <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-lg flex items-center gap-2"><Package/> Leagues</CardTitle>
-                            <Dialog open={isNewLeagueDialogOpen} onOpenChange={setIsNewLeagueDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New League</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Create New League</DialogTitle>
-                                        <DialogDescription>Set up a new fantasy league for a season.</DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label>League Name</Label>
-                                            <Input value={newLeagueData.name} onChange={(e) => setNewLeagueData({...newLeagueData, name: e.target.value})} placeholder="e.g., Big Brother 26" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Season</Label>
-                                            <Select value={newLeagueData.seasonId} onValueChange={(val) => setNewLeagueData({...newLeagueData, seasonId: val})}>
-                                                <SelectTrigger><SelectValue placeholder="Select a season..." /></SelectTrigger>
-                                                <SelectContent>
-                                                    {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Number of Teams</Label>
-                                                <Input type="number" value={newLeagueData.maxTeams} onChange={(e) => setNewLeagueData({...newLeagueData, maxTeams: Number(e.target.value)})} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Draft Rounds</Label>
-                                                <Input type="number" value={newLeagueData.settings?.draftRounds} onChange={(e) => setNewLeagueData({...newLeagueData, settings: {...newLeagueData.settings, draftRounds: Number(e.target.value)}})} />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>League Admin (Optional)</Label>
-                                            <Select value={(newLeagueData.adminUserIds || [])[0]} onValueChange={(val) => setNewLeagueData({...newLeagueData, adminUserIds: val ? [val] : [] })}>
-                                                <SelectTrigger><SelectValue placeholder="Select an admin..." /></SelectTrigger>
-                                                <SelectContent>
-                                                    {users.map(u => <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Contestant (Singular)</Label>
-                                                <Input value={newLeagueData.contestantTerm?.singular} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...(newLeagueData.contestantTerm || {}), singular: e.target.value}})} placeholder="e.g., Houseguest" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Contestant (Plural)</Label>
-                                                <Input value={newLeagueData.contestantTerm?.plural} onChange={(e) => setNewLeagueData({...newLeagueData, contestantTerm: {...(newLeagueData.contestantTerm || {}), plural: e.target.value}})} placeholder="e.g., Houseguests" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsNewLeagueDialogOpen(false)}>Cancel</Button>
-                                        <Button onClick={handleCreateLeague}>Create League</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>League Name</TableHead>
-                                    <TableHead>Season</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {allLeagues.map(l => (
-                                <TableRow key={l.id} className={cn(l.id === selectedLeagueId && "bg-muted/50")}>
-                                    <TableCell className="font-medium">{l.name}</TableCell>
-                                    <TableCell>{seasons.find(s=>s.id === l.seasonId)?.title}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => {setSelectedLeagueId(l.id); setActiveTab('scoring');}}>Manage</Button>
-                                        <Button variant="ghost" size="icon" className="ml-2" onClick={() => handleManageLeagueAdmins(l)}>
-                                            <ShieldAlert className="h-4 w-4" />
-                                        </Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="ml-2" onClick={() => setLeagueToDelete(l)}>
-                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Delete League?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Are you sure you want to delete the league "{l.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={() => setLeagueToDelete(null)}>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleDeleteLeague}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-lg flex items-center gap-2"><Tv/> Manage Seasons</CardTitle>
-                            <Dialog open={isNewSeasonDialogOpen} onOpenChange={setIsNewSeasonDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm" variant="outline"><PlusCircle className="mr-2"/> New Season</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Create New Season</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <Label>Show Franchise</Label>
-                                                <Input value={newSeasonData.franchise} onChange={(e) => setNewSeasonData({...newSeasonData, franchise: e.target.value})} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Season Title</Label>
-                                                <Input value={newSeasonData.title} onChange={(e) => setNewSeasonData({...newSeasonData, title: e.target.value})} placeholder="e.g., Big Brother 26" />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                             <div className="space-y-2">
-                                                <Label>Season Number</Label>
-                                                <Input type="number" value={newSeasonData.seasonNumber} onChange={(e) => setNewSeasonData({...newSeasonData, seasonNumber: Number(e.target.value)})} />
-                                            </div>
-                                             <div className="space-y-2">
-                                                <Label>Year</Label>
-                                                <Input type="number" value={newSeasonData.year} onChange={(e) => setNewSeasonData({...newSeasonData, year: Number(e.target.value)})} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsNewSeasonDialogOpen(false)}>Cancel</Button>
-                                        <Button onClick={handleCreateSeason}>Create Season</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Season Title</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {seasons.map(s => (
-                                <TableRow key={s.id}>
-                                    <TableCell className="font-medium">{s.title}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={s.status === 'in_progress' ? 'default' : 'outline'}>{s.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => setEditingSeason(s)}>
-                                            <Pencil className="h-4 w-4"/>
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-             </div>
-             <div>
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <CardTitle className="text-lg flex items-center gap-2"><Users/> Global Users</CardTitle>
-                            <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Invite New User</DialogTitle>
-                                        <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label>Name</Label>
-                                            <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Email</Label>
-                                            <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                                        <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="relative mb-4">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="search"
-                                placeholder="Search by name or email..."
-                                className="w-full rounded-lg bg-background pl-8"
-                                value={userSearchTerm}
-                                onChange={(e) => {
-                                    setUserSearchTerm(e.target.value);
-                                    setUserCurrentPage(1);
-                                }}
-                            />
-                        </div>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Display Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {paginatedUsers.map(u => (
-                                <TableRow key={u.id}>
-                                    <TableCell className="font-medium">{u.displayName}</TableCell>
-                                    <TableCell>{u.email}</TableCell>
-                                    <TableCell>{u.role}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={u.status === 'active' ? 'outline' : 'secondary'}>{u.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => setEditingUser(u)}><Pencil className="h-4 w-4"/></Button>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" onClick={() => setUserToDelete(u)}>
-                                                    <Trash2 className="h-4 w-4 text-red-500"/>
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>This will permanently delete {userToDelete?.displayName}. This action cannot be undone.</AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleDeleteUser}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                    <CardFooter className="flex items-center justify-end space-x-2 py-4">
-                        <span className="text-sm text-muted-foreground">
-                            Page {userCurrentPage} of {totalUserPages}
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setUserCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={userCurrentPage === 1}
-                        >
-                            <ChevronLeftIcon className="h-4 w-4" />
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setUserCurrentPage(prev => Math.min(totalUserPages, prev + 1))}
-                            disabled={userCurrentPage === totalUserPages}
-                        >
-                            Next
-                            <ChevronRightIcon className="h-4 w-4" />
-                        </Button>
-                    </CardFooter>
-                </Card>
-                <Card className="mt-6 border-destructive/50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle/> Danger Zone</CardTitle>
-                        <CardDescription>These actions are irreversible. Please proceed with caution.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive">Clear All League Data</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will permanently delete all leagues, teams, contestants, seasons, and scoring data. The only data that will remain is the site admin user. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleClearData}>Yes, delete all data</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+      <div className="mt-6 space-y-6">
+          <Card>
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Globe /> Site Administration</CardTitle>
+                  <CardDescription>Manage global users, leagues, and seasons across the entire application.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="space-y-6">
+                      <Card>
+                          <CardHeader>
+                              <div className="flex justify-between items-center">
+                                  <CardTitle className="text-lg flex items-center gap-2"><Package /> Leagues</CardTitle>
+                                  <Dialog open={isNewLeagueDialogOpen} onOpenChange={setIsNewLeagueDialogOpen}>
+                                      <DialogTrigger asChild>
+                                          <Button size="sm" variant="outline"><PlusCircle className="mr-2" /> New League</Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                          <DialogHeader>
+                                              <DialogTitle>Create New League</DialogTitle>
+                                              <DialogDescription>Set up a new fantasy league for a season.</DialogDescription>
+                                          </DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                              <div className="space-y-2">
+                                                  <Label>League Name</Label>
+                                                  <Input value={newLeagueData.name} onChange={(e) => setNewLeagueData({ ...newLeagueData, name: e.target.value })} placeholder="e.g., Big Brother 26" />
+                                              </div>
+                                              <div className="space-y-2">
+                                                  <Label>Season</Label>
+                                                  <Select value={newLeagueData.seasonId} onValueChange={(val) => setNewLeagueData({ ...newLeagueData, seasonId: val })}>
+                                                      <SelectTrigger><SelectValue placeholder="Select a season..." /></SelectTrigger>
+                                                      <SelectContent>
+                                                          {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                                      </SelectContent>
+                                                  </Select>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div className="space-y-2">
+                                                      <Label>Number of Teams</Label>
+                                                      <Input type="number" value={newLeagueData.maxTeams} onChange={(e) => setNewLeagueData({ ...newLeagueData, maxTeams: Number(e.target.value) })} />
+                                                  </div>
+                                                  <div className="space-y-2">
+                                                      <Label>Draft Rounds</Label>
+                                                      <Input type="number" value={newLeagueData.settings?.draftRounds} onChange={(e) => setNewLeagueData({ ...newLeagueData, settings: { ...newLeagueData.settings, draftRounds: Number(e.target.value) } })} />
+                                                  </div>
+                                              </div>
+                                              <div className="space-y-2">
+                                                  <Label>League Admin (Optional)</Label>
+                                                  <Select value={(newLeagueData.adminUserIds || [])[0]} onValueChange={(val) => setNewLeagueData({ ...newLeagueData, adminUserIds: val ? [val] : [] })}>
+                                                      <SelectTrigger><SelectValue placeholder="Select an admin..." /></SelectTrigger>
+                                                      <SelectContent>
+                                                          {users.map(u => <SelectItem key={u.id} value={u.id}>{u.displayName}</SelectItem>)}
+                                                      </SelectContent>
+                                                  </Select>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div className="space-y-2">
+                                                      <Label>Contestant (Singular)</Label>
+                                                      <Input value={newLeagueData.contestantTerm?.singular} onChange={(e) => setNewLeagueData({ ...newLeagueData, contestantTerm: { ...(newLeagueData.contestantTerm || {}), singular: e.target.value } })} placeholder="e.g., Houseguest" />
+                                                  </div>
+                                                  <div className="space-y-2">
+                                                      <Label>Contestant (Plural)</Label>
+                                                      <Input value={newLeagueData.contestantTerm?.plural} onChange={(e) => setNewLeagueData({ ...newLeagueData, contestantTerm: { ...(newLeagueData.contestantTerm || {}), plural: e.target.value } })} placeholder="e.g., Houseguests" />
+                                                  </div>
+                                              </div>
+                                          </div>
+                                          <DialogFooter>
+                                              <Button variant="outline" onClick={() => setIsNewLeagueDialogOpen(false)}>Cancel</Button>
+                                              <Button onClick={handleCreateLeague}>Create League</Button>
+                                          </DialogFooter>
+                                      </DialogContent>
+                                  </Dialog>
+                              </div>
+                          </CardHeader>
+                          <CardContent>
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>League Name</TableHead>
+                                          <TableHead>Season</TableHead>
+                                          <TableHead className="text-right">Actions</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {allLeagues.map(l => (
+                                          <TableRow key={l.id} className={cn(l.id === selectedLeagueId && "bg-muted/50")}>
+                                              <TableCell className="font-medium">{l.name}</TableCell>
+                                              <TableCell>{seasons.find(s => s.id === l.seasonId)?.title}</TableCell>
+                                              <TableCell className="text-right">
+                                                  <Button variant="outline" size="sm" onClick={() => { setSelectedLeagueId(l.id); setActiveTab('scoring'); }}>Manage</Button>
+                                                  <Button variant="ghost" size="icon" className="ml-2" onClick={() => handleManageLeagueAdmins(l)}>
+                                                      <ShieldAlert className="h-4 w-4" />
+                                                  </Button>
+                                                  <AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                          <Button variant="ghost" size="icon" className="ml-2" onClick={() => setLeagueToDelete(l)}>
+                                                              <Trash2 className="h-4 w-4 text-red-500" />
+                                                          </Button>
+                                                      </AlertDialogTrigger>
+                                                      <AlertDialogContent>
+                                                          <AlertDialogHeader>
+                                                              <AlertDialogTitle>Delete League?</AlertDialogTitle>
+                                                              <AlertDialogDescription>
+                                                                  Are you sure you want to delete the league "{l.name}"? This will also delete all associated teams and draft picks. This action cannot be undone.
+                                                              </AlertDialogDescription>
+                                                          </AlertDialogHeader>
+                                                          <AlertDialogFooter>
+                                                              <AlertDialogCancel onClick={() => setLeagueToDelete(null)}>Cancel</AlertDialogCancel>
+                                                              <AlertDialogAction onClick={handleDeleteLeague}>Delete</AlertDialogAction>
+                                                          </AlertDialogFooter>
+                                                      </AlertDialogContent>
+                                                  </AlertDialog>
+                                              </TableCell>
+                                          </TableRow>
+                                      ))}
+                                  </TableBody>
+                              </Table>
+                          </CardContent>
+                      </Card>
+                      <Card>
+                          <CardHeader>
+                              <div className="flex justify-between items-center">
+                                  <CardTitle className="text-lg flex items-center gap-2"><Tv /> Manage Seasons</CardTitle>
+                                  <Dialog open={isNewSeasonDialogOpen} onOpenChange={setIsNewSeasonDialogOpen}>
+                                      <DialogTrigger asChild>
+                                          <Button size="sm" variant="outline"><PlusCircle className="mr-2" /> New Season</Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                          <DialogHeader>
+                                              <DialogTitle>Create New Season</DialogTitle>
+                                          </DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div className="space-y-2">
+                                                      <Label>Show Franchise</Label>
+                                                      <Input value={newSeasonData.franchise} onChange={(e) => setNewSeasonData({ ...newSeasonData, franchise: e.target.value })} />
+                                                  </div>
+                                                  <div className="space-y-2">
+                                                      <Label>Season Title</Label>
+                                                      <Input value={newSeasonData.title} onChange={(e) => setNewSeasonData({ ...newSeasonData, title: e.target.value })} placeholder="e.g., Big Brother 26" />
+                                                  </div>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div className="space-y-2">
+                                                      <Label>Season Number</Label>
+                                                      <Input type="number" value={newSeasonData.seasonNumber} onChange={(e) => setNewSeasonData({ ...newSeasonData, seasonNumber: Number(e.target.value) })} />
+                                                  </div>
+                                                  <div className="space-y-2">
+                                                      <Label>Year</Label>
+                                                      <Input type="number" value={newSeasonData.year} onChange={(e) => setNewSeasonData({ ...newSeasonData, year: Number(e.target.value) })} />
+                                                  </div>
+                                              </div>
+                                          </div>
+                                          <DialogFooter>
+                                              <Button variant="outline" onClick={() => setIsNewSeasonDialogOpen(false)}>Cancel</Button>
+                                              <Button onClick={handleCreateSeason}>Create Season</Button>
+                                          </DialogFooter>
+                                      </DialogContent>
+                                  </Dialog>
+                              </div>
+                          </CardHeader>
+                          <CardContent>
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>Season Title</TableHead>
+                                          <TableHead>Status</TableHead>
+                                          <TableHead className="text-right">Actions</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {seasons.map(s => (
+                                          <TableRow key={s.id}>
+                                              <TableCell className="font-medium">{s.title}</TableCell>
+                                              <TableCell>
+                                                  <Badge variant={s.status === 'in_progress' ? 'default' : 'outline'}>{s.status}</Badge>
+                                              </TableCell>
+                                              <TableCell className="text-right">
+                                                  <Button variant="ghost" size="icon" onClick={() => setEditingSeason(s)}>
+                                                      <Pencil className="h-4 w-4" />
+                                                  </Button>
+                                              </TableCell>
+                                          </TableRow>
+                                      ))}
+                                  </TableBody>
+                              </Table>
+                          </CardContent>
+                      </Card>
+                  </div>
+                  <div>
+                      <Card>
+                          <CardHeader>
+                              <div className="flex justify-between items-center">
+                                  <CardTitle className="text-lg flex items-center gap-2"><Users /> Global Users</CardTitle>
+                                  <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+                                      <DialogTrigger asChild>
+                                          <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
+                                      </DialogTrigger>
+                                      <DialogContent>
+                                          <DialogHeader>
+                                              <DialogTitle>Invite New User</DialogTitle>
+                                              <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
+                                          </DialogHeader>
+                                          <div className="space-y-4 py-4">
+                                              <div className="space-y-2">
+                                                  <Label>Name</Label>
+                                                  <Input value={newUserData.displayName} onChange={(e) => setNewUserData({ ...newUserData, displayName: e.target.value })} placeholder="e.g., Jane Doe" />
+                                              </div>
+                                              <div className="space-y-2">
+                                                  <Label>Email</Label>
+                                                  <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })} placeholder="jane@example.com" />
+                                              </div>
+                                          </div>
+                                          <DialogFooter>
+                                              <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                                              <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
+                                          </DialogFooter>
+                                      </DialogContent>
+                                  </Dialog>
+                              </div>
+                          </CardHeader>
+                          <CardContent>
+                              <div className="relative mb-4">
+                                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                      type="search"
+                                      placeholder="Search by name or email..."
+                                      className="w-full rounded-lg bg-background pl-8"
+                                      value={userSearchTerm}
+                                      onChange={(e) => {
+                                          setUserSearchTerm(e.target.value);
+                                          setUserCurrentPage(1);
+                                      }}
+                                  />
+                              </div>
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>Display Name</TableHead>
+                                          <TableHead>Email</TableHead>
+                                          <TableHead>Role</TableHead>
+                                          <TableHead>Status</TableHead>
+                                          <TableHead className="text-right">Actions</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {paginatedUsers.map(u => (
+                                          <TableRow key={u.id}>
+                                              <TableCell className="font-medium">{u.displayName}</TableCell>
+                                              <TableCell>{u.email}</TableCell>
+                                              <TableCell>{u.role}</TableCell>
+                                              <TableCell>
+                                                  <Badge variant={u.status === 'active' ? 'outline' : 'secondary'}>{u.status}</Badge>
+                                              </TableCell>
+                                              <TableCell className="text-right">
+                                                  <Button variant="ghost" size="icon" onClick={() => setEditingUser(u)}><Pencil className="h-4 w-4" /></Button>
+                                                  <AlertDialog>
+                                                      <AlertDialogTrigger asChild>
+                                                          <Button variant="ghost" size="icon" onClick={() => setUserToDelete(u)}>
+                                                              <Trash2 className="h-4 w-4 text-red-500" />
+                                                          </Button>
+                                                      </AlertDialogTrigger>
+                                                      <AlertDialogContent>
+                                                          <AlertDialogHeader>
+                                                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                              <AlertDialogDescription>This will permanently delete {userToDelete?.displayName}. This action cannot be undone.</AlertDialogDescription>
+                                                          </AlertDialogHeader>
+                                                          <AlertDialogFooter>
+                                                              <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+                                                              <AlertDialogAction onClick={handleDeleteUser}>Delete</AlertDialogAction>
+                                                          </AlertDialogFooter>
+                                                      </AlertDialogContent>
+                                                  </AlertDialog>
+                                              </TableCell>
+                                          </TableRow>
+                                      ))}
+                                  </TableBody>
+                              </Table>
+                          </CardContent>
+                          <CardFooter className="flex items-center justify-end space-x-2 py-4">
+                              <span className="text-sm text-muted-foreground">
+                                  Page {userCurrentPage} of {totalUserPages}
+                              </span>
+                              <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setUserCurrentPage(prev => Math.max(1, prev - 1))}
+                                  disabled={userCurrentPage === 1}
+                              >
+                                  <ChevronLeftIcon className="h-4 w-4" />
+                                  Previous
+                              </Button>
+                              <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setUserCurrentPage(prev => Math.min(totalUserPages, prev + 1))}
+                                  disabled={userCurrentPage === totalUserPages}
+                              >
+                                  Next
+                                  <ChevronRightIcon className="h-4 w-4" />
+                              </Button>
+                          </CardFooter>
+                      </Card>
+                      <Card className="mt-6 border-destructive/50">
+                          <CardHeader>
+                              <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle /> Danger Zone</CardTitle>
+                              <CardDescription>These actions are irreversible. Please proceed with caution.</CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                      <Button variant="destructive">Clear All League Data</Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                              This will permanently delete all leagues, teams, contestants, seasons, and scoring data. The only data that will remain is the site admin user. This action cannot be undone.
+                                          </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction onClick={handleClearData}>Yes, delete all data</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
 
-                    </CardContent>
-                </Card>
-             </div>
-          </CardContent>
-        </Card>
+                          </CardContent>
+                      </Card>
+                  </div>
+              </CardContent>
+          </Card>
       </div>
   );
 
@@ -2666,5 +2666,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
