@@ -1,11 +1,59 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write access to all collections for any authenticated user.
-    // For production, you should implement more granular rules.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // Helper function to check if a user is authenticated
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Admins can do anything
+    function isSiteAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_admin';
+    }
+    
+    // Let users read their own user document
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSiteAdmin() || request.auth.uid == userId;
+    }
+    
+    // Public read for most game data, write for admins
+    match /leagues/{leagueId} {
+      allow read: if isSignedIn();
+      allow write: if isSiteAdmin();
+    }
+    
+    match /seasons/{seasonId} {
+        allow read: if isSignedIn();
+        allow write: if isSiteAdmin();
+    }
+    
+    match /contestants/{contestantId} {
+        allow read: if isSignedIn();
+        allow write: if isSiteAdmin();
+    }
+
+    match /competitions/{competitionId} {
+        allow read: if isSignedIn();
+        allow write: if isSiteAdmin();
+    }
+    
+    match /teams/{teamId} {
+        allow read: if isSignedIn();
+        allow write: if isSiteAdmin();
+    }
+
+    match /picks/{pickId} {
+        allow read: if isSignedIn();
+        allow write: if isSiteAdmin();
+    }
+
+    match /scoring_rules/{ruleSetId} {
+        allow read: if isSignedIn();
+        allow write: if isSiteAdmin();
     }
   }
 }
