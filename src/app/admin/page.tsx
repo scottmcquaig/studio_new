@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -37,7 +36,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { inviteUser } from '@/app/actions/userActions';
 
 
 const iconSelection = [
@@ -157,8 +155,6 @@ function AdminPage() {
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   
-  const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
-  const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
@@ -172,7 +168,6 @@ function AdminPage() {
   const [currentPickNumber, setCurrentPickNumber] = useState(1);
 
 
-  const [newUserData, setNewUserData] = useState({ displayName: '', email: ''});
   const [addUserToLeagueData, setAddUserToLeagueData] = useState({ userId: '', teamId: '' });
   const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
@@ -614,32 +609,6 @@ function AdminPage() {
         }
     };
 
-    const handleSendInvite = async () => {
-        if (!newUserData.email || !newUserData.displayName) {
-            toast({ title: "Display Name and Email are required.", variant: 'destructive' });
-            return;
-        }
-        setIsSendingInvite(true);
-        try {
-            const result = await inviteUser({
-                email: newUserData.email,
-                displayName: newUserData.displayName,
-            });
-            if (result.success) {
-                toast({ title: "Invitation sent!", description: `An invite has been sent to ${newUserData.email}.` });
-                setIsNewUserDialogOpen(false);
-                setNewUserData({ displayName: '', email: '' });
-            } else {
-                throw new Error(result.error || "An unknown error occurred.");
-            }
-        } catch (error: any) {
-            console.error("Error sending invite: ", error);
-            toast({ title: "Failed to send invite", description: error.message, variant: 'destructive' });
-        } finally {
-            setIsSendingInvite(false);
-        }
-    };
-
     if (!currentUser) {
         return <div>Loading...</div>
     }
@@ -694,8 +663,8 @@ function AdminPage() {
                                     <CardDescription>{users.length} total users</CardDescription>
                                 </CardHeader>
                                 <CardFooter>
-                                    <Button size="sm" onClick={() => setIsNewUserDialogOpen(true)}>
-                                      <UserPlus className="mr-2"/> Add New User
+                                    <Button size="sm" asChild>
+                                      <Link href="/signup"><UserPlus className="mr-2"/> Add New User</Link>
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -1058,35 +1027,7 @@ function AdminPage() {
             </Tabs>
         </main>
       </div>
-       {/* Dialog for New User */}
-      <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Add New Global User</DialogTitle>
-                <DialogDescription>
-                    This will create a new user in the system. You can then add them to leagues.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                    <Label htmlFor="displayName">Display Name</Label>
-                    <Input id="displayName" value={newUserData.displayName} onChange={e => setNewUserData({...newUserData, displayName: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSendInvite} disabled={isSendingInvite}>
-                    {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Send Invite
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
+       
        {/* Dialog for New Season */}
         <Dialog open={isNewSeasonDialogOpen} onOpenChange={setIsNewSeasonDialogOpen}>
             <DialogContent>
@@ -1404,5 +1345,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
