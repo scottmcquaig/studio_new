@@ -1,9 +1,11 @@
+
 "use client";
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { app, auth } from '@/lib/firebase';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
-import { createUserDocument } from '@/app/actions/userActions';
 import { Loader2 } from 'lucide-react';
 
 export default function SignupPage() {
@@ -21,6 +22,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const db = getFirestore(app);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,16 +35,16 @@ export default function SignupPage() {
       // 2. Update the user's profile with the display name
       await updateProfile(user, { displayName });
 
-      // 3. Create the user document in Firestore via a Server Action
-      const result = await createUserDocument({
+      // 3. Create the user document in Firestore from the client
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, {
         uid: user.uid,
         email: user.email!,
         displayName: displayName,
+        role: 'player', // Default role
+        status: 'active', // User is immediately active
+        createdAt: new Date().toISOString(),
       });
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create user document.');
-      }
 
       toast({
         title: "Account Created",
