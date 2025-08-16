@@ -36,7 +36,6 @@ import withAuth from '@/components/withAuth';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
-import { clearFirestoreData } from '@/lib/clear-data';
 
 
 const iconSelection = [
@@ -1257,23 +1256,6 @@ function AdminPage() {
         }
     };
 
-    const handleClearData = async () => {
-        try {
-            await clearFirestoreData();
-            toast({
-                title: 'Data Cleared',
-                description: 'All test data has been successfully deleted.',
-            });
-        } catch (error) {
-            console.error("Error clearing data:", error);
-            toast({
-                title: 'Error',
-                description: 'Failed to clear data. Check the console for details.',
-                variant: 'destructive',
-            });
-        }
-    };
-
     const leagueAdmins = useMemo(() => {
         if (!leagueToManageAdmins) return [];
         return users.filter(u => leagueToManageAdmins.adminUserIds?.includes(u.id));
@@ -1594,32 +1576,6 @@ function AdminPage() {
                                   <ChevronRightIcon className="h-4 w-4" />
                               </Button>
                           </CardFooter>
-                      </Card>
-                      <Card className="mt-6 border-destructive/50">
-                          <CardHeader>
-                              <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle /> Danger Zone</CardTitle>
-                              <CardDescription>These actions are irreversible. Please proceed with caution.</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                              <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                      <Button variant="destructive">Clear All League Data</Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                              This will permanently delete all leagues, teams, contestants, seasons, and scoring data. The only data that will remain is the site admin user. This action cannot be undone.
-                                          </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction onClick={handleClearData}>Yes, delete all data</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                  </AlertDialogContent>
-                              </AlertDialog>
-
-                          </CardContent>
                       </Card>
                   </div>
               </CardContent>
