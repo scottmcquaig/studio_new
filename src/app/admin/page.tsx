@@ -13,7 +13,7 @@ import * as LucideIcons from "lucide-react";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -227,4 +227,1151 @@ function AdminPage() {
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => 
-        user
+        (user.displayName?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+         user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()))
+    );
+  }, [users, userSearchTerm]);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (userCurrentPage - 1) * USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, startIndex + USERS_PER_PAGE);
+  }, [filteredUsers, userCurrentPage]);
+  
+  const totalUserPages = useMemo(() => Math.ceil(filteredUsers.length / USERS_PER_PAGE), [filteredUsers]);
+  
+  const activeContestants = useMemo(() => contestants.filter(c => c.status === 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants]);
+  const inactiveContestants = useMemo(() => contestants.filter(c => c.status !== 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants]);
+
+  const activeContestantsInLeague = useMemo(() => {
+      if (!activeSeason) return [];
+      return contestants.filter(c => c.seasonId === activeSeason.id && c.status === 'active');
+  }, [contestants, activeSeason]);
+
+  const draftableContestants = useMemo(() => {
+      const pickedIds = picks.filter(p => p.leagueId === selectedLeagueId).map(p => p.contestantId);
+      return activeContestantsInLeague.filter(c => !pickedIds.includes(c.id));
+  }, [activeContestantsInLeague, picks, selectedLeagueId]);
+  
+  const draftOrder = useMemo(() => {
+    if (!leagueSettings || !teams.length) return [];
+    
+    const rounds = leagueSettings.settings.draftRounds || 4;
+    const order: { team: Team, round: number, pick: number, overall: number }[] = [];
+    
+    for (let round = 1; round <= rounds; round++) {
+      const roundOrder = (round % 2 !== 0) ? teams : [...teams].reverse();
+      roundOrder.forEach((team, pick) => {
+        order.push({
+          team,
+          round,
+          pick: pick + 1,
+          overall: (round - 1) * teams.length + (pick + 1)
+        });
+      });
+    }
+    return order;
+  }, [leagueSettings, teams]);
+
+  const nextPick = useMemo(() => {
+    const madePicksCount = picks.filter(p => p.leagueId === selectedLeagueId).length;
+    return draftOrder[madePicksCount];
+  }, [draftOrder, picks, selectedLeagueId]);
+
+  const handleUpdateSeason = async () => {
+        if (!editingSeason || !editingSeason.id) return;
+        try {
+            const seasonRef = doc(db, 'seasons', editingSeason.id);
+            await updateDoc(seasonRef, editingSeason);
+            toast({ title: 'Season updated successfully.' });
+            setEditingSeason(null);
+        } catch (error) {
+            console.error("Error updating season: ", error);
+            toast({ title: 'Error updating season.', variant: 'destructive' });
+        }
+    };
+  
+  useEffect(() => {
+    const unsubLeagues = onSnapshot(collection(db, "leagues"), (snap) => {
+      const leaguesData = snap.docs.map(d => ({...d.data(), id: d.id} as League));
+      setAllLeagues(leaguesData);
+    });
+    
+    const unsubTeams = onSnapshot(collection(db, "teams"), (snap) => {
+        const teamsData = snap.docs.map(d => ({...d.data(), id: d.id} as Team));
+        setAllTeams(teamsData);
+    });
+    
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+        const usersData = snap.docs.map(d => ({...d.data(), id: d.id} as UserType));
+        setUsers(usersData);
+    });
+    
+    const unsubPicks = onSnapshot(collection(db, "picks"), (snap) => {
+        const picksData = snap.docs.map(d => ({...d.data(), id: d.id} as Pick));
+        setPicks(picksData);
+    });
+    
+    const unsubSeasons = onSnapshot(collection(db, "seasons"), (snap) => {
+        const seasonsData = snap.docs.map(d => ({...d.data(), id: d.id} as Season));
+        setSeasons(seasonsData);
+    });
+
+    const unsubCompetitions = onSnapshot(collection(db, "competitions"), (snap) => {
+      setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id} as Competition)));
+    });
+
+    const unsubContestants = onSnapshot(collection(db, "contestants"), (snap) => {
+      setContestants(snap.docs.map(d => ({...d.data(), id: d.id} as Contestant)));
+    });
+
+    return () => {
+        unsubLeagues();
+        unsubTeams();
+        unsubUsers();
+        unsubPicks();
+        unsubSeasons();
+        unsubCompetitions();
+        unsubContestants();
+    };
+  }, [db]);
+
+  useEffect(() => {
+    if (manageableLeagues.length > 0 && !selectedLeagueId) {
+      setSelectedLeagueId(manageableLeagues[0].id);
+    }
+  }, [manageableLeagues, selectedLeagueId]);
+  
+  useEffect(() => {
+    if (leagueSettings?.seasonId) {
+      const currentSeason = seasons.find(s => s.id === leagueSettings.seasonId);
+      setActiveSeason(currentSeason || null);
+    } else {
+      setActiveSeason(null);
+    }
+  }, [leagueSettings, seasons]);
+  
+  useEffect(() => {
+      if (activeSeason) {
+        setSelectedWeek(activeSeason.currentWeek);
+      }
+  }, [activeSeason]);
+  
+  useEffect(() => {
+    if (leagueSettings?.settings?.scoringRuleSetId) {
+      const unsub = onSnapshot(doc(db, "scoring_rules", leagueSettings.settings.scoringRuleSetId), (snap) => {
+        if (snap.exists()) {
+          setScoringRuleSet({ ...snap.data(), id: snap.id } as ScoringRuleSet);
+        } else {
+          setScoringRuleSet(null);
+        }
+      });
+      return () => unsub();
+    } else {
+        setScoringRuleSet(null);
+    }
+  }, [db, leagueSettings]);
+
+  useEffect(() => {
+    if (currentUser?.role === 'site_admin' && !activeTab) {
+        setActiveTab('site');
+    } else if (currentUser?.role === 'league_admin' && !activeTab) {
+        setActiveTab('teams');
+    }
+  }, [currentUser, activeTab]);
+
+  useEffect(() => {
+    if (initialView) {
+        setActiveTab(initialView);
+    }
+  }, [initialView]);
+  
+
+  const handleAddRule = async () => {
+    if (!scoringRuleSet || !newRuleData.code || !newRuleData.label) {
+      toast({ title: "Rule code and label are required.", variant: 'destructive' });
+      return;
+    }
+    const updatedRules = [...scoringRuleSet.rules, newRuleData];
+    try {
+      await updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules });
+      toast({ title: "Rule added successfully" });
+      setNewRuleData({ code: '', label: '', points: 0 });
+      setIsAddRuleDialogOpen(false);
+    } catch (error) {
+      console.error("Error adding rule: ", error);
+      toast({ title: "Error adding rule", variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateRule = async (index: number, field: keyof ScoringRule, value: string | number) => {
+    if (!scoringRuleSet) return;
+    const updatedRules = [...scoringRuleSet.rules];
+    updatedRules[index] = { ...updatedRules[index], [field]: value };
+     try {
+      await updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules });
+      toast({ title: "Rule updated" });
+    } catch (error) {
+      console.error("Error updating rule: ", error);
+      toast({ title: "Error updating rule", variant: 'destructive' });
+    }
+  };
+
+  const handleRemoveRule = async (code: string) => {
+    if (!scoringRuleSet) return;
+    const updatedRules = scoringRuleSet.rules.filter(r => r.code !== code);
+     try {
+      await updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules });
+      toast({ title: "Rule removed" });
+    } catch (error) {
+      console.error("Error removing rule: ", error);
+      toast({ title: "Error removing rule", variant: 'destructive' });
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, forContestant: Contestant) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result as string);
+        setEditingContestant(forContestant);
+      });
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropImage = async () => {
+    if (croppedAreaPixels && imageSrc && editingContestant) {
+      const croppedImageBase64 = await getCroppedImg(imageSrc, croppedAreaPixels);
+      if (croppedImageBase64) {
+        try {
+          // 1. Upload new image to storage
+          const storageRef = ref(storage, `contestant-photos/${editingContestant.id}-${Date.now()}.jpg`);
+          const snapshot = await uploadString(storageRef, croppedImageBase64, 'data_url');
+          const downloadURL = await getDownloadURL(snapshot.ref);
+
+          // 2. If there's an old photo, delete it
+          if (editingContestant.photoUrl) {
+            try {
+                const oldPhotoRef = ref(storage, editingContestant.photoUrl);
+                await deleteObject(oldPhotoRef);
+            } catch (error: any) {
+                // Ignore 'object-not-found' error if the old file doesn't exist
+                if (error.code !== 'storage/object-not-found') {
+                    console.error("Error deleting old photo: ", error);
+                }
+            }
+          }
+          
+          // 3. Update contestant document with new photo URL
+          const contestantRef = doc(db, 'contestants', editingContestant.id);
+          await updateDoc(contestantRef, { photoUrl: downloadURL });
+
+          toast({ title: "Photo updated successfully!" });
+        } catch (error) {
+          console.error("Error updating photo: ", error);
+          toast({ title: "Error updating photo", variant: "destructive" });
+        } finally {
+            // 4. Reset state
+            setImageSrc(null);
+            setEditingContestant(null);
+            setCroppedAreaPixels(null);
+        }
+      }
+    }
+  };
+  
+    const handleCreateLeague = async () => {
+        if (!newLeagueData.name || !newLeagueData.seasonId || !currentUser) {
+            toast({ title: "League Name and Season are required.", variant: 'destructive' });
+            return;
+        }
+        try {
+            const leagueData: Omit<League, 'id'> = {
+                ...newLeagueData,
+                name: newLeagueData.name,
+                abbreviatedName: newLeagueData.name.substring(0, 3).toUpperCase(),
+                show: 'Big Brother', // Or make dynamic
+                seasonId: newLeagueData.seasonId,
+                visibility: 'private',
+                maxTeams: newLeagueData.maxTeams || 8,
+                waivers: 'Standard',
+                createdAt: new Date().toISOString(),
+                adminUserIds: [currentUser.id],
+                 contestantTerm: { singular: 'Houseguest', plural: 'Houseguests' },
+                settings: {
+                    allowMidSeasonDraft: false,
+                    scoringRuleSetId: 'bb_default', // Default, maybe make selectable
+                    transactionLockDuringEpisodes: true,
+                    scoringBreakdownCategories: [],
+                    draftRounds: newLeagueData.settings?.draftRounds || 4,
+                }
+            };
+            const docRef = await addDoc(collection(db, 'leagues'), leagueData);
+            toast({ title: "League created successfully!" });
+            setIsNewLeagueDialogOpen(false);
+            setNewLeagueData({ name: '', seasonId: '', maxTeams: 8 });
+        } catch (error) {
+            console.error("Error creating league: ", error);
+            toast({ title: "Error creating league", variant: 'destructive' });
+        }
+    };
+    
+    const handleCreateSeason = async () => {
+        if (!newSeasonData.title || !newSeasonData.seasonNumber) {
+            toast({ title: "Title and Season Number are required.", variant: 'destructive' });
+            return;
+        }
+        try {
+            const docRef = await addDoc(collection(db, 'seasons'), newSeasonData);
+            toast({ title: "Season created successfully!" });
+            setIsNewSeasonDialogOpen(false);
+            setNewSeasonData({ franchise: 'Big Brother US', status: 'upcoming', currentWeek: 1, year: new Date().getFullYear() });
+        } catch (error) {
+            console.error("Error creating season: ", error);
+            toast({ title: "Error creating season", variant: 'destructive' });
+        }
+    };
+    
+    const handleDeleteLeague = async () => {
+        if (!leagueToDelete) return;
+        try {
+            // Note: This is a simple delete. For a real app, you'd want to delete
+            // all associated teams, picks, etc. This might be better as a Firebase Function.
+            await deleteDoc(doc(db, 'leagues', leagueToDelete.id));
+            toast({ title: `League "${leagueToDelete.name}" deleted.` });
+            setLeagueToDelete(null);
+            if (selectedLeagueId === leagueToDelete.id) {
+                setSelectedLeagueId(manageableLeagues.length > 0 ? manageableLeagues[0].id : null);
+            }
+        } catch (error) {
+            console.error("Error deleting league: ", error);
+            toast({ title: "Error deleting league", variant: 'destructive' });
+        }
+    };
+    
+    const handleAddAdminToLeague = async (userId: string) => {
+        if (!leagueToManageAdmins) return;
+        try {
+            const leagueRef = doc(db, 'leagues', leagueToManageAdmins.id);
+            await updateDoc(leagueRef, {
+                adminUserIds: arrayUnion(userId)
+            });
+            const userRef = doc(db, 'users', userId);
+            await updateDoc(userRef, {
+                role: 'league_admin' // Promote to league admin
+            });
+            toast({ title: "Admin added." });
+        } catch (error) {
+             console.error("Error adding admin: ", error);
+            toast({ title: "Error adding admin", variant: 'destructive' });
+        }
+    };
+
+    const handleRemoveAdminFromLeague = async (userId: string) => {
+        if (!leagueToManageAdmins) return;
+        try {
+            const leagueRef = doc(db, 'leagues', leagueToManageAdmins.id);
+            await updateDoc(leagueRef, {
+                adminUserIds: arrayRemove(userId)
+            });
+            // Note: You might want to check if they admin other leagues before demoting them.
+            // For simplicity, we won't do that here.
+            toast({ title: "Admin removed." });
+        } catch (error) {
+             console.error("Error removing admin: ", error);
+            toast({ title: "Error removing admin", variant: 'destructive' });
+        }
+    };
+    
+     const handleMakeDraftPick = async () => {
+        if (!draftingTeam || !draftSelection || !selectedLeagueId || !nextPick) {
+            toast({ title: "Missing required draft information.", variant: "destructive" });
+            return;
+        }
+        try {
+            const pickData: Omit<Pick, 'id'> = {
+                leagueId: selectedLeagueId,
+                teamId: draftingTeam.id,
+                contestantId: draftSelection,
+                round: nextPick.round,
+                pick: nextPick.overall,
+                createdAt: new Date().toISOString(),
+            };
+            await addDoc(collection(db, "picks"), pickData);
+            toast({ title: `Pick #${nextPick.overall} successful!` });
+            setDraftSelection('');
+            setIsDraftDialogOpen(false);
+        } catch (error) {
+            console.error("Error making pick:", error);
+            toast({ title: "Failed to make draft pick", variant: "destructive" });
+        }
+    };
+
+    if (!currentUser) {
+        return <div>Loading...</div>
+    }
+
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+           <Link href="/" className="flex items-center gap-2 font-semibold">
+                <ArrowLeft className="h-5 w-5" />
+                <span>Back to App</span>
+           </Link>
+          <div className="ml-auto flex items-center gap-2">
+             <span className="text-sm text-muted-foreground hidden md:inline-block">
+                Signed in as <strong>{currentUser.displayName || currentUser.email}</strong>
+            </span>
+            <Badge variant={currentUser.role === 'site_admin' ? 'destructive' : 'secondary'}>{currentUser.role}</Badge>
+          </div>
+        </header>
+        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <div className="flex items-center">
+                    <TabsList>
+                        {currentUser.role === 'site_admin' && <TabsTrigger value="site">Site Administration</TabsTrigger>}
+                        {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams & Draft</TabsTrigger>}
+                        {manageableLeagues.length > 0 && <TabsTrigger value="contestants">Contestants</TabsTrigger>}
+                        {manageableLeagues.length > 0 && <TabsTrigger value="scoring">Scoring</TabsTrigger>}
+                        {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
+                        {manageableLeagues.length > 0 && <TabsTrigger value="settings">League Settings</TabsTrigger>}
+                    </TabsList>
+                    {manageableLeagues.length > 1 && (
+                         <div className="ml-auto w-64">
+                            <Select value={selectedLeagueId || ''} onValueChange={setSelectedLeagueId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a league..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {manageableLeagues.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                </div>
+
+                {currentUser.role === 'site_admin' && (
+                  <TabsContent value="site">
+                    <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
+                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle>Global Users</CardTitle>
+                                    <CardDescription>{users.length} total users</CardDescription>
+                                </CardHeader>
+                                <CardFooter>
+                                    <Button size="sm" onClick={() => setIsNewUserDialogOpen(true)}>
+                                      <UserPlus className="mr-2"/> Add New User
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                            <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle>Seasons</CardTitle>
+                                    <CardDescription>{seasons.length} total seasons</CardDescription>
+                                </CardHeader>
+                                <CardFooter>
+                                    <Button size="sm" onClick={() => setIsNewSeasonDialogOpen(true)}><PlusCircle className="mr-2"/> Create Season</Button>
+                                </CardFooter>
+                            </Card>
+                             <Card>
+                                <CardHeader className="pb-2">
+                                    <CardTitle>Leagues</CardTitle>
+                                    <CardDescription>{allLeagues.length} total leagues</CardDescription>
+                                </CardHeader>
+                                <CardFooter>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <div className="inline-block">
+                                        <Button size="sm" onClick={() => setIsNewLeagueDialogOpen(true)} disabled={seasons.length === 0}>
+                                          <PlusCircle className="mr-2"/> New League
+                                        </Button>
+                                      </div>
+                                    </TooltipTrigger>
+                                    {seasons.length === 0 && (
+                                      <TooltipContent>
+                                        <p>You must create a season before creating a league.</p>
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                                </CardFooter>
+                            </Card>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Global Users</CardTitle>
+                                    <div className="relative mt-2">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Search users..." 
+                                            className="pl-8" 
+                                            value={userSearchTerm}
+                                            onChange={(e) => {
+                                                setUserSearchTerm(e.target.value);
+                                                setUserCurrentPage(1);
+                                            }}
+                                        />
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Display Name</TableHead>
+                                                <TableHead>Email</TableHead>
+                                                <TableHead>Role</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead><span className="sr-only">Actions</span></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {paginatedUsers.map(user => (
+                                                <TableRow key={user.id}>
+                                                    <TableCell>{user.displayName}</TableCell>
+                                                    <TableCell>{user.email}</TableCell>
+                                                    <TableCell><Badge variant="secondary">{user.role}</Badge></TableCell>
+                                                    <TableCell><Badge variant={user.status === 'active' ? 'default' : 'outline'}>{user.status}</Badge></TableCell>
+                                                    <TableCell>
+                                                        <DropdownMenu>
+                                                          <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                                          </DropdownMenuTrigger>
+                                                          <DropdownMenuContent>
+                                                            <DropdownMenuItem>Send Password Reset</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setEditingUser(user)}>Edit User</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-red-500" onClick={() => setUserToDelete(user)}>Delete User</DropdownMenuItem>
+                                                          </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                                <CardFooter className="justify-between">
+                                    <span className="text-xs text-muted-foreground">Showing {paginatedUsers.length} of {filteredUsers.length} users</span>
+                                    <div className="flex gap-1">
+                                        <Button size="sm" variant="outline" onClick={() => setUserCurrentPage(p => Math.max(1, p - 1))} disabled={userCurrentPage === 1}><ChevronLeftIcon /> Prev</Button>
+                                        <Button size="sm" variant="outline" onClick={() => setUserCurrentPage(p => Math.min(totalUserPages, p + 1))} disabled={userCurrentPage === totalUserPages}>Next <ChevronRightIcon /></Button>
+                                    </div>
+                                </CardFooter>
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Seasons</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Title</TableHead>
+                                                <TableHead>Season</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Year</TableHead>
+                                                <TableHead><span className="sr-only">Actions</span></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {seasons.map(season => (
+                                                <TableRow key={season.id}>
+                                                    <TableCell>{season.title}</TableCell>
+                                                    <TableCell>{season.seasonNumber}</TableCell>
+                                                    <TableCell><Badge variant={season.status === 'in_progress' ? 'default' : 'outline'}>{season.status}</Badge></TableCell>
+                                                    <TableCell>{season.year}</TableCell>
+                                                    <TableCell>
+                                                      <Button variant="outline" size="sm" onClick={() => setEditingSeason(season)}>Edit</Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                  </TabsContent>
+                )}
+                
+                 <TabsContent value="teams">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-1">
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>Teams</CardTitle>
+                             <Button size="sm"><UserPlus2 className="mr-2"/> Add Team</Button>
+                          </CardHeader>
+                          <CardContent>
+                            {teams.map(team => (
+                                <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                  <div>
+                                    <p className="font-medium">{team.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {team.ownerUserIds.map(id => users.find(u => u.id === id)?.displayName).join(' & ')}
+                                    </p>
+                                  </div>
+                                  <Badge variant="outline">#{team.draftOrder}</Badge>
+                                </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      </div>
+                      <div className="lg:col-span-2">
+                        <Card>
+                           <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>Draft Board</CardTitle>
+                            {nextPick && (
+                                <div className="text-right">
+                                    <p className="text-sm font-medium">Up Now: <span className="text-primary">{nextPick.team.name}</span></p>
+                                    <p className="text-xs text-muted-foreground">Pick {nextPick.overall} (R{nextPick.round}, P{nextPick.pick})</p>
+                                </div>
+                            )}
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                               {draftOrder.map((pickInfo, index) => {
+                                   const pick = picks.find(p => p.leagueId === selectedLeagueId && p.pick === pickInfo.overall);
+                                   const contestant = contestants.find(c => c.id === pick?.contestantId);
+                                   const isNextPick = !pick && index === picks.filter(p => p.leagueId === selectedLeagueId).length;
+
+                                   return (
+                                        <div key={pickInfo.overall} 
+                                             className={cn("p-2 rounded-md border text-center",
+                                                isNextPick && "bg-primary/10 border-primary animate-pulse"
+                                             )}>
+                                            <p className="text-xs text-muted-foreground">Pick {pickInfo.overall}</p>
+                                            <p className="text-sm font-medium truncate">{pickInfo.team.name}</p>
+                                            {contestant ? (
+                                                <div className="flex items-center justify-center gap-1 mt-1">
+                                                    <Image src={contestant.photoUrl || "https://placehold.co/100x100.png"} alt="" width={16} height={16} className="rounded-full" data-ai-hint="portrait person" />
+                                                    <span className="text-xs">{getContestantDisplayName(contestant, 'short')}</span>
+                                                </div>
+                                            ) : (
+                                                 <Button variant={isNextPick ? 'default' : 'outline'} size="sm" className="mt-1 h-6 text-xs" onClick={() => { setDraftingTeam(pickInfo.team); setIsDraftDialogOpen(true)}}>
+                                                    Make Pick
+                                                 </Button>
+                                            )}
+                                        </div>
+                                   )
+                               })}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                 </TabsContent>
+                 
+                 <TabsContent value="contestants">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{activeSeason?.title} Contestants</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {activeContestants.map(hg => (
+                                <div key={hg.id} className="p-2 border rounded-lg flex items-center gap-3">
+                                    <div className="relative">
+                                        <Image src={hg.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(hg, 'full')} width={48} height={48} className="rounded-full" data-ai-hint="portrait person" />
+                                        <label htmlFor={`photo-upload-${hg.id}`} className="absolute -bottom-1 -right-1 cursor-pointer bg-muted p-1 rounded-full border">
+                                          <Upload className="h-3 w-3" />
+                                          <input id={`photo-upload-${hg.id}`} type="file" accept="image/*" className="sr-only" onChange={(e) => handleFileChange(e, hg)} />
+                                        </label>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-medium">{getContestantDisplayName(hg, 'full')}</p>
+                                        <p className="text-xs text-muted-foreground">{hg.hometown}</p>
+                                    </div>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal/></Button></DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem>Mark Evicted</DropdownMenuItem>
+                                            <DropdownMenuItem>Mark Jury</DropdownMenuItem>
+                                            <DropdownMenuItem>Mark Winner</DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onClick={() => setEditingContestant(hg)}>Edit Details</DropdownMenuItem>
+                                            <DropdownMenuItem className="text-red-500" onClick={() => setContestantToDelete(hg)}>Delete Contestant</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            ))}
+                        </div>
+                        {inactiveContestants.length > 0 && (
+                             <>
+                                <Separator className="my-6"/>
+                                <h3 className="text-lg font-medium mb-4">Inactive/Evicted</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {inactiveContestants.map(hg => (
+                                        <div key={hg.id} className="p-2 border rounded-lg flex items-center gap-3 bg-muted/50">
+                                            <Image src={hg.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(hg, 'full')} width={48} height={48} className="rounded-full grayscale" data-ai-hint="portrait person" />
+                                            <div className="flex-1">
+                                                <p className="font-medium">{getContestantDisplayName(hg, 'full')}</p>
+                                                <p className="text-xs text-muted-foreground">{hg.hometown}</p>
+                                            </div>
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal/></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem>Mark Active</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    ))}
+                                </div>
+                             </>
+                        )}
+                      </CardContent>
+                    </Card>
+                 </TabsContent>
+                 
+                 <TabsContent value="scoring">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>{scoringRuleSet?.name || 'Scoring Rules'}</CardTitle>
+                            <div className="flex items-center gap-2">
+                               <Button size="sm" variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}><ShieldPlus className="mr-2"/> Add Special Event</Button>
+                               <Button size="sm" onClick={() => setIsAddRuleDialogOpen(true)}><PlusCircle className="mr-2"/> Add Rule</Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                             <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Code</TableHead>
+                                        <TableHead>Label</TableHead>
+                                        <TableHead className="text-right">Points</TableHead>
+                                        <TableHead><span className="sr-only">Actions</span></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {scoringRules.map((rule, index) => (
+                                       <RuleRow 
+                                            key={rule.code} 
+                                            rule={rule} 
+                                            index={index}
+                                            onUpdate={handleUpdateRule}
+                                            onRemove={handleRemoveRule}
+                                        />
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                 </TabsContent>
+
+                 <TabsContent value="settings">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>League Details</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="space-y-1">
+                                <Label>League Name</Label>
+                                <Input defaultValue={leagueSettings?.name} />
+                            </div>
+                             <div className="space-y-1">
+                                <Label>Season</Label>
+                                <Select defaultValue={leagueSettings?.seasonId}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1">
+                                <Label>Max Teams</Label>
+                                <Input type="number" defaultValue={leagueSettings?.maxTeams} />
+                            </div>
+                             <div className="flex items-center space-x-2">
+                                <Checkbox id="allow-mid-season-draft" defaultChecked={leagueSettings?.settings.allowMidSeasonDraft} />
+                                <Label htmlFor="allow-mid-season-draft">Allow mid-season draft</Label>
+                            </div>
+                          </CardContent>
+                          <CardFooter>
+                              <Button>Save Changes</Button>
+                          </CardFooter>
+                        </Card>
+                        <Card>
+                           <CardHeader className="flex flex-row items-center justify-between">
+                             <CardTitle>League Admins</CardTitle>
+                             <Button size="sm" variant="outline" onClick={() => { setIsManageAdminsDialogOpen(true); setLeagueToManageAdmins(leagueSettings || null); }}><UserCog className="mr-2"/> Manage</Button>
+                           </CardHeader>
+                           <CardContent>
+                             <div className="space-y-2">
+                                {leagueSettings?.adminUserIds?.map(userId => {
+                                    const admin = users.find(u => u.id === userId);
+                                    return (
+                                        <div key={userId} className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+                                            <Avatar>
+                                                <AvatarImage src={admin?.photoURL || ''} />
+                                                <AvatarFallback>{admin?.displayName?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">{admin?.displayName}</p>
+                                                <p className="text-xs text-muted-foreground">{admin?.email}</p>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                             </div>
+                           </CardContent>
+                        </Card>
+                    </div>
+                 </TabsContent>
+            </Tabs>
+        </main>
+      </div>
+       {/* Dialog for New User */}
+      <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add New Global User</DialogTitle>
+                <DialogDescription>
+                    This will create a new user in the system. You can then add them to leagues.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                    <Label htmlFor="displayName">Display Name</Label>
+                    <Input id="displayName" value={newUserData.displayName} onChange={e => setNewUserData({...newUserData, displayName: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={newUserData.email} onChange={e => setNewUserData({...newUserData, email: e.target.value})} />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                <Button>Send Invite</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+       {/* Dialog for New Season */}
+        <Dialog open={isNewSeasonDialogOpen} onOpenChange={setIsNewSeasonDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create New Season</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input value={newSeasonData.title || ''} onChange={e => setNewSeasonData({ ...newSeasonData, title: e.target.value })} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Season Number</Label>
+                            <Input type="number" value={newSeasonData.seasonNumber || ''} onChange={e => setNewSeasonData({ ...newSeasonData, seasonNumber: Number(e.target.value) })} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Year</Label>
+                            <Input type="number" value={newSeasonData.year || ''} onChange={e => setNewSeasonData({ ...newSeasonData, year: Number(e.target.value) })} />
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsNewSeasonDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleCreateSeason}>Create Season</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      
+        {/* Dialog for New League */}
+        <Dialog open={isNewLeagueDialogOpen} onOpenChange={setIsNewLeagueDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create New League</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label>League Name</Label>
+                        <Input value={newLeagueData.name || ''} onChange={e => setNewLeagueData({ ...newLeagueData, name: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Season</Label>
+                        <Select value={newLeagueData.seasonId} onValueChange={val => setNewLeagueData({...newLeagueData, seasonId: val})}>
+                            <SelectTrigger><SelectValue placeholder="Select a season..."/></SelectTrigger>
+                            <SelectContent>
+                                {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsNewLeagueDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleCreateLeague}>Create League</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Dialog for Edit Season */}
+        <Dialog open={!!editingSeason} onOpenChange={(open) => !open && setEditingSeason(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Season: {editingSeason?.title}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input 
+                            value={editingSeason?.title || ''} 
+                            onChange={e => setEditingSeason(prev => prev ? { ...prev, title: e.target.value } : null)}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Season Number</Label>
+                            <Input 
+                                type="number" 
+                                value={editingSeason?.seasonNumber || ''} 
+                                onChange={e => setEditingSeason(prev => prev ? { ...prev, seasonNumber: Number(e.target.value) } : null)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Year</Label>
+                            <Input 
+                                type="number" 
+                                value={editingSeason?.year || ''}
+                                onChange={e => setEditingSeason(prev => prev ? { ...prev, year: Number(e.target.value) } : null)}
+                            />
+                        </div>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select 
+                            value={editingSeason?.status} 
+                            onValueChange={(val: 'in_progress' | 'completed' | 'upcoming') => setEditingSeason(prev => prev ? { ...prev, status: val } : null)}
+                        >
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="upcoming">Upcoming</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setEditingSeason(null)}>Cancel</Button>
+                    <Button onClick={handleUpdateSeason}>Save Changes</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Dialog to Manage Admins */}
+        <Dialog open={isManageAdminsDialogOpen} onOpenChange={setIsManageAdminsDialogOpen}>
+            <DialogContent className="max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Manage Admins for {leagueToManageAdmins?.name}</DialogTitle>
+                </DialogHeader>
+                <div className="py-2">
+                    <Input placeholder="Search users to add..."/>
+                    <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                        {users.map(user => {
+                            const isAdmin = leagueToManageAdmins?.adminUserIds?.includes(user.id);
+                            return (
+                                <div key={user.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={user.photoURL || ''} />
+                                            <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-medium text-sm">{user.displayName}</p>
+                                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    {isAdmin ? (
+                                        <Button variant="destructive" size="sm" onClick={() => handleRemoveAdminFromLeague(user.id)}>Remove</Button>
+                                    ) : (
+                                        <Button variant="outline" size="sm" onClick={() => handleAddAdminToLeague(user.id)}>Add</Button>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Dialog for Add Rule */}
+      <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Scoring Rule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="rule-code">Rule Code (e.g., HOH_WIN)</Label>
+              <Input id="rule-code" value={newRuleData.code} onChange={(e) => setNewRuleData({ ...newRuleData, code: e.target.value.toUpperCase() })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rule-label">Label (e.g., Head of Household Win)</Label>
+              <Input id="rule-label" value={newRuleData.label} onChange={(e) => setNewRuleData({ ...newRuleData, label: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rule-points">Points</Label>
+              <Input id="rule-points" type="number" value={newRuleData.points} onChange={(e) => setNewRuleData({ ...newRuleData, points: Number(e.target.value) })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddRule}>Add Rule</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog for Special Event */}
+       <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Special Scoring Event</DialogTitle>
+            <DialogDescription>Apply a one-time point adjustment for a specific contestant.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+                <Label>Contestant</Label>
+                <Select value={specialEventData.contestantId} onValueChange={(val) => setSpecialEventData({...specialEventData, contestantId: val})}>
+                    <SelectTrigger><SelectValue placeholder="Select a contestant..." /></SelectTrigger>
+                    <SelectContent>
+                        {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label>Event Type</Label>
+                <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
+                    <SelectTrigger><SelectValue placeholder="Select an event type..." /></SelectTrigger>
+                    <SelectContent>
+                        {specialEventRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label} ({r.points > 0 ? '+': ''}{r.points})</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+            <Button>Log Event</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Dialog for Make Draft Pick */}
+       <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Make Pick for {draftingTeam?.name}</DialogTitle>
+             {nextPick && <DialogDescription>Pick {nextPick.overall} (Round {nextPick.round}, Pick {nextPick.pick})</DialogDescription>}
+          </DialogHeader>
+            <Select value={draftSelection} onValueChange={setDraftSelection}>
+                <SelectTrigger className="mt-4"><SelectValue placeholder="Select a contestant..." /></SelectTrigger>
+                <SelectContent>
+                    {draftableContestants.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDraftDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleMakeDraftPick} disabled={!draftSelection}>Confirm Pick</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+        {/* Image Cropping Dialog */}
+        <Dialog open={!!imageSrc} onOpenChange={(open) => !open && setImageSrc(null)}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Crop Photo for {getContestantDisplayName(editingContestant!, 'full')}</DialogTitle>
+                </DialogHeader>
+                <div className="relative h-64 w-full bg-muted">
+                    {imageSrc && (
+                        <Cropper
+                            image={imageSrc}
+                            crop={crop}
+                            zoom={zoom}
+                            aspect={1}
+                            onCropChange={setCrop}
+                            onZoomChange={setZoom}
+                            onCropComplete={onCropComplete}
+                            cropShape="round"
+                        />
+                    )}
+                </div>
+                <div className="flex items-center gap-4">
+                    <Label>Zoom</Label>
+                    <Slider
+                        value={[zoom]}
+                        min={1}
+                        max={3}
+                        step={0.1}
+                        onValueChange={(val) => setZoom(val[0])}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setImageSrc(null)}>Cancel</Button>
+                    <Button onClick={handleCropImage}>Save Photo</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
+        {/* Delete Confirmation Dialogs */}
+        <AlertDialog open={!!leagueToDelete} onOpenChange={(open) => !open && setLeagueToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the <strong>{leagueToDelete?.name}</strong> league and all of its associated data.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteLeague} className="bg-red-600 hover:bg-red-700">Delete League</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {userToDelete?.displayName}?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently delete the user and remove their access.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="bg-red-600 hover:bg-red-700">Delete User</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!contestantToDelete} onOpenChange={(open) => !open && setContestantToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {getContestantDisplayName(contestantToDelete, 'full')}?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently remove the contestant from the season.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="bg-red-600 hover:bg-red-700">Delete Contestant</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
+    </div>
+  );
+}
+
+export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
