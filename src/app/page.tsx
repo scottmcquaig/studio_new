@@ -14,6 +14,7 @@ import {
   TrendingUp,
   ListOrdered,
   Flame,
+  PlusCircle,
 } from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -25,9 +26,13 @@ import type { Team, League, ScoringRuleSet, Competition, Contestant, Season, Use
 import withAuth from "@/components/withAuth";
 import { PageLayout } from "@/components/page-layout";
 import { WeeklyStatus } from "@/components/weekly-status";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 function DashboardPage() {
   const db = getFirestore(app);
+  const { appUser } = useAuth();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [activeLeague, setActiveLeague] = useState<League | null>(null);
@@ -38,12 +43,20 @@ function DashboardPage() {
   const [picks, setPicks] = useState<Pick[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [activeSeason, setActiveSeason] = useState<Season | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
     // This logic should be enhanced with a league switcher
-    const unsubLeagues = onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
-        if (docSnap.exists()) {
-            setActiveLeague({ ...docSnap.data(), id: docSnap.id } as League);
+    const unsubLeagues = onSnapshot(collection(db, "leagues"), (snap) => {
+        if (!snap.empty) {
+            const leagues = snap.docs.map(d => ({...d.data(), id: d.id} as League));
+            // A more robust league selection mechanism would be needed for multiple leagues.
+            // For now, we'll just pick one, e.g., 'bb27' or the first one.
+            const currentLeague = leagues.find(l => l.id === 'bb27') || leagues[0];
+            setActiveLeague(currentLeague);
+        } else {
+            setActiveLeague(null);
+            setDataLoading(false);
         }
     });
 
@@ -61,12 +74,22 @@ function DashboardPage() {
     if (activeLeague && seasons.length > 0) {
         const season = seasons.find(s => s.id === activeLeague.seasonId);
         setActiveSeason(season || null);
+    } else if (!activeLeague) {
+        setActiveSeason(null);
     }
   }, [activeLeague, seasons]);
 
 
   useEffect(() => {
-    if (!activeLeague || !activeSeason) return;
+    if (!activeLeague || !activeSeason) {
+        if (!dataLoading && !activeLeague) {
+           // If we've confirmed there are no leagues, we're done loading.
+           setDataLoading(false);
+        }
+        return;
+    };
+    
+    setDataLoading(true);
 
     const unsubscribes: Unsubscribe[] = [];
 
@@ -88,7 +111,10 @@ function DashboardPage() {
     const qCompetitions = query(collection(db, "competitions"), where("seasonId", "==", activeSeason.id));
     unsubscribes.push(onSnapshot(qCompetitions, (snap) => setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)))));
     
-    unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)))));
+    unsubscribes.push(onSnapshot(query(collection(db, "users")), (snap) => {
+        setUsers(snap.docs.map(d => ({...d.data(), id: d.id } as User)));
+        setDataLoading(false); // Set loading to false after the last query completes
+    }));
 
     return () => unsubscribes.forEach(unsub => unsub());
   }, [db, activeLeague, activeSeason]);
@@ -262,11 +288,34 @@ function DashboardPage() {
   }, [currentWeekEvents, contestants, scoringRules]);
 
 
-  if (!activeLeague || !contestants.length || !activeSeason) {
+  if (dataLoading) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Dashboard...</div>
         </div>
+    );
+  }
+
+  if (!activeLeague || !activeSeason) {
+    return (
+        <PageLayout>
+          <AppHeader pageTitle="Dashboard" pageIcon={Home} />
+          <main className="flex-1 p-4 md:p-8 flex items-center justify-center">
+             <Card className="w-full max-w-md text-center">
+                 <CardHeader>
+                     <CardTitle>Welcome!</CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                     <p className="text-muted-foreground">No league data available.</p>
+                     {appUser?.role === 'site_admin' && (
+                         <Button asChild className="mt-4">
+                            <Link href="/admin?view=site"><PlusCircle className="mr-2"/> Create a League</Link>
+                         </Button>
+                     )}
+                 </CardContent>
+             </Card>
+          </main>
+        </PageLayout>
     );
   }
 
@@ -425,3 +474,5 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
+
+    
