@@ -1,4 +1,5 @@
 
+
 // All data is for a fictional Big Brother 27 season for mocking purposes.
 
 import { BB_RULES, SURVIVOR_RULES } from "@/lib/constants";
@@ -189,30 +190,6 @@ export const MOCK_CONTESTANTS: Contestant[] = [
     {"id":"ava_pearl","seasonId":"bb27","firstName":"Ava","lastName":"Pearl","age":24,"occupation":"Aura painter","hometown":"New York, NY","status":"active","enteredDay":1, "photoUrl": "https://placehold.co/100x100.png"},
 ];
 
-
-export const MOCK_COMPETITIONS: Competition[] = [
-    { "id":"bb27_wk1_hoh", "seasonId":"bb27", "week":1, "type":"HOH", "name":"BB Blaster Balance", "winnerId":"vince_panaro", "airDate":"2025-07-10", "notes":"First HOH of the season." },
-    { "id":"bb27_wk1_noms", "seasonId":"bb27", "week":1, "type":"NOMINATIONS", "nominees":["amy_bingham", "zae_frederich"], "airDate":"2025-07-11" },
-    { "id":"bb27_wk1_veto", "seasonId":"bb27", "week":1, "type":"VETO", "name":"Campsite Caper", "winnerId":"ashley_hollis", "used":true, "usedOnId":"ashley_hollis", "replacementNomId":"kelley_jorgensen", "airDate":"2025-07-16" },
-    { "id":"bb27_wk1_blockbuster", "seasonId":"bb27", "week":1, "type":"BLOCK_BUSTER", "name":"Eviction Night Block Buster", "winnerId":"kelley_jorgensen", "grantedSafety":true, "airDate":"2025-07-13" },
-    { "id":"bb27_wk1_eviction", "seasonId":"bb27", "week":1, "type":"EVICTION", "finalNoms":["amy_bingham","kelley_jorgensen","zae_frederich"], "evictedId":"zae_frederich", "vote":"9-5", "day":10, "airDate":"2025-07-17" },
-    { "id":"bb27_wk2_hoh", "seasonId":"bb27", "week":2, "type":"HOH", "winnerId":"jimmy_heagerty", "airDate":"2025-07-20", "notes":"Made five total noms across the week." },
-    { "id":"bb27_wk2_noms", "seasonId":"bb27", "week":2, "type":"NOMINATIONS", "nominees":["amy_bingham", "keanu_soto"], "airDate":"2025-07-21" },
-    { "id":"bb27_wk2_veto", "seasonId":"bb27", "week":2, "type":"VETO", "winnerId":"keanu_soto", "used":true, "usedOnId":"keanu_soto", "airDate":"2025-07-23" },
-    { "id":"bb27_wk2_eviction", "seasonId":"bb27", "week":2, "type":"EVICTION", "evictedId":"amy_bingham", "day":17, "airDate":"2025-07-24" },
-    { "id":"bb27_wk3_hoh", "seasonId":"bb27", "week":3, "type":"HOH", "winnerId":"lauren_domingue", "airDate":"2025-07-27" },
-    { "id":"bb27_wk3_noms", "seasonId":"bb27", "week":3, "type":"NOMINATIONS", "nominees":["keanu_soto", "adrian_rocha"], "airDate":"2025-07-28" },
-    { "id":"bb27_wk3_veto", "seasonId":"bb27", "week":3, "type":"VETO", "name":"Basement Break In", "winnerId":"keanu_soto", "used":true, "usedOnId":"keanu_soto", "replacementNomId":"adrian_rocha", "airDate":"2025-07-30" },
-    { "id":"bb27_wk3_eviction", "seasonId":"bb27", "week":3, "type":"EVICTION", "evictedId":"adrian_rocha", "vote":"8-4", "day":24, "airDate":"2025-07-31" },
-    { "id":"bb27_wk4_hoh", "seasonId":"bb27", "week":4, "type":"HOH", "winnerId":"mickey_lee", "airDate":"2025-08-03" },
-    { "id":"bb27_wk4_noms", "seasonId":"bb27", "week":4, "type":"NOMINATIONS", "nominees":["keanu_soto", "jimmy_heagerty"], "airDate":"2025-08-04" },
-    { "id":"bb27_wk4_veto", "seasonId":"bb27", "week":4, "type":"VETO", "name":"Flee the Scene", "winnerId":"keanu_soto", "used":true, "usedOnId":"keanu_soto", "replacementNomId":"jimmy_heagerty", "airDate":"2025-08-06" },
-    { "id":"bb27_wk4_blockbuster", "seasonId":"bb27", "week":4, "type":"BLOCK_BUSTER", "name":"Safe Crackers", "winnerId":"rylie_jeffries", "grantedSafety":true, "airDate":"2025-08-07" },
-    { "id":"bb27_wk4_eviction", "seasonId":"bb27", "week":4, "type":"EVICTION", "evictedId":"jimmy_heagerty", "vote":"9-2", "day":31, "airDate":"2025-08-07" },
-    { "id":"bb27_wk5_hoh", "seasonId":"bb27", "week":5, "type":"HOH", "name":"Knockout (Jack in the Box clue comp)", "winnerId":"ava_pearl", "airDate":"2025-08-10" },
-    { "id":"bb27_wk5_noms", "seasonId":"bb27", "week":5, "type":"NOMINATIONS", "nominees":["keanu_soto","vince_panaro","zach_cornell"], "airDate":"2025-08-10" },
-    { "id":"bb27_wk5_veto", "seasonId":"bb27", "week":5, "type":"VETO", "winnerId":"katherine_woodman", "used":false, "airDate":"2025-08-11", "notes":"Zach holds pre-jury $10k immunity option." }
-];
 
 export const MOCK_LEAGUES: League[] = [
     {
