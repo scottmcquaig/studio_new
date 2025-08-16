@@ -3,8 +3,9 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
 
-// This initialization is for server-side operations that don't require user creation,
-// and it will rely on the environment's default credentials.
+// This initialization is for server-side operations.
+// In a Google Cloud environment (like Firebase Functions or Cloud Run),
+// it will automatically use Application Default Credentials.
 if (!getApps().length) {
   initializeApp();
 }
