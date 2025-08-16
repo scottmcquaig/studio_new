@@ -37,6 +37,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { inviteUser } from '@/app/actions/userActions';
 
 
 const iconSelection = [
@@ -612,6 +613,29 @@ function AdminPage() {
         }
     };
 
+    const handleSendInvite = async () => {
+        if (!newUserData.email || !newUserData.displayName) {
+            toast({ title: "Display Name and Email are required.", variant: 'destructive' });
+            return;
+        }
+        try {
+            const result = await inviteUser({
+                email: newUserData.email,
+                displayName: newUserData.displayName,
+            });
+            if (result.success) {
+                toast({ title: "Invitation sent!", description: `An invite has been sent to ${newUserData.email}.` });
+                setIsNewUserDialogOpen(false);
+                setNewUserData({ displayName: '', email: '' });
+            } else {
+                throw new Error(result.error || "An unknown error occurred.");
+            }
+        } catch (error: any) {
+            console.error("Error sending invite: ", error);
+            toast({ title: "Failed to send invite", description: error.message, variant: 'destructive' });
+        }
+    };
+
     if (!currentUser) {
         return <div>Loading...</div>
     }
@@ -1051,7 +1075,7 @@ function AdminPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                <Button>Send Invite</Button>
+                <Button onClick={handleSendInvite}>Send Invite</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1373,5 +1397,7 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
 
     
