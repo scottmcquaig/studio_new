@@ -35,7 +35,6 @@ import { format } from 'date-fns';
 import withAuth from '@/components/withAuth';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { seedDatabase } from '@/lib/seed';
 import { useSearchParams } from 'next/navigation';
 
 
