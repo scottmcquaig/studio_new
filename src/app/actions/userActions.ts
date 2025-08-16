@@ -3,24 +3,13 @@
 
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
 
-// This is a server-only file. The service account credentials are not exposed to the client.
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  : null;
-
+// In a Google Cloud environment like this one, the Admin SDK can automatically
+// find the correct credentials to authenticate. We just need to ensure it's
+// initialized only once.
 if (!getApps().length) {
-  if (serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount),
-    });
-  } else {
-    // This will work for local development when FIREBASE_SERVICE_ACCOUNT is not set.
-    // It uses Application Default Credentials or connects to the emulator.
-    console.log('Initializing Firebase Admin SDK for local development/emulator.');
-    initializeApp();
-  }
+  initializeApp();
 }
 
 const authAdmin = getAuth();
