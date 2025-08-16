@@ -59,10 +59,17 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
                 const unsubSeason = onSnapshot(seasonDocRef, (seasonSnap) => {
                     if (seasonSnap.exists()) {
                         setActiveSeason({ ...seasonSnap.data(), id: seasonSnap.id } as Season);
+                    } else {
+                        setActiveSeason(null);
                     }
                 });
                 unsubscribes.push(unsubSeason);
+            } else {
+                 setActiveSeason(null);
             }
+        } else {
+            setActiveLeague(null);
+            setActiveSeason(null);
         }
     }));
 
@@ -81,36 +88,29 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
   const canManageLeague = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
   const isSiteAdmin = currentUser?.role === 'site_admin';
 
-  if (loading || !activeLeague || !activeSeason) {
-      return (
-           <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
-             <div className="flex items-center gap-2">
-                <Logo className="h-7 w-7" />
-                <div className="flex flex-col -space-y-1.5">
-                   <h1 className="font-headline text-lg font-semibold tracking-tight">Loading...</h1>
-                </div>
-             </div>
-           </header>
-      )
-  }
-
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:px-6">
       <div className="flex items-center gap-2">
         <Link href="/" className="flex items-center gap-2">
             <Logo className="h-7 w-7" />
-            <div className="flex flex-col -space-y-1.5">
-            <h1 className="font-headline text-lg font-semibold tracking-tight">{activeSeason?.title}</h1>
-            <p className="text-xs text-muted-foreground">{activeLeague.name}</p>
-            </div>
+             {activeLeague && activeSeason ? (
+                <>
+                    <div className="flex flex-col -space-y-1.5">
+                        <h1 className="font-headline text-lg font-semibold tracking-tight">{activeSeason?.title}</h1>
+                        <p className="text-xs text-muted-foreground">{activeLeague.name}</p>
+                    </div>
+                    <ChevronsRight className="h-4 w-4 text-muted-foreground/50 rotate-90 sm:rotate-0" />
+                    <div className="flex items-center gap-2">
+                        {createElement(pageIcon, { className: "h-5 w-5"})}
+                        <h1 className="text-lg font-semibold md:text-xl hidden sm:inline-block">
+                            {pageTitle}
+                        </h1>
+                    </div>
+                </>
+             ) : (
+                 <h1 className="font-headline text-lg font-semibold tracking-tight">YAC Fantasy</h1>
+             )}
         </Link>
-        <ChevronsRight className="h-4 w-4 text-muted-foreground/50 rotate-90 sm:rotate-0" />
-        <div className="flex items-center gap-2">
-            {createElement(pageIcon, { className: "h-5 w-5"})}
-            <h1 className="text-lg font-semibold md:text-xl hidden sm:inline-block">
-                {pageTitle}
-            </h1>
-        </div>
       </div>
       
       <div className="ml-auto flex items-center gap-2">
@@ -153,13 +153,17 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
                     <>
                         <DropdownMenuLabel>{currentUser.email}</DropdownMenuLabel>
                         <DropdownMenuSeparator/>
-                        <DropdownMenuLabel>Active Leagues</DropdownMenuLabel>
-                        {allLeagues.map(league => (
-                            <DropdownMenuItem key={league.id} onSelect={() => setActiveLeague(league)}>
-                                {league.name}
-                            </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
+                        {allLeagues.length > 0 && (
+                            <>
+                                <DropdownMenuLabel>Active Leagues</DropdownMenuLabel>
+                                {allLeagues.map(league => (
+                                    <DropdownMenuItem key={league.id} onSelect={() => setActiveLeague(league)}>
+                                        {league.name}
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
                         <DropdownMenuItem onClick={() => router.push('/settings')}>
                             <Settings className="mr-2"/> Settings
                         </DropdownMenuItem>
