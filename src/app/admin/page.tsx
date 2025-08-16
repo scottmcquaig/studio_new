@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle, Loader2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -158,6 +158,7 @@ function AdminPage() {
   const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
@@ -618,6 +619,7 @@ function AdminPage() {
             toast({ title: "Display Name and Email are required.", variant: 'destructive' });
             return;
         }
+        setIsSendingInvite(true);
         try {
             const result = await inviteUser({
                 email: newUserData.email,
@@ -633,6 +635,8 @@ function AdminPage() {
         } catch (error: any) {
             console.error("Error sending invite: ", error);
             toast({ title: "Failed to send invite", description: error.message, variant: 'destructive' });
+        } finally {
+            setIsSendingInvite(false);
         }
     };
 
@@ -1075,7 +1079,10 @@ function AdminPage() {
             </div>
             <DialogFooter>
                 <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSendInvite}>Send Invite</Button>
+                <Button onClick={handleSendInvite} disabled={isSendingInvite}>
+                    {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send Invite
+                </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1397,7 +1404,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
 
     
