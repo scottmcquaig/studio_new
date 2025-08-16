@@ -24,7 +24,6 @@ import { getFirestore, doc, onSnapshot, Unsubscribe, collection, query } from 'f
 import { app, auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import type { User as UserType, League, Season } from '@/lib/data';
-import { MOCK_SEASONS } from "@/lib/data";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Badge } from "./ui/badge";
@@ -43,20 +42,27 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
 
   const [activeLeague, setActiveLeague] = useState<League | null>(null);
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
+  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
   
-  // This is a placeholder for a real season fetching mechanism
-  const activeSeason = MOCK_SEASONS[0];
-
   useEffect(() => {
     const unsubscribes: Unsubscribe[] = [];
     
-    // Fetch all leagues for the dropdown
     unsubscribes.push(onSnapshot(query(collection(db, "leagues")), (snap) => {
         const leaguesData = snap.docs.map(d => ({...d.data(), id: d.id} as League));
         setAllLeagues(leaguesData);
-        // Set the active league (e.g., the first one, or from user preferences)
         if (leaguesData.length > 0) {
-            setActiveLeague(leaguesData.find(l => l.id === LEAGUE_ID) || leaguesData[0]);
+            const currentLeague = leaguesData.find(l => l.id === LEAGUE_ID) || leaguesData[0];
+            setActiveLeague(currentLeague);
+
+            if (currentLeague.seasonId) {
+                const seasonDocRef = doc(db, "seasons", currentLeague.seasonId);
+                const unsubSeason = onSnapshot(seasonDocRef, (seasonSnap) => {
+                    if (seasonSnap.exists()) {
+                        setActiveSeason({ ...seasonSnap.data(), id: seasonSnap.id } as Season);
+                    }
+                });
+                unsubscribes.push(unsubSeason);
+            }
         }
     }));
 
