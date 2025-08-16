@@ -11,15 +11,15 @@ const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
   : null;
 
 if (!getApps().length) {
-  if (!serviceAccount) {
-    // In a local development environment, you might not have the service account env var set.
-    // The emulator will be used instead if available.
-    console.log('Initializing Firebase Admin SDK without credentials for local development/emulator.');
-    initializeApp();
+  if (serviceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
   } else {
-     initializeApp({
-        credential: cert(serviceAccount),
-     });
+    // This will work for local development when FIREBASE_SERVICE_ACCOUNT is not set.
+    // It uses Application Default Credentials or connects to the emulator.
+    console.log('Initializing Firebase Admin SDK for local development/emulator.');
+    initializeApp();
   }
 }
 
