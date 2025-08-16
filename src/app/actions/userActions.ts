@@ -3,7 +3,7 @@
 
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 
 // This is a server-only file. The service account credentials are not exposed to the client.
 const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
