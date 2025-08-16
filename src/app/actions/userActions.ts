@@ -81,5 +81,3 @@ export async function inviteUser(params: InviteUserParams): Promise<{ success: b
         return { success: false, error: error.message || 'An unexpected error occurred.' };
     }
 }
-
-    
