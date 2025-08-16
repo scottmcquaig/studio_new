@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -36,6 +36,7 @@ import withAuth from '@/components/withAuth';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
+import { clearFirestoreData } from '@/lib/clear-data';
 
 
 const iconSelection = [
@@ -1256,6 +1257,23 @@ function AdminPage() {
         }
     };
 
+    const handleClearData = async () => {
+        try {
+            await clearFirestoreData();
+            toast({
+                title: 'Data Cleared',
+                description: 'All test data has been successfully deleted.',
+            });
+        } catch (error) {
+            console.error("Error clearing data:", error);
+            toast({
+                title: 'Error',
+                description: 'Failed to clear data. Check the console for details.',
+                variant: 'destructive',
+            });
+        }
+    };
+
     const leagueAdmins = useMemo(() => {
         if (!leagueToManageAdmins) return [];
         return users.filter(u => leagueToManageAdmins.adminUserIds?.includes(u.id));
@@ -1463,119 +1481,147 @@ function AdminPage() {
                     </CardContent>
                 </Card>
              </div>
-             <Card>
-                 <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <CardTitle className="text-lg flex items-center gap-2"><Users/> Global Users</CardTitle>
-                         <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Invite New User</DialogTitle>
-                                    <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label>Name</Label>
-                                        <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+             <div>
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <CardTitle className="text-lg flex items-center gap-2"><Users/> Global Users</CardTitle>
+                            <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" variant="outline"><UserPlus className="mr-2 h-4 w-4" /> Invite User</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Invite New User</DialogTitle>
+                                        <DialogDescription>Create a pending user profile. An email will be sent to them to complete registration.</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label>Name</Label>
+                                            <Input value={newUserData.displayName} onChange={(e) => setNewUserData({...newUserData, displayName: e.target.value})} placeholder="e.g., Jane Doe" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Email</Label>
+                                            <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input type="email" value={newUserData.email} onChange={(e) => setNewUserData({...newUserData, email: e.target.value})} placeholder="jane@example.com" />
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                </CardHeader>
-                 <CardContent>
-                    <div className="relative mb-4">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search by name or email..."
-                            className="w-full rounded-lg bg-background pl-8"
-                            value={userSearchTerm}
-                            onChange={(e) => {
-                                setUserSearchTerm(e.target.value);
-                                setUserCurrentPage(1);
-                            }}
-                        />
-                    </div>
-                     <Table>
-                         <TableHeader>
-                             <TableRow>
-                                 <TableHead>Display Name</TableHead>
-                                 <TableHead>Email</TableHead>
-                                 <TableHead>Role</TableHead>
-                                 <TableHead>Status</TableHead>
-                                 <TableHead className="text-right">Actions</TableHead>
-                             </TableRow>
-                         </TableHeader>
-                         <TableBody>
-                             {paginatedUsers.map(u => (
-                             <TableRow key={u.id}>
-                                 <TableCell className="font-medium">{u.displayName}</TableCell>
-                                 <TableCell>{u.email}</TableCell>
-                                 <TableCell>{u.role}</TableCell>
-                                 <TableCell>
-                                     <Badge variant={u.status === 'active' ? 'outline' : 'secondary'}>{u.status}</Badge>
-                                 </TableCell>
-                                 <TableCell className="text-right">
-                                     <Button variant="ghost" size="icon" onClick={() => setEditingUser(u)}><Pencil className="h-4 w-4"/></Button>
-                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                             <Button variant="ghost" size="icon" onClick={() => setUserToDelete(u)}>
-                                                <Trash2 className="h-4 w-4 text-red-500"/>
-                                             </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>This will permanently delete {userToDelete?.displayName}. This action cannot be undone.</AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={handleDeleteUser}>Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                     </AlertDialog>
-                                 </TableCell>
-                             </TableRow>
-                             ))}
-                         </TableBody>
-                     </Table>
-                 </CardContent>
-                 <CardFooter className="flex items-center justify-end space-x-2 py-4">
-                    <span className="text-sm text-muted-foreground">
-                        Page {userCurrentPage} of {totalUserPages}
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setUserCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={userCurrentPage === 1}
-                    >
-                        <ChevronLeftIcon className="h-4 w-4" />
-                        Previous
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setUserCurrentPage(prev => Math.min(totalUserPages, prev + 1))}
-                        disabled={userCurrentPage === totalUserPages}
-                    >
-                        Next
-                        <ChevronRightIcon className="h-4 w-4" />
-                    </Button>
-                </CardFooter>
-             </Card>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                                        <Button onClick={handleAddNewUser}><UserPlus className="mr-2" /> Create Invitation</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="relative mb-4">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search by name or email..."
+                                className="w-full rounded-lg bg-background pl-8"
+                                value={userSearchTerm}
+                                onChange={(e) => {
+                                    setUserSearchTerm(e.target.value);
+                                    setUserCurrentPage(1);
+                                }}
+                            />
+                        </div>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Display Name</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Role</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {paginatedUsers.map(u => (
+                                <TableRow key={u.id}>
+                                    <TableCell className="font-medium">{u.displayName}</TableCell>
+                                    <TableCell>{u.email}</TableCell>
+                                    <TableCell>{u.role}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={u.status === 'active' ? 'outline' : 'secondary'}>{u.status}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => setEditingUser(u)}><Pencil className="h-4 w-4"/></Button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" onClick={() => setUserToDelete(u)}>
+                                                    <Trash2 className="h-4 w-4 text-red-500"/>
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>This will permanently delete {userToDelete?.displayName}. This action cannot be undone.</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleDeleteUser}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                    <CardFooter className="flex items-center justify-end space-x-2 py-4">
+                        <span className="text-sm text-muted-foreground">
+                            Page {userCurrentPage} of {totalUserPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setUserCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={userCurrentPage === 1}
+                        >
+                            <ChevronLeftIcon className="h-4 w-4" />
+                            Previous
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setUserCurrentPage(prev => Math.min(totalUserPages, prev + 1))}
+                            disabled={userCurrentPage === totalUserPages}
+                        >
+                            Next
+                            <ChevronRightIcon className="h-4 w-4" />
+                        </Button>
+                    </CardFooter>
+                </Card>
+                <Card className="mt-6 border-destructive/50">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle/> Danger Zone</CardTitle>
+                        <CardDescription>These actions are irreversible. Please proceed with caution.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive">Clear All League Data</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete all leagues, teams, contestants, seasons, and scoring data. The only data that will remain is the site admin user. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleClearData}>Yes, delete all data</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
+                    </CardContent>
+                </Card>
+             </div>
           </CardContent>
         </Card>
       </div>
@@ -2620,3 +2666,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
