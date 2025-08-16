@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -36,6 +37,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { inviteUser } from '@/app/actions/userActions';
 
 
 const iconSelection = [
@@ -54,6 +56,7 @@ const colorSelection = [
 const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPECIAL_POWER'];
 
 const USERS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 5;
 
 // Component to manage a single rule row, preventing input focus loss
 const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index: number, onUpdate: (index: number, field: keyof ScoringRule, value: string | number) => void, onRemove: (code: string) => void }) => {
@@ -143,6 +146,9 @@ function AdminPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [activeSeason, setActiveSeason] = useState<Season | null>(null);
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
+  
+  const [leaguesCurrentPage, setLeaguesCurrentPage] = useState(1);
+  const [seasonsCurrentPage, setSeasonsCurrentPage] = useState(1);
 
   const [contestants, setContestants] = useState<Contestant[]>([]);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -153,9 +159,8 @@ function AdminPage() {
   const [contestantToDelete, setContestantToDelete] = useState<Contestant | null>(null);
   
   const [selectedWeek, setSelectedWeek] = useState(1);
-  const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   
-  const [isAddUserToLeagueDialogOpen, setIsAddUserToLeagueDialogOpen] = useState(false);
+  const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
   const [leagueToManageAdmins, setLeagueToManageAdmins] = useState<League | null>(null);
@@ -168,7 +173,8 @@ function AdminPage() {
   const [currentPickNumber, setCurrentPickNumber] = useState(1);
 
 
-  const [addUserToLeagueData, setAddUserToLeagueData] = useState({ userId: '', teamId: '' });
+  const [newUserData, setNewUserData] = useState({ displayName: '', email: '' });
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
   const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
@@ -191,21 +197,6 @@ function AdminPage() {
   const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
 
   const [activeTab, setActiveTab] = useState('scoring'); // Default for site admins
-
-  // State for weekly event management
-  const [hohWinnerId, setHohWinnerId] = useState<string | undefined>();
-  const [hohDate, setHohDate] = useState<Date | undefined>();
-  const [nominees, setNominees] = useState<string[]>(['', '']);
-  const [nomsDate, setNomsDate] = useState<Date | undefined>();
-  const [vetoWinnerId, setVetoWinnerId] = useState<string | undefined>();
-  const [vetoDate, setVetoDate] = useState<Date | undefined>();
-  const [vetoUsed, setVetoUsed] = useState(false);
-  const [vetoUsedOnId, setVetoUsedOnId] = useState<string | undefined>();
-  const [vetoReplacementNomId, setVetoReplacementNomId] = useState<string | undefined>();
-  const [blockBusterWinnerId, setBlockBusterWinnerId] = useState<string | undefined>();
-  const [blockBusterDate, setBlockBusterDate] = useState<Date | undefined>();
-  const [evictedId, setEvictedId] = useState<string | undefined>();
-  const [evictionDate, setEvictionDate] = useState<Date | undefined>();
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -235,6 +226,21 @@ function AdminPage() {
   }, [filteredUsers, userCurrentPage]);
   
   const totalUserPages = useMemo(() => Math.ceil(filteredUsers.length / USERS_PER_PAGE), [filteredUsers]);
+
+  const sortedLeagues = useMemo(() => [...allLeagues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [allLeagues]);
+  const sortedSeasons = useMemo(() => [...seasons].sort((a, b) => b.year - a.year || (b.seasonNumber || 0) - (a.seasonNumber || 0)), [seasons]);
+
+  const paginatedLeagues = useMemo(() => {
+    const startIndex = (leaguesCurrentPage - 1) * ITEMS_PER_PAGE;
+    return sortedLeagues.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedLeagues, leaguesCurrentPage]);
+  const totalLeaguePages = useMemo(() => Math.ceil(sortedLeagues.length / ITEMS_PER_PAGE), [sortedLeagues]);
+
+  const paginatedSeasons = useMemo(() => {
+    const startIndex = (seasonsCurrentPage - 1) * ITEMS_PER_PAGE;
+    return sortedSeasons.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [sortedSeasons, seasonsCurrentPage]);
+  const totalSeasonPages = useMemo(() => Math.ceil(sortedSeasons.length / ITEMS_PER_PAGE), [sortedSeasons]);
   
   const activeContestants = useMemo(() => contestants.filter(c => c.status === 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants]);
   const inactiveContestants = useMemo(() => contestants.filter(c => c.status !== 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants]);
@@ -608,6 +614,30 @@ function AdminPage() {
             toast({ title: "Failed to make draft pick", variant: "destructive" });
         }
     };
+    
+    const handleSendInvite = async () => {
+        if (!newUserData.displayName || !newUserData.email) {
+            toast({ title: "Display Name and Email are required.", variant: "destructive" });
+            return;
+        }
+        setIsSendingInvite(true);
+        try {
+            const result = await inviteUser({ displayName: newUserData.displayName, email: newUserData.email });
+            if (result.success) {
+                toast({ title: "Invitation sent!", description: `An invite has been sent to ${newUserData.email}.` });
+                setIsNewUserDialogOpen(false);
+                setNewUserData({ displayName: '', email: '' });
+            } else {
+                throw new Error(result.error || "An unknown error occurred.");
+            }
+        } catch (error: any) {
+            console.error("Error sending invite: ", error);
+            toast({ title: "Invite Failed", description: error.message, variant: "destructive" });
+        } finally {
+            setIsSendingInvite(false);
+        }
+    };
+
 
     if (!currentUser) {
         return <div>Loading...</div>
@@ -655,115 +685,29 @@ function AdminPage() {
 
                 {currentUser.role === 'site_admin' && (
                   <TabsContent value="site">
-                    <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
-                        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle>Global Users</CardTitle>
-                                    <CardDescription>{users.length} total users</CardDescription>
-                                </CardHeader>
-                                <CardFooter>
-                                    <Button size="sm" asChild>
-                                      <Link href="/signup"><UserPlus className="mr-2"/> Add New User</Link>
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                            <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle>Seasons</CardTitle>
-                                    <CardDescription>{seasons.length} total seasons</CardDescription>
-                                </CardHeader>
-                                <CardFooter>
-                                    <Button size="sm" onClick={() => setIsNewSeasonDialogOpen(true)}><PlusCircle className="mr-2"/> Create Season</Button>
-                                </CardFooter>
-                            </Card>
-                             <Card>
-                                <CardHeader className="pb-2">
-                                    <CardTitle>Leagues</CardTitle>
-                                    <CardDescription>{allLeagues.length} total leagues</CardDescription>
-                                </CardHeader>
-                                <CardFooter>
-                                <TooltipProvider>
-                                  <Tooltip>
+                    <div className="grid auto-rows-max items-start gap-4 md:gap-8">
+                        <div className="flex justify-center gap-4 py-4">
+                            <Button onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> Add New User</Button>
+                            <Button onClick={() => setIsNewSeasonDialogOpen(true)}><PlusCircle className="mr-2"/> Create Season</Button>
+                            <TooltipProvider>
+                                <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <div className="inline-block">
-                                        <Button size="sm" onClick={() => setIsNewLeagueDialogOpen(true)} disabled={seasons.length === 0}>
-                                          <PlusCircle className="mr-2"/> New League
+                                    <div className="inline-block">
+                                        <Button onClick={() => setIsNewLeagueDialogOpen(true)} disabled={seasons.length === 0}>
+                                        <PlusCircle className="mr-2"/> New League
                                         </Button>
-                                      </div>
+                                    </div>
                                     </TooltipTrigger>
                                     {seasons.length === 0 && (
-                                      <TooltipContent>
+                                    <TooltipContent>
                                         <p>You must create a season before creating a league.</p>
-                                      </TooltipContent>
+                                    </TooltipContent>
                                     )}
-                                  </Tooltip>
-                                </TooltipProvider>
-                                </CardFooter>
-                            </Card>
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Global Users</CardTitle>
-                                    <div className="relative mt-2">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input 
-                                            placeholder="Search users..." 
-                                            className="pl-8" 
-                                            value={userSearchTerm}
-                                            onChange={(e) => {
-                                                setUserSearchTerm(e.target.value);
-                                                setUserCurrentPage(1);
-                                            }}
-                                        />
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Display Name</TableHead>
-                                                <TableHead>Email</TableHead>
-                                                <TableHead>Role</TableHead>
-                                                <TableHead>Status</TableHead>
-                                                <TableHead><span className="sr-only">Actions</span></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {paginatedUsers.map(user => (
-                                                <TableRow key={user.id}>
-                                                    <TableCell>{user.displayName}</TableCell>
-                                                    <TableCell>{user.email}</TableCell>
-                                                    <TableCell><Badge variant="secondary">{user.role}</Badge></TableCell>
-                                                    <TableCell><Badge variant={user.status === 'active' ? 'default' : 'outline'}>{user.status}</Badge></TableCell>
-                                                    <TableCell>
-                                                        <DropdownMenu>
-                                                          <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
-                                                          </DropdownMenuTrigger>
-                                                          <DropdownMenuContent>
-                                                            <DropdownMenuItem>Send Password Reset</DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => setEditingUser(user)}>Edit User</DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-red-500" onClick={() => setUserToDelete(user)}>Delete User</DropdownMenuItem>
-                                                          </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                                <CardFooter className="justify-between">
-                                    <span className="text-xs text-muted-foreground">Showing {paginatedUsers.length} of {filteredUsers.length} users</span>
-                                    <div className="flex gap-1">
-                                        <Button size="sm" variant="outline" onClick={() => setUserCurrentPage(p => Math.max(1, p - 1))} disabled={userCurrentPage === 1}><ChevronLeftIcon /> Prev</Button>
-                                        <Button size="sm" variant="outline" onClick={() => setUserCurrentPage(p => Math.min(totalUserPages, p + 1))} disabled={userCurrentPage === totalUserPages}>Next <ChevronRightIcon /></Button>
-                                    </div>
-                                </CardFooter>
-                            </Card>
-
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Seasons</CardTitle>
@@ -780,7 +724,7 @@ function AdminPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {seasons.map(season => (
+                                            {paginatedSeasons.map(season => (
                                                 <TableRow key={season.id}>
                                                     <TableCell>{season.title}</TableCell>
                                                     <TableCell>{season.seasonNumber}</TableCell>
@@ -794,8 +738,127 @@ function AdminPage() {
                                         </TableBody>
                                     </Table>
                                 </CardContent>
+                                {totalSeasonPages > 1 && (
+                                <CardFooter className="justify-between">
+                                    <span className="text-xs text-muted-foreground">Showing {paginatedSeasons.length} of {sortedSeasons.length} seasons</span>
+                                    <div className="flex gap-1">
+                                        <Button size="sm" variant="outline" onClick={() => setSeasonsCurrentPage(p => Math.max(1, p - 1))} disabled={seasonsCurrentPage === 1}><ChevronLeftIcon /> Prev</Button>
+                                        <Button size="sm" variant="outline" onClick={() => setSeasonsCurrentPage(p => Math.min(totalSeasonPages, p + 1))} disabled={seasonsCurrentPage === totalSeasonPages}>Next <ChevronRightIcon /></Button>
+                                    </div>
+                                </CardFooter>
+                                )}
+                            </Card>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Leagues</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Season</TableHead>
+                                                <TableHead>Teams</TableHead>
+                                                <TableHead><span className="sr-only">Actions</span></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {paginatedLeagues.map(league => {
+                                                const season = seasons.find(s => s.id === league.seasonId);
+                                                const teamCount = allTeams.filter(t => t.leagueId === league.id).length;
+                                                return (
+                                                <TableRow key={league.id}>
+                                                    <TableCell>{league.name}</TableCell>
+                                                    <TableCell>{season?.title || 'N/A'}</TableCell>
+                                                    <TableCell>{teamCount} / {league.maxTeams}</TableCell>
+                                                    <TableCell>
+                                                        <DropdownMenu>
+                                                          <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                                          </DropdownMenuTrigger>
+                                                          <DropdownMenuContent>
+                                                            <DropdownMenuItem onClick={() => { setActiveTab('settings'); setSelectedLeagueId(league.id); }}>Go to Settings</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-red-500" onClick={() => setLeagueToDelete(league)}>Delete League</DropdownMenuItem>
+                                                          </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )})}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                                {totalLeaguePages > 1 && (
+                                <CardFooter className="justify-between">
+                                    <span className="text-xs text-muted-foreground">Showing {paginatedLeagues.length} of {sortedLeagues.length} leagues</span>
+                                    <div className="flex gap-1">
+                                        <Button size="sm" variant="outline" onClick={() => setLeaguesCurrentPage(p => Math.max(1, p - 1))} disabled={leaguesCurrentPage === 1}><ChevronLeftIcon /> Prev</Button>
+                                        <Button size="sm" variant="outline" onClick={() => setLeaguesCurrentPage(p => Math.min(totalLeaguePages, p + 1))} disabled={leaguesCurrentPage === totalLeaguePages}>Next <ChevronRightIcon /></Button>
+                                    </div>
+                                </CardFooter>
+                                )}
                             </Card>
                         </div>
+                        
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Global Users</CardTitle>
+                                <div className="relative mt-2">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Search users..." 
+                                        className="pl-8" 
+                                        value={userSearchTerm}
+                                        onChange={(e) => {
+                                            setUserSearchTerm(e.target.value);
+                                            setUserCurrentPage(1);
+                                        }}
+                                    />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Display Name</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>Role</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {paginatedUsers.map(user => (
+                                            <TableRow key={user.id}>
+                                                <TableCell>{user.displayName}</TableCell>
+                                                <TableCell>{user.email}</TableCell>
+                                                <TableCell><Badge variant="secondary">{user.role}</Badge></TableCell>
+                                                <TableCell><Badge variant={user.status === 'active' ? 'default' : 'outline'}>{user.status}</Badge></TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                      <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                                      </DropdownMenuTrigger>
+                                                      <DropdownMenuContent>
+                                                        <DropdownMenuItem>Send Password Reset</DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => setEditingUser(user)}>Edit User</DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-red-500" onClick={() => setUserToDelete(user)}>Delete User</DropdownMenuItem>
+                                                      </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                            <CardFooter className="justify-between">
+                                <span className="text-xs text-muted-foreground">Showing {paginatedUsers.length} of {filteredUsers.length} users</span>
+                                <div className="flex gap-1">
+                                    <Button size="sm" variant="outline" onClick={() => setUserCurrentPage(p => Math.max(1, p - 1))} disabled={userCurrentPage === 1}><ChevronLeftIcon /> Prev</Button>
+                                    <Button size="sm" variant="outline" onClick={() => setUserCurrentPage(p => Math.min(totalUserPages, p + 1))} disabled={userCurrentPage === totalUserPages}>Next <ChevronRightIcon /></Button>
+                                </div>
+                            </CardFooter>
+                        </Card>
                     </div>
                   </TabsContent>
                 )}
@@ -934,7 +997,7 @@ function AdminPage() {
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>{scoringRuleSet?.name || 'Scoring Rules'}</CardTitle>
                             <div className="flex items-center gap-2">
-                               <Button size="sm" variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}><ShieldPlus className="mr-2"/> Add Special Event</Button>
+                               <Button size="sm" variant="outline" ><ShieldPlus className="mr-2"/> Add Special Event</Button>
                                <Button size="sm" onClick={() => setIsAddRuleDialogOpen(true)}><PlusCircle className="mr-2"/> Add Rule</Button>
                             </div>
                         </CardHeader>
@@ -1028,6 +1091,44 @@ function AdminPage() {
         </main>
       </div>
        
+        {/* Dialog for New User Invite */}
+        <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Invite New User</DialogTitle>
+                    <DialogDescription>
+                        Enter user details to send a registration invite. They will receive an email to set their password.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="display-name">Display Name</Label>
+                        <Input
+                            id="display-name"
+                            value={newUserData.displayName}
+                            onChange={(e) => setNewUserData({ ...newUserData, displayName: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            value={newUserData.email}
+                            onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSendInvite} disabled={isSendingInvite}>
+                        {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Send Invite
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
        {/* Dialog for New Season */}
         <Dialog open={isNewSeasonDialogOpen} onOpenChange={setIsNewSeasonDialogOpen}>
             <DialogContent>
@@ -1203,7 +1304,7 @@ function AdminPage() {
       </Dialog>
       
       {/* Dialog for Special Event */}
-       <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+       <Dialog open={false}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Log Special Scoring Event</DialogTitle>
@@ -1234,7 +1335,7 @@ function AdminPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" >Cancel</Button>
             <Button>Log Event</Button>
           </DialogFooter>
         </DialogContent>
