@@ -110,6 +110,54 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
     );
 };
 
+// Dialog for adding a new scoring rule
+const AddRuleDialog = ({ open, onOpenChange, onAddRule, scoringRuleSetId }: { open: boolean, onOpenChange: (open: boolean) => void, onAddRule: (rule: ScoringRule) => void, scoringRuleSetId: string | undefined }) => {
+    const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
+
+    const handleAdd = () => {
+        if (!scoringRuleSetId || !newRuleData.code || !newRuleData.label) {
+            // This is a local validation, the parent function will also validate
+            return;
+        }
+        onAddRule(newRuleData);
+        setNewRuleData({ code: '', label: '', points: 0 }); // Reset for next time
+    };
+    
+     useEffect(() => {
+        if (!open) {
+          setNewRuleData({ code: '', label: '', points: 0 });
+        }
+    }, [open]);
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Scoring Rule</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="rule-code">Rule Code (e.g., HOH_WIN)</Label>
+                        <Input id="rule-code" value={newRuleData.code} onChange={(e) => setNewRuleData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="rule-label">Label (e.g., Head of Household Win)</Label>
+                        <Input id="rule-label" value={newRuleData.label} onChange={(e) => setNewRuleData(prev => ({ ...prev, label: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="rule-points">Points</Label>
+                        <Input id="rule-points" type="number" value={newRuleData.points} onChange={(e) => setNewRuleData(prev => ({ ...prev, points: Number(e.target.value) }))} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleAdd}>Add Rule</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 function AdminPage() {
   const { toast } = useToast();
@@ -175,7 +223,6 @@ function AdminPage() {
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: '' });
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
   const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
   const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
       name: '',
@@ -389,16 +436,15 @@ function AdminPage() {
   }, [initialView]);
   
 
-  const handleAddRule = async () => {
-    if (!scoringRuleSet || !newRuleData.code || !newRuleData.label) {
+  const handleAddRule = async (ruleData: ScoringRule) => {
+    if (!scoringRuleSet || !ruleData.code || !ruleData.label) {
       toast({ title: "Rule code and label are required.", variant: 'destructive' });
       return;
     }
-    const updatedRules = [...scoringRuleSet.rules, newRuleData];
+    const updatedRules = [...scoringRuleSet.rules, ruleData];
     try {
       await updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules });
       toast({ title: "Rule added successfully" });
-      setNewRuleData({ code: '', label: '', points: 0 });
       setIsAddRuleDialogOpen(false);
     } catch (error) {
       console.error("Error adding rule: ", error);
@@ -449,7 +495,7 @@ function AdminPage() {
 
   const handleCropImage = async () => {
     if (croppedAreaPixels && imageSrc && editingContestant) {
-      const croppedImageBase64 = await getCroppedImg(imageSrc, croppedAreaBase64);
+      const croppedImageBase64 = await getCroppedImg(imageSrc, croppedAreaPixels);
       if (croppedImageBase64) {
         try {
           // 1. Upload new image to storage
@@ -1276,32 +1322,13 @@ function AdminPage() {
             </DialogContent>
         </Dialog>
         
-        {/* Dialog for Add Rule */}
-      <Dialog open={isAddRuleDialogOpen} onOpenChange={setIsAddRuleDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Scoring Rule</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="rule-code">Rule Code (e.g., HOH_WIN)</Label>
-              <Input id="rule-code" value={newRuleData.code} onChange={(e) => setNewRuleData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rule-label">Label (e.g., Head of Household Win)</Label>
-              <Input id="rule-label" value={newRuleData.label} onChange={(e) => setNewRuleData(prev => ({ ...prev, label: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rule-points">Points</Label>
-              <Input id="rule-points" type="number" value={newRuleData.points} onChange={(e) => setNewRuleData(prev => ({ ...prev, points: Number(e.target.value) }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddRuleDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddRule}>Add Rule</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog for Add Rule */}
+      <AddRuleDialog 
+        open={isAddRuleDialogOpen} 
+        onOpenChange={setIsAddRuleDialogOpen}
+        onAddRule={handleAddRule}
+        scoringRuleSetId={scoringRuleSet?.id}
+      />
       
       {/* Dialog for Special Event */}
        <Dialog open={false}>
@@ -1446,7 +1473,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
-
-    
