@@ -115,10 +115,6 @@ const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpe
     const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
 
     const handleAdd = () => {
-        if (!newRuleData.code || !newRuleData.label) {
-            onAddRule(newRuleData); // Let parent handle validation/toast
-            return;
-        }
         onAddRule(newRuleData);
     };
     
@@ -188,6 +184,10 @@ function AdminPage() {
               name: leagueSettings.name,
               seasonId: leagueSettings.seasonId,
               maxTeams: leagueSettings.maxTeams,
+              contestantTerm: leagueSettings.contestantTerm || { singular: 'Contestant', plural: 'Contestants' },
+              settings: {
+                  ...leagueSettings.settings
+              }
           });
       }
   }, [leagueSettings]);
@@ -217,7 +217,7 @@ function AdminPage() {
   const [editingContestant, setEditingContestant] = useState<Contestant | null>(null);
   const [contestantToDelete, setContestantToDelete] = useState<Contestant | null>(null);
   const [newContestantData, setNewContestantData] = useState<Partial<Contestant>>({
-    firstName: '', lastName: '', age: 25, hometown: '', status: 'active'
+    firstName: '', lastName: '', nickname: '', age: 25, hometown: '', status: 'active'
   });
   
   const [selectedWeek, setSelectedWeek] = useState(1);
@@ -456,13 +456,9 @@ function AdminPage() {
   }, [db, leagueSettings]);
 
   useEffect(() => {
-    if (initialView && initialView !== 'site') {
-        setActiveTab(initialView);
-    } else if (initialView === 'site' && currentUser?.role === 'site_admin') {
-        setActiveTab('site');
-    } else if (currentUser?.role !== 'site_admin') {
-        setActiveTab('events');
-    }
+    const defaultTab = currentUser?.role === 'site_admin' ? (initialView === 'site' ? 'site' : 'events') : 'events';
+    const targetTab = initialView && initialView !== 'site' ? initialView : defaultTab;
+    setActiveTab(targetTab);
   }, [initialView, currentUser]);
   
   const handleUpdateLeagueDetails = async () => {
@@ -480,20 +476,21 @@ function AdminPage() {
       }
   };
 
-  const handleAddRule = async (ruleData: ScoringRule) => {
+  const handleAddRule = (ruleData: ScoringRule) => {
     if (!scoringRuleSet || !ruleData.code || !ruleData.label) {
       toast({ title: "Rule code and label are required.", variant: 'destructive' });
       return;
     }
     const updatedRules = [...scoringRuleSet.rules, ruleData];
-    try {
-      await updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules });
-      toast({ title: "Rule added successfully" });
-      setIsAddRuleDialogOpen(false);
-    } catch (error) {
-      console.error("Error adding rule: ", error);
-      toast({ title: "Error adding rule", variant: 'destructive' });
-    }
+    updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules })
+        .then(() => {
+            toast({ title: "Rule added successfully" });
+            setIsAddRuleDialogOpen(false);
+        })
+        .catch(error => {
+            console.error("Error adding rule: ", error);
+            toast({ title: "Error adding rule", variant: 'destructive' });
+        });
   };
 
   const handleUpdateRule = async (index: number, field: keyof ScoringRule, value: string | number) => {
@@ -607,7 +604,7 @@ function AdminPage() {
             const docRef = await addDoc(collection(db, 'leagues'), leagueData);
             toast({ title: "League created successfully!" });
             setIsNewLeagueDialogOpen(false);
-            setNewLeagueData({ name: '', seasonId: '', maxTeams: 8 });
+            setNewLeagueData({ name: '', seasonId: '', maxTeams: 8, contestantTerm: { singular: 'Contestant', plural: 'Contestants' } });
         } catch (error) {
             console.error("Error creating league: ", error);
             toast({ title: "Error creating league", variant: 'destructive' });
@@ -637,10 +634,10 @@ function AdminPage() {
         }
         try {
             const contestantData: Omit<Contestant, 'id'> = {
-                ...newContestantData,
                 seasonId: activeSeason.id,
                 firstName: newContestantData.firstName,
                 lastName: newContestantData.lastName,
+                nickname: newContestantData.nickname || '',
                 age: newContestantData.age || 0,
                 hometown: newContestantData.hometown || 'Unknown',
                 status: 'active',
@@ -649,7 +646,7 @@ function AdminPage() {
             await addDoc(collection(db, 'contestants'), contestantData);
             toast({ title: "Contestant added successfully!" });
             setIsNewContestantDialogOpen(false);
-            setNewContestantData({ firstName: '', lastName: '', age: 25, hometown: '', status: 'active' });
+            setNewContestantData({ firstName: '', lastName: '', nickname: '', age: 25, hometown: '', status: 'active' });
         } catch (error) {
             console.error("Error adding contestant: ", error);
             toast({ title: "Error adding contestant", variant: "destructive" });
@@ -789,7 +786,7 @@ function AdminPage() {
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="flex items-center">
+                <div className="flex w-full items-center justify-between">
                     <TabsList>
                         {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams & Draft</TabsTrigger>}
@@ -798,7 +795,7 @@ function AdminPage() {
                         {manageableLeagues.length > 0 && <TabsTrigger value="settings">League Settings</TabsTrigger>}
                     </TabsList>
                     {manageableLeagues.length > 1 && (
-                         <div className="ml-auto w-64">
+                         <div className="w-64">
                             <Select value={selectedLeagueId || ''} onValueChange={setSelectedLeagueId}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a league..." />
@@ -1182,13 +1179,39 @@ function AdminPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-1">
-                                <Label>Number of Teams</Label>
-                                <Input 
-                                    type="number" 
-                                    value={editingLeagueDetails?.maxTeams || 0}
-                                    onChange={(e) => setEditingLeagueDetails(prev => ({...prev, maxTeams: Number(e.target.value)}))}
-                                />
+                             <div className="grid grid-cols-2 gap-4">
+                                 <div className="space-y-1">
+                                    <Label>Number of Teams</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={editingLeagueDetails?.maxTeams || 0}
+                                        onChange={(e) => setEditingLeagueDetails(prev => ({...prev, maxTeams: Number(e.target.value)}))}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label>Draft Rounds</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={editingLeagueDetails?.settings?.draftRounds || 0}
+                                        onChange={(e) => setEditingLeagueDetails(prev => ({...prev, settings: {...prev?.settings, draftRounds: Number(e.target.value)} }))}
+                                    />
+                                </div>
+                            </div>
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <Label>Participant Term (Singular)</Label>
+                                    <Input 
+                                        value={editingLeagueDetails?.contestantTerm?.singular || ''} 
+                                        onChange={e => setEditingLeagueDetails(prev => ({ ...prev, contestantTerm: { ...prev?.contestantTerm!, singular: e.target.value } }))}
+                                    />
+                                </div>
+                                 <div className="space-y-1">
+                                    <Label>Participant Term (Plural)</Label>
+                                    <Input 
+                                        value={editingLeagueDetails?.contestantTerm?.plural || ''} 
+                                        onChange={e => setEditingLeagueDetails(prev => ({ ...prev, contestantTerm: { ...prev?.contestantTerm!, plural: e.target.value } }))}
+                                    />
+                                </div>
                             </div>
                           </CardContent>
                           <CardFooter>
@@ -1394,19 +1417,23 @@ function AdminPage() {
                 <div className="grid grid-cols-2 gap-4 py-2">
                     <div className="space-y-2">
                         <Label>First Name</Label>
-                        <Input value={newContestantData.firstName} onChange={(e) => setNewContestantData({...newContestantData, firstName: e.target.value})} />
+                        <Input value={newContestantData.firstName} onChange={(e) => setNewContestantData(prev => ({...prev, firstName: e.target.value}))} />
                     </div>
                      <div className="space-y-2">
                         <Label>Last Name</Label>
-                        <Input value={newContestantData.lastName} onChange={(e) => setNewContestantData({...newContestantData, lastName: e.target.value})} />
+                        <Input value={newContestantData.lastName} onChange={(e) => setNewContestantData(prev => ({...prev, lastName: e.target.value}))} />
+                    </div>
+                     <div className="col-span-2 space-y-2">
+                        <Label>Nickname</Label>
+                        <Input value={newContestantData.nickname} onChange={(e) => setNewContestantData(prev => ({...prev, nickname: e.target.value}))} />
                     </div>
                     <div className="space-y-2">
                         <Label>Age</Label>
-                        <Input type="number" value={newContestantData.age} onChange={(e) => setNewContestantData({...newContestantData, age: Number(e.target.value)})} />
+                        <Input type="number" value={newContestantData.age} onChange={(e) => setNewContestantData(prev => ({...prev, age: Number(e.target.value)}))} />
                     </div>
                      <div className="space-y-2">
                         <Label>Hometown</Label>
-                        <Input value={newContestantData.hometown} onChange={(e) => setNewContestantData({...newContestantData, hometown: e.target.value})} />
+                        <Input value={newContestantData.hometown} onChange={(e) => setNewContestantData(prev => ({...prev, hometown: e.target.value}))} />
                     </div>
                 </div>
                 <DialogFooter>

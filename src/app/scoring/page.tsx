@@ -166,7 +166,7 @@ function ScoringPage() {
       const weekMatch = selectedWeek === 'all' || event.week === Number(selectedWeek);
       const contestantMatch = selectedContestant === 'all' || event.contestantId === selectedContestant;
       const teamMatch = selectedTeam === 'all' || event.teamId === selectedTeam;
-      const eventMatch = selectedEvent === 'all' || event.eventCode === selectedEvent;
+      const eventMatch = selectedEvent === 'all' || event.eventCode === eventMatch;
       return weekMatch && contestantMatch && teamMatch && eventMatch;
     });
   }, [scoringEvents, selectedWeek, selectedContestant, selectedTeam, selectedEvent]);
@@ -324,3 +324,4 @@ function ScoringPage() {
 }
 
 export default withAuth(ScoringPage);
+

@@ -258,3 +258,4 @@ function ContestantsPage() {
 }
 
 export default withAuth(ContestantsPage);
+

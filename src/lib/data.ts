@@ -21,9 +21,9 @@ export interface Contestant {
   seasonId: string;
   firstName: string;
   lastName: string;
-  nickname?: string;
+  nickname: string;
   age: number;
-  occupation: string;
+  occupation?: string;
   hometown: string;
   status: 'active' | 'evicted' | 'jury';
   enteredDay: number;
