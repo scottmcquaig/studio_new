@@ -247,7 +247,7 @@ function AdminPage() {
 
   const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
 
-  const [activeTab, setActiveTab] = useState('scoring'); // Default for site admins
+  const [activeTab, setActiveTab] = useState('site'); // Default for site admins
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -426,15 +426,15 @@ function AdminPage() {
   }, [db, leagueSettings]);
 
   useEffect(() => {
-    if (currentUser?.role === 'site_admin' && !activeTab) {
-        setActiveTab('site');
+    if (currentUser?.role === 'site_admin' && (!activeTab || activeTab === 'site')) {
+        setActiveTab('events');
     } else if (currentUser?.role === 'league_admin' && !activeTab) {
         setActiveTab('events');
     }
   }, [currentUser, activeTab]);
 
   useEffect(() => {
-    if (initialView) {
+    if (initialView && initialView !== 'site') {
         setActiveTab(initialView);
     }
   }, [initialView]);
@@ -730,15 +730,14 @@ function AdminPage() {
           <div className="ml-auto flex items-center gap-2">
              <span className="text-sm text-muted-foreground hidden md:inline-block">
                 Signed in as <strong>{currentUser.displayName || currentUser.email}</strong>
+                {currentUser.role === 'site_admin' && <Badge variant="destructive" className="ml-2">Site Admin</Badge>}
             </span>
-            <Badge variant={currentUser.role === 'site_admin' ? 'destructive' : 'secondary'}>{currentUser.role}</Badge>
           </div>
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="flex items-center">
                     <TabsList>
-                        {currentUser.role === 'site_admin' && <TabsTrigger value="site">Site Administration</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams & Draft</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="contestants">{leagueSettings?.contestantTerm?.plural || 'Contestants'}</TabsTrigger>}
@@ -759,8 +758,8 @@ function AdminPage() {
                     )}
                 </div>
 
-                {currentUser.role === 'site_admin' && (
-                  <TabsContent value="site">
+                {currentUser.role === 'site_admin' && activeTab === 'site' && (
+                  <TabsContent value="site" forceMount>
                     <div className="grid auto-rows-max items-start gap-4 md:gap-8">
                         <div className="flex justify-center gap-4 py-4">
                             <Button onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> Add New User</Button>

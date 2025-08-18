@@ -86,7 +86,6 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
   };
 
   const canManageLeague = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
-  const isSiteAdmin = currentUser?.role === 'site_admin';
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:px-6">
@@ -124,19 +123,6 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
                     </TooltipTrigger>
                     <TooltipContent>
                         <p>League Admin</p>
-                    </TooltipContent>
-                </Tooltip>
-            )}
-            
-            {isSiteAdmin && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button asChild variant="ghost" size="icon">
-                            <Link href="/admin?view=site"><Shield className="h-5 w-5"/></Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Site Admin</p>
                     </TooltipContent>
                 </Tooltip>
             )}
