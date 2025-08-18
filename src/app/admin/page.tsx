@@ -125,14 +125,14 @@ const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpe
              return;
         }
         onAddRule(newRuleData);
+        setNewRuleData({ code: '', label: '', points: 0 }); // Reset state after adding
         onOpenChange(false);
     };
-    
-    useEffect(() => {
-        if (!open) {
-          setNewRuleData({ code: '', label: '', points: 0 });
-        }
-    }, [open]);
+
+    const handleCancel = () => {
+        setNewRuleData({ code: '', label: '', points: 0 }); // Reset state on cancel
+        onOpenChange(false);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -155,7 +155,7 @@ const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpe
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                     <Button onClick={handleAdd}>Add Rule</Button>
                 </DialogFooter>
             </DialogContent>
@@ -1939,4 +1939,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
