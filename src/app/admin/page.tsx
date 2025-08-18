@@ -116,11 +116,10 @@ const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpe
 
     const handleAdd = () => {
         if (!newRuleData.code || !newRuleData.label) {
-            // Parent function will also validate and show toast
+            onAddRule(newRuleData); // Let parent handle validation/toast
             return;
         }
         onAddRule(newRuleData);
-        setNewRuleData({ code: '', label: '', points: 0 }); // Reset for next time
     };
     
     useEffect(() => {
@@ -169,7 +168,8 @@ function AdminPage() {
   
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
-  
+  const [editingLeagueDetails, setEditingLeagueDetails] = useState<Partial<League> | null>(null);
+
   const manageableLeagues = useMemo(() => {
     if (currentUser?.role === 'site_admin') {
       return allLeagues;
@@ -181,6 +181,17 @@ function AdminPage() {
   }, [allLeagues, currentUser]);
 
   const leagueSettings = useMemo(() => manageableLeagues.find(l => l.id === selectedLeagueId), [manageableLeagues, selectedLeagueId]);
+  
+  useEffect(() => {
+      if (leagueSettings) {
+          setEditingLeagueDetails({
+              name: leagueSettings.name,
+              seasonId: leagueSettings.seasonId,
+              maxTeams: leagueSettings.maxTeams,
+          });
+      }
+  }, [leagueSettings]);
+
   const [leagueToDelete, setLeagueToDelete] = useState<League | null>(null);
 
   const [allTeams, setAllTeams] = useState<Team[]>([]);
@@ -262,7 +273,26 @@ function AdminPage() {
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
   const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
-  const teams = useMemo(() => allTeams.filter(t => t.leagueId === selectedLeagueId).sort((a,b) => a.draftOrder - b.draftOrder), [allTeams, selectedLeagueId]);
+  const teams = useMemo(() => {
+    if (!leagueSettings) return [];
+    const existingTeams = allTeams.filter(t => t.leagueId === selectedLeagueId);
+    
+    // Ensure we have the correct number of team objects
+    const numTeams = leagueSettings.maxTeams || 0;
+    const teamArray = Array.from({ length: numTeams }, (_, i) => {
+        const existing = existingTeams.find(t => t.draftOrder === i + 1);
+        return existing || {
+            id: `temp-${i}`,
+            name: `Team ${i + 1}`,
+            draftOrder: i + 1,
+            leagueId: selectedLeagueId!,
+            ownerUserIds: [],
+            contestantIds: [],
+        } as Team;
+    });
+
+    return teamArray.sort((a, b) => a.draftOrder - b.draftOrder);
+  }, [allTeams, selectedLeagueId, leagueSettings]);
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => 
@@ -430,9 +460,25 @@ function AdminPage() {
         setActiveTab(initialView);
     } else if (initialView === 'site' && currentUser?.role === 'site_admin') {
         setActiveTab('site');
+    } else if (currentUser?.role !== 'site_admin') {
+        setActiveTab('events');
     }
   }, [initialView, currentUser]);
   
+  const handleUpdateLeagueDetails = async () => {
+      if (!selectedLeagueId || !editingLeagueDetails) {
+          toast({ title: "No league selected.", variant: "destructive" });
+          return;
+      }
+      try {
+          const leagueRef = doc(db, 'leagues', selectedLeagueId);
+          await updateDoc(leagueRef, editingLeagueDetails);
+          toast({ title: "League details updated successfully!" });
+      } catch (error) {
+          console.error("Error updating league details: ", error);
+          toast({ title: "Error updating details", variant: "destructive" });
+      }
+  };
 
   const handleAddRule = async (ruleData: ScoringRule) => {
     if (!scoringRuleSet || !ruleData.code || !ruleData.label) {
@@ -721,21 +767,29 @@ function AdminPage() {
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to App</span>
            </Link>
+           {currentUser.role === 'site_admin' && (
+             <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setActiveTab('site')}>
+                            <Shield className="h-4 w-4"/>
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>Site Administration</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+           )}
           <div className="ml-auto flex items-center gap-2">
              <span className="text-sm text-muted-foreground hidden md:inline-block">
                 Signed in as <strong>{currentUser.displayName || currentUser.email}</strong>
-                {currentUser.role === 'site_admin' && <Badge variant="destructive" className="ml-2">Site Admin</Badge>}
             </span>
           </div>
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="flex items-center">
-                    {currentUser.role === 'site_admin' && (
-                        <TabsList className="mr-4">
-                            <TabsTrigger value="site"><Shield className="mr-2" /> Site Admin</TabsTrigger>
-                        </TabsList>
-                    )}
                     <TabsList>
                         {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams & Draft</TabsTrigger>}
@@ -1111,11 +1165,17 @@ function AdminPage() {
                           <CardContent className="space-y-4">
                             <div className="space-y-1">
                                 <Label>League Name</Label>
-                                <Input defaultValue={leagueSettings?.name} />
+                                <Input 
+                                    value={editingLeagueDetails?.name || ''} 
+                                    onChange={(e) => setEditingLeagueDetails(prev => ({...prev, name: e.target.value}))}
+                                />
                             </div>
                              <div className="space-y-1">
                                 <Label>Season</Label>
-                                <Select defaultValue={leagueSettings?.seasonId}>
+                                <Select 
+                                    value={editingLeagueDetails?.seasonId}
+                                    onValueChange={(val) => setEditingLeagueDetails(prev => ({...prev, seasonId: val}))}
+                                >
                                     <SelectTrigger><SelectValue/></SelectTrigger>
                                     <SelectContent>
                                         {seasons.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
@@ -1123,16 +1183,16 @@ function AdminPage() {
                                 </Select>
                             </div>
                             <div className="space-y-1">
-                                <Label>Max Teams</Label>
-                                <Input type="number" defaultValue={leagueSettings?.maxTeams} />
-                            </div>
-                             <div className="flex items-center space-x-2">
-                                <Checkbox id="allow-mid-season-draft" defaultChecked={leagueSettings?.settings.allowMidSeasonDraft} />
-                                <Label htmlFor="allow-mid-season-draft">Allow mid-season draft</Label>
+                                <Label>Number of Teams</Label>
+                                <Input 
+                                    type="number" 
+                                    value={editingLeagueDetails?.maxTeams || 0}
+                                    onChange={(e) => setEditingLeagueDetails(prev => ({...prev, maxTeams: Number(e.target.value)}))}
+                                />
                             </div>
                           </CardContent>
                           <CardFooter>
-                              <Button>Save Changes</Button>
+                              <Button onClick={handleUpdateLeagueDetails}>Save Changes</Button>
                           </CardFooter>
                         </Card>
                         <Card>
