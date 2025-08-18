@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn, getContestantDisplayName, getCroppedImg } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { app } from '@/lib/firebase';
@@ -38,6 +38,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { inviteUser } from '@/app/actions/userActions';
+import { Switch } from '@/components/ui/switch';
 
 
 const iconSelection = [
@@ -229,8 +230,67 @@ function AdminPage() {
     firstName: '', lastName: '', nickname: '', age: 25, hometown: '', status: 'active'
   });
   
+  // State for weekly events form
   const [selectedWeek, setSelectedWeek] = useState(1);
+  const [weeklyEventData, setWeeklyEventData] = useState<{ [key: string]: Partial<Competition> }>({});
+
+  const weeklyCompetitions = useMemo(() => 
+    competitions.filter(c => c.seasonId === activeSeason?.id && c.week === selectedWeek),
+    [competitions, activeSeason, selectedWeek]
+  );
   
+  useEffect(() => {
+    const data: { [key: string]: Partial<Competition> } = {};
+    weeklyCompetitions.forEach(comp => {
+        data[comp.type] = comp;
+    });
+    setWeeklyEventData(data);
+  }, [weeklyCompetitions]);
+
+  const handleEventChange = (type: Competition['type'], field: keyof Competition, value: any) => {
+    setWeeklyEventData(prev => ({
+        ...prev,
+        [type]: {
+            ...prev[type],
+            [field]: value,
+        }
+    }));
+  };
+
+  const handleLogEvent = async (type: Competition['type']) => {
+    if (!activeSeason) return;
+
+    const eventToLog = weeklyEventData[type];
+    if (!eventToLog) {
+        toast({ title: "No data to log.", variant: "destructive" });
+        return;
+    }
+    
+    const existingEvent = weeklyCompetitions.find(c => c.type === type);
+    
+    const dataToSave = {
+        seasonId: activeSeason.id,
+        week: selectedWeek,
+        type,
+        airDate: new Date().toISOString(), // Or a date picker
+        ...eventToLog,
+    };
+
+    try {
+        if (existingEvent) {
+            await updateDoc(doc(db, 'competitions', existingEvent.id), dataToSave);
+            toast({ title: `${type} event updated successfully.` });
+        } else {
+            await addDoc(collection(db, 'competitions'), dataToSave);
+            toast({ title: `${type} event logged successfully.` });
+        }
+    } catch (error) {
+        console.error("Error logging event:", error);
+        toast({ title: "Error logging event.", variant: "destructive" });
+    }
+  };
+
+
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
@@ -1074,32 +1134,101 @@ function AdminPage() {
                             <CardHeader>
                                 <CardTitle>Log Head of Household</CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                {/* HOH Form Here */}
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>HOH Winner</Label>
+                                    <Select value={weeklyEventData['HOH']?.winnerId} onValueChange={val => handleEventChange('HOH', 'winnerId', val)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select winner..."/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button onClick={() => handleLogEvent('HOH')}>Log HOH</Button>
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Log Nominations</CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                {/* Nominations Form Here */}
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Nominee 1</Label>
+                                    <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[0]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [val, weeklyEventData['NOMINATIONS']?.nominees?.[1]])}>
+                                        <SelectTrigger><SelectValue placeholder="Select nominee..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label>Nominee 2</Label>
+                                    <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[1]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [weeklyEventData['NOMINATIONS']?.nominees?.[0], val])}>
+                                        <SelectTrigger><SelectValue placeholder="Select nominee..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button onClick={() => handleLogEvent('NOMINATIONS')}>Log Nominations</Button>
                             </CardContent>
                         </Card>
                         <Card>
                             <CardHeader>
                                 <CardTitle>Log Power of Veto</CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                {/* Veto Form Here */}
+                             <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label>Veto Winner</Label>
+                                    <Select value={weeklyEventData['VETO']?.winnerId} onValueChange={val => handleEventChange('VETO', 'winnerId', val)}>
+                                        <SelectTrigger><SelectValue placeholder="Select winner..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch id="veto-used" checked={weeklyEventData['VETO']?.used} onCheckedChange={val => handleEventChange('VETO', 'used', val)} />
+                                    <Label htmlFor="veto-used">Veto Used?</Label>
+                                </div>
+                                {weeklyEventData['VETO']?.used && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label>Used On</Label>
+                                            <Select value={weeklyEventData['VETO']?.usedOnId} onValueChange={val => handleEventChange('VETO', 'usedOnId', val)}>
+                                                <SelectTrigger><SelectValue placeholder="Select player..."/></SelectTrigger>
+                                                <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Replacement Nominee</Label>
+                                            <Select value={weeklyEventData['VETO']?.replacementNomId} onValueChange={val => handleEventChange('VETO', 'replacementNomId', val)}>
+                                                <SelectTrigger><SelectValue placeholder="Select replacement..."/></SelectTrigger>
+                                                <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        </div>
+                                    </>
+                                )}
+                                <Button onClick={() => handleLogEvent('VETO')}>Log Veto</Button>
                             </CardContent>
                         </Card>
                          <Card>
                             <CardHeader>
                                 <CardTitle>Log Eviction</CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                {/* Eviction Form Here */}
+                            <CardContent className="space-y-4">
+                               <div className="space-y-2">
+                                    <Label>Evicted Player</Label>
+                                    <Select value={weeklyEventData['EVICTION']?.evictedId} onValueChange={val => handleEventChange('EVICTION', 'evictedId', val)}>
+                                        <SelectTrigger><SelectValue placeholder="Select evicted player..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button onClick={() => handleLogEvent('EVICTION')}>Log Eviction</Button>
                             </CardContent>
                         </Card>
                     </div>
@@ -1810,3 +1939,4 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
