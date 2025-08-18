@@ -12,8 +12,8 @@ export interface Season {
   title: string;
   theme?: string;
   network?: string;
-  premiereDate: string;
-  endDate: string;
+  premiereDate?: string;
+  endDate?: string;
   year: number;
   status: 'in_progress' | 'completed' | 'upcoming';
   currentWeek: number;
@@ -108,12 +108,12 @@ export interface Team {
     name: string;
     ownerUserIds: string[];
     contestantIds: string[];
-    faab: number;
-    createdAt: string;
-    total_score: number;
-    weekly_score: number;
+    faab?: number;
+    createdAt?: string;
+    total_score?: number;
+    weekly_score?: number;
     draftOrder: number;
-    weekly_score_breakdown: WeeklyScoreBreakdown;
+    weekly_score_breakdown?: WeeklyScoreBreakdown;
 }
 
 export type UserRole = 'site_admin' | 'league_admin' | 'player';
@@ -154,3 +154,5 @@ export interface Pick {
     pick: number;
     createdAt: string;
 }
+
+    

@@ -1308,7 +1308,7 @@ function AdminPage() {
                             </CardContent>
                         </Card>
                     </div>
-                </TabsContent>
+                 </TabsContent>
 
                  <TabsContent value="teams">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -2047,3 +2047,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
