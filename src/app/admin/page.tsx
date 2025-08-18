@@ -176,6 +176,7 @@ function AdminPage() {
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
   const [editingLeagueDetails, setEditingLeagueDetails] = useState<Partial<League> | null>(null);
+  const [editingBreakdownCategories, setEditingBreakdownCategories] = useState<LeagueScoringBreakdownCategory[]>([]);
 
   const manageableLeagues = useMemo(() => {
     if (currentUser?.role === 'site_admin') {
@@ -200,6 +201,7 @@ function AdminPage() {
                   ...leagueSettings.settings
               }
           });
+          setEditingBreakdownCategories(leagueSettings.settings?.scoringBreakdownCategories || []);
       }
   }, [leagueSettings]);
 
@@ -564,6 +566,42 @@ function AdminPage() {
           console.error("Error updating league details: ", error);
           toast({ title: "Error updating details", variant: "destructive" });
       }
+  };
+
+  const handleUpdateBreakdownCategories = async () => {
+      if (!selectedLeagueId) {
+          toast({ title: "No league selected.", variant: "destructive" });
+          return;
+      }
+      try {
+          const leagueRef = doc(db, 'leagues', selectedLeagueId);
+          await updateDoc(leagueRef, { 'settings.scoringBreakdownCategories': editingBreakdownCategories });
+          toast({ title: "Scoring breakdown updated successfully!" });
+      } catch (error) {
+          console.error("Error updating breakdown categories: ", error);
+          toast({ title: "Error updating breakdown", variant: "destructive" });
+      }
+  };
+  
+  const handleBreakdownChange = (index: number, field: keyof LeagueScoringBreakdownCategory, value: any) => {
+        const updated = [...editingBreakdownCategories];
+        (updated[index] as any)[field] = value;
+        setEditingBreakdownCategories(updated);
+  };
+  
+  const handleAddBreakdownCategory = () => {
+        if (editingBreakdownCategories.length < 6) {
+            setEditingBreakdownCategories([
+                ...editingBreakdownCategories,
+                { displayName: '', icon: 'Trophy', color: 'text-gray-500', ruleCodes: [] }
+            ]);
+        }
+  };
+
+  const handleRemoveBreakdownCategory = (index: number) => {
+        const updated = [...editingBreakdownCategories];
+        updated.splice(index, 1);
+        setEditingBreakdownCategories(updated);
   };
 
   const handleAddRule = (ruleData: ScoringRule) => {
@@ -1512,8 +1550,79 @@ function AdminPage() {
                                 <CardTitle>Scoring Breakdown Categories</CardTitle>
                                 <CardDescription>Define categories for the scoring breakdown on the Teams page.</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-center text-muted-foreground py-8">Scoring Breakdown management coming soon.</p>
+                            <CardContent className="space-y-4">
+                                {editingBreakdownCategories.map((category, index) => (
+                                    <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                                                    {createElement((LucideIcons as any)[category.icon], { className: cn("h-4 w-4", category.color) })}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-2">
+                                                <div className="grid grid-cols-5 gap-1">
+                                                    {iconSelection.map(icon => (
+                                                        <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleBreakdownChange(index, 'icon', icon)}>
+                                                            {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", category.color.replace('text-', 'bg-'))} />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-2">
+                                                <div className="grid grid-cols-6 gap-1">
+                                                    {colorSelection.map(color => (
+                                                        <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color.replace('bg-', 'bg-'))} onClick={() => handleBreakdownChange(index, 'color', color.replace('bg-', 'text-'))} />
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <Input 
+                                            placeholder="Display Name" 
+                                            value={category.displayName} 
+                                            onChange={(e) => handleBreakdownChange(index, 'displayName', e.target.value)}
+                                            className="h-8"
+                                        />
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" className="h-8 text-xs shrink-0">Rules ({category.ruleCodes.length})</Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="p-2">
+                                                <div className="space-y-2">
+                                                    {scoringRules.map(rule => (
+                                                        <div key={rule.code} className="flex items-center space-x-2">
+                                                            <Checkbox 
+                                                                id={`${index}-${rule.code}`}
+                                                                checked={category.ruleCodes.includes(rule.code)}
+                                                                onCheckedChange={(checked) => {
+                                                                    const newCodes = checked 
+                                                                        ? [...category.ruleCodes, rule.code]
+                                                                        : category.ruleCodes.filter(c => c !== rule.code);
+                                                                    handleBreakdownChange(index, 'ruleCodes', newCodes);
+                                                                }}
+                                                            />
+                                                            <label htmlFor={`${index}-${rule.code}`} className="text-sm">{rule.label}</label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => handleRemoveBreakdownCategory(index)}>
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                <div className="flex gap-2">
+                                    <Button onClick={handleAddBreakdownCategory} size="sm" variant="outline" disabled={editingBreakdownCategories.length >= 6}>
+                                        <PlusCircle className="mr-2" /> Add Category
+                                    </Button>
+                                     <Button onClick={handleUpdateBreakdownCategories} size="sm"><Save className="mr-2"/> Save Breakdown</Button>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
