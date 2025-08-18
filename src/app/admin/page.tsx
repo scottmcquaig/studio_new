@@ -44,7 +44,8 @@ import { BB_RULES_DEFAULT } from '@/lib/constants';
 
 const iconSelection = [
     'Crown', 'Ban', 'Gem', 'Gift', 'HeartPulse', 'KeyRound', 'ShieldPlus', 'Trophy',
-    'Medal', 'DollarSign', 'Rocket', 'Cctv', 'Skull', 'CloudSun', 'XCircle'
+    'Medal', 'DollarSign', 'Rocket', 'Cctv', 'Skull', 'CloudSun', 'XCircle', 'BrickWall',
+    'Swords', 'Handshake', 'Angry', 'Smile', 'Star', 'TrendingUp', 'TrendingDown'
 ] as const;
 
 const colorSelection = [
@@ -354,6 +355,7 @@ function AdminPage() {
     const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<SeasonWeeklyStatusDisplay[]>([]);
     const [isAddStatusCardOpen, setIsAddStatusCardOpen] = useState(false);
     const availableEventTypes: Competition['type'][] = ['HOH', 'NOMINATIONS', 'VETO', 'EVICTION', 'BLOCK_BUSTER'];
+    const [newStatusCard, setNewStatusCard] = useState<Partial<SeasonWeeklyStatusDisplay>>({ title: '', icon: 'Trophy', type: 'CUSTOM' });
 
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
@@ -527,7 +529,22 @@ function AdminPage() {
   useEffect(() => {
       if (activeSeason) {
         setSelectedWeek(activeSeason.currentWeek);
-        setWeeklyStatusDisplay(activeSeason.weeklyStatusDisplay?.[`week${activeSeason.currentWeek}`] || []);
+        const currentWeekKey = `week${activeSeason.currentWeek}`;
+        const defaultDisplay = [
+            { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1 },
+            { type: 'NOMINATIONS', title: 'Nominations', icon: 'TriangleAlert', order: 2 },
+            { type: 'VETO', title: 'Power of Veto', icon: 'Ban', order: 3 },
+            { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4 }
+        ] as SeasonWeeklyStatusDisplay[];
+
+        if (activeSeason.weeklyStatusDisplay && activeSeason.weeklyStatusDisplay[currentWeekKey]) {
+            setWeeklyStatusDisplay(activeSeason.weeklyStatusDisplay[currentWeekKey]);
+        } else if (activeSeason.currentWeek > 1) {
+             const prevWeekKey = `week${activeSeason.currentWeek - 1}`;
+             setWeeklyStatusDisplay(activeSeason.weeklyStatusDisplay?.[prevWeekKey] || defaultDisplay);
+        } else {
+            setWeeklyStatusDisplay(defaultDisplay);
+        }
       }
   }, [activeSeason]);
   
@@ -994,6 +1011,49 @@ function AdminPage() {
             : [...currentOwners, userId];
         setTeamOwnerEdits(prev => ({ ...prev, [team.id]: newOwners }));
     };
+    
+    const handleSaveWeeklyStatusDisplay = async () => {
+        if (!activeSeason) return;
+        const seasonRef = doc(db, 'seasons', activeSeason.id);
+        const weekKey = `week${selectedWeek}`;
+        try {
+            await updateDoc(seasonRef, {
+                [`weeklyStatusDisplay.${weekKey}`]: weeklyStatusDisplay,
+            });
+            toast({ title: "Weekly display updated successfully!" });
+        } catch (error) {
+            console.error("Error updating weekly status display: ", error);
+            toast({ title: "Failed to update display", variant: "destructive" });
+        }
+    };
+    
+    const handleAddStatusCard = () => {
+        if (!newStatusCard.title || !newStatusCard.icon || !newStatusCard.type) {
+            toast({ title: "Title, Icon and Type are required.", variant: "destructive" });
+            return;
+        }
+        const newCard: SeasonWeeklyStatusDisplay = {
+            order: weeklyStatusDisplay.length + 1,
+            ...newStatusCard
+        } as SeasonWeeklyStatusDisplay;
+        
+        setWeeklyStatusDisplay([...weeklyStatusDisplay, newCard]);
+        setNewStatusCard({ title: '', icon: 'Trophy', type: 'CUSTOM' });
+        setIsAddStatusCardOpen(false);
+    };
+
+    const handleRemoveStatusCard = (order: number) => {
+        setWeeklyStatusDisplay(weeklyStatusDisplay.filter(card => card.order !== order));
+    };
+
+    const handleStatusCardOrderChange = (order: number, newOrder: number) => {
+        const updatedDisplay = [...weeklyStatusDisplay];
+        const cardIndex = updatedDisplay.findIndex(c => c.order === order);
+        if(cardIndex > -1) {
+            updatedDisplay[cardIndex].order = newOrder;
+            setWeeklyStatusDisplay(updatedDisplay);
+        }
+    };
 
 
     if (!currentUser) {
@@ -1244,105 +1304,96 @@ function AdminPage() {
                 
                 <TabsContent value="events">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Card>
+                        <Card className="lg:col-span-3">
                             <CardHeader>
-                                <CardTitle>Log Head of Household</CardTitle>
+                                <CardTitle>Log Weekly Events</CardTitle>
+                                <CardDescription>Log the main events for Week {selectedWeek}.</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>HOH Winner</Label>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="space-y-4 p-4 border rounded-lg">
+                                    <Label className="font-semibold">Head of Household</Label>
                                     <Select value={weeklyEventData['HOH']?.winnerId} onValueChange={val => handleEventChange('HOH', 'winnerId', val)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select winner..."/>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                        </SelectContent>
+                                        <SelectTrigger><SelectValue placeholder="Select winner..."/></SelectTrigger>
+                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                     </Select>
+                                    <Button size="sm" onClick={() => handleLogEvent('HOH')}>Log HOH</Button>
                                 </div>
-                                <Button onClick={() => handleLogEvent('HOH')}>Log HOH</Button>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Log Nominations</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Nominee 1</Label>
+                                <div className="space-y-4 p-4 border rounded-lg">
+                                    <Label className="font-semibold">Nominations</Label>
                                     <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[0]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [val, weeklyEventData['NOMINATIONS']?.nominees?.[1]])}>
-                                        <SelectTrigger><SelectValue placeholder="Select nominee..."/></SelectTrigger>
-                                        <SelectContent>
-                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                        </SelectContent>
+                                        <SelectTrigger><SelectValue placeholder="Select nominee 1..."/></SelectTrigger>
+                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                     </Select>
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label>Nominee 2</Label>
-                                    <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[1]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [weeklyEventData['NOMINATIONS']?.nominees?.[0], val])}>
-                                        <SelectTrigger><SelectValue placeholder="Select nominee..."/></SelectTrigger>
-                                        <SelectContent>
-                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                        </SelectContent>
+                                     <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[1]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [weeklyEventData['NOMINATIONS']?.nominees?.[0], val])}>
+                                        <SelectTrigger><SelectValue placeholder="Select nominee 2..."/></SelectTrigger>
+                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                     </Select>
+                                    <Button size="sm" onClick={() => handleLogEvent('NOMINATIONS')}>Log Nominations</Button>
                                 </div>
-                                <Button onClick={() => handleLogEvent('NOMINATIONS')}>Log Nominations</Button>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Log Power of Veto</CardTitle>
-                            </CardHeader>
-                             <CardContent className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label>Veto Winner</Label>
+                               <div className="space-y-4 p-4 border rounded-lg">
+                                    <Label className="font-semibold">Power of Veto</Label>
                                     <Select value={weeklyEventData['VETO']?.winnerId} onValueChange={val => handleEventChange('VETO', 'winnerId', val)}>
                                         <SelectTrigger><SelectValue placeholder="Select winner..."/></SelectTrigger>
-                                        <SelectContent>
-                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                        </SelectContent>
+                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                     </Select>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <Switch id="veto-used" checked={weeklyEventData['VETO']?.used} onCheckedChange={val => handleEventChange('VETO', 'used', val)} />
-                                    <Label htmlFor="veto-used">Veto Used?</Label>
-                                </div>
-                                {weeklyEventData['VETO']?.used && (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label>Used On</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch id="veto-used" checked={weeklyEventData['VETO']?.used} onCheckedChange={val => handleEventChange('VETO', 'used', val)} />
+                                        <Label htmlFor="veto-used">Veto Used?</Label>
+                                    </div>
+                                    {weeklyEventData['VETO']?.used && (
+                                        <>
                                             <Select value={weeklyEventData['VETO']?.usedOnId} onValueChange={val => handleEventChange('VETO', 'usedOnId', val)}>
-                                                <SelectTrigger><SelectValue placeholder="Select player..."/></SelectTrigger>
+                                                <SelectTrigger><SelectValue placeholder="Used on..."/></SelectTrigger>
                                                 <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                             </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Replacement Nominee</Label>
                                             <Select value={weeklyEventData['VETO']?.replacementNomId} onValueChange={val => handleEventChange('VETO', 'replacementNomId', val)}>
-                                                <SelectTrigger><SelectValue placeholder="Select replacement..."/></SelectTrigger>
+                                                <SelectTrigger><SelectValue placeholder="Replacement..."/></SelectTrigger>
                                                 <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                             </Select>
-                                        </div>
-                                    </>
-                                )}
-                                <Button onClick={() => handleLogEvent('VETO')}>Log Veto</Button>
-                            </CardContent>
-                        </Card>
-                         <Card>
-                            <CardHeader>
-                                <CardTitle>Log Eviction</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                               <div className="space-y-2">
-                                    <Label>Evicted Player</Label>
+                                        </>
+                                    )}
+                                    <Button size="sm" onClick={() => handleLogEvent('VETO')}>Log Veto</Button>
+                                </div>
+                                <div className="space-y-4 p-4 border rounded-lg">
+                                    <Label className="font-semibold">Eviction</Label>
                                     <Select value={weeklyEventData['EVICTION']?.evictedId} onValueChange={val => handleEventChange('EVICTION', 'evictedId', val)}>
                                         <SelectTrigger><SelectValue placeholder="Select evicted player..."/></SelectTrigger>
-                                        <SelectContent>
-                                            {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                        </SelectContent>
+                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                     </Select>
+                                    <Button size="sm" onClick={() => handleLogEvent('EVICTION')}>Log Eviction</Button>
                                 </div>
-                                <Button onClick={() => handleLogEvent('EVICTION')}>Log Eviction</Button>
+                            </CardContent>
+                        </Card>
+                        
+                        <Card className="lg:col-span-3">
+                            <CardHeader>
+                                <CardTitle>Weekly Status Display</CardTitle>
+                                <CardDescription>Customize the event cards shown on the dashboard for Week {selectedWeek}.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {weeklyStatusDisplay.sort((a,b) => a.order - b.order).map(card => (
+                                    <div key={card.order} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                        <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                        <Input
+                                            type="number"
+                                            value={card.order}
+                                            onChange={(e) => handleStatusCardOrderChange(card.order, Number(e.target.value))}
+                                            className="h-8 w-16"
+                                        />
+                                        <div className="flex items-center gap-2 flex-1">
+                                            {createElement((LucideIcons as any)[card.icon] || Trophy, { className: "h-5 w-5"})}
+                                            <span className="font-medium">{card.title}</span>
+                                            <Badge variant="outline">{card.type}</Badge>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card.order)}>
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                <div className="flex gap-2">
+                                    <Button onClick={() => setIsAddStatusCardOpen(true)} size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Status Card</Button>
+                                    <Button onClick={handleSaveWeeklyStatusDisplay} size="sm"><Save className="mr-2"/> Save Display</Button>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -1991,6 +2042,44 @@ function AdminPage() {
                  <DialogFooter>
                     <Button onClick={() => setIsManageOwnersDialogOpen(false)}>Done</Button>
                  </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
+         {/* Dialog to add new Status Card */}
+        <Dialog open={isAddStatusCardOpen} onOpenChange={setIsAddStatusCardOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Add New Status Card</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label>Title</Label>
+                        <Input value={newStatusCard.title || ''} onChange={e => setNewStatusCard(prev => ({ ...prev, title: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Type</Label>
+                        <Select value={newStatusCard.type} onValueChange={(val: SeasonWeeklyStatusDisplay['type']) => setNewStatusCard(prev => ({...prev, type: val}))}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                {availableEventTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                <SelectItem value="CUSTOM">CUSTOM</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Icon</Label>
+                        <Select value={newStatusCard.icon} onValueChange={(val: string) => setNewStatusCard(prev => ({...prev, icon: val}))}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                {iconSelection.map(icon => <SelectItem key={icon} value={icon}>{icon}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsAddStatusCardOpen(false)}>Cancel</Button>
+                    <Button onClick={handleAddStatusCard}>Add Card</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
         

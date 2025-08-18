@@ -49,7 +49,7 @@ export interface Competition {
     id: string;
     seasonId: string;
     week: number;
-    type: 'HOH' | 'VETO' | 'BLOCK_BUSTER' | 'EVICTION' | 'NOMINATIONS' | 'SPECIAL_EVENT';
+    type: 'HOH' | 'VETO' | 'BLOCK_BUSTER' | 'EVICTION' | 'NOMINATIONS' | 'SPECIAL_EVENT' | 'CUSTOM';
     name?: string;
     winnerId?: string;
     airDate: string;

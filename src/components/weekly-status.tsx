@@ -164,10 +164,13 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
     const week = displayWeek || activeSeason.currentWeek;
 
     const displayConfig = useMemo(() => {
-        const config = activeSeason.weeklyStatusDisplay?.[`week${week}`];
+        const weekKey = `week${week}`;
+        const config = activeSeason.weeklyStatusDisplay?.[weekKey];
+        
         if (config && config.length > 0) {
             return [...config].sort((a,b) => a.order - b.order);
         }
+        
         // Default config if none is set for the week
         return [
             { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1 },
