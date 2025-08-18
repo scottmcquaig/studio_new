@@ -1,5 +1,10 @@
 
 
+export interface SeasonWeeklyStatusDisplay {
+    type: 'HOH' | 'NOMINATIONS' | 'VETO' | 'EVICTION' | 'BLOCK_BUSTER';
+    order: number;
+}
+
 export interface Season {
   id: string;
   franchise: string;
@@ -14,6 +19,9 @@ export interface Season {
   currentWeek: number;
   totalWeeks?: number;
   notes?: string;
+  weeklyStatusDisplay?: {
+    [weekKey: string]: SeasonWeeklyStatusDisplay[];
+  };
 }
 
 export interface Contestant {

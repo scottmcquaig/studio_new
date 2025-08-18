@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle, Loader2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick } from "@/lib/data";
+import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick, SeasonWeeklyStatusDisplay } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -347,6 +347,11 @@ function AdminPage() {
   const [isFinishSeasonDialogOpen, setIsFinishSeasonDialogOpen] = useState(false);
   const [winnerId, setWinnerId] = useState<string | undefined>();
   const [runnerUpId, setRunnerUpId] = useState<string | undefined>();
+  
+    // Weekly status display state
+    const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<SeasonWeeklyStatusDisplay[]>([]);
+    const [isAddStatusCardOpen, setIsAddStatusCardOpen] = useState(false);
+    const availableEventTypes: Competition['type'][] = ['HOH', 'NOMINATIONS', 'VETO', 'EVICTION', 'BLOCK_BUSTER'];
 
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
@@ -520,6 +525,7 @@ function AdminPage() {
   useEffect(() => {
       if (activeSeason) {
         setSelectedWeek(activeSeason.currentWeek);
+        setWeeklyStatusDisplay(activeSeason.weeklyStatusDisplay?.[`week${activeSeason.currentWeek}`] || []);
       }
   }, [activeSeason]);
   
@@ -600,6 +606,30 @@ function AdminPage() {
       toast({ title: "Error removing rule", variant: 'destructive' });
     }
   };
+  
+    const handleCreateDefaultRuleSet = async () => {
+        if (!leagueSettings) {
+             toast({ title: "No league selected.", variant: 'destructive' });
+            return;
+        }
+        try {
+            const ruleSetRef = await addDoc(collection(db, 'scoring_rules'), {
+                name: `${leagueSettings.name} Rules`,
+                seasonId: leagueSettings.seasonId,
+                rules: BB_RULES_DEFAULT, // Using the constant
+                createdAt: new Date().toISOString(),
+            });
+
+            await updateDoc(doc(db, 'leagues', leagueSettings.id), {
+                'settings.scoringRuleSetId': ruleSetRef.id
+            });
+            toast({ title: "Default rule set created successfully!" });
+        } catch (error) {
+            console.error("Error creating default rule set:", error);
+            toast({ title: "Failed to create rule set", variant: 'destructive' });
+        }
+    };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, forContestant: Contestant) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -962,26 +992,28 @@ function AdminPage() {
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="flex w-full items-center justify-between">
-                    <TabsList>
-                        {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
-                        {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams &amp; Draft</TabsTrigger>}
-                        {manageableLeagues.length > 0 && <TabsTrigger value="contestants">{leagueSettings?.contestantTerm?.plural || 'Contestants'}</TabsTrigger>}
-                        {manageableLeagues.length > 0 && <TabsTrigger value="scoring">Scoring</TabsTrigger>}
-                        {manageableLeagues.length > 0 && <TabsTrigger value="settings">League Settings</TabsTrigger>}
-                    </TabsList>
-                    {manageableLeagues.length > 1 && (
-                         <div className="w-64">
-                            <Select value={selectedLeagueId || ''} onValueChange={setSelectedLeagueId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a league..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {manageableLeagues.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
+                <div className="sticky top-[68px] z-20 -mx-6 bg-background/95 px-6 py-2 backdrop-blur-sm">
+                    <div className="flex w-full items-center justify-between">
+                        <TabsList>
+                            {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
+                            {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams &amp; Draft</TabsTrigger>}
+                            {manageableLeagues.length > 0 && <TabsTrigger value="contestants">{leagueSettings?.contestantTerm?.plural || 'Contestants'}</TabsTrigger>}
+                            {manageableLeagues.length > 0 && <TabsTrigger value="scoring">Scoring</TabsTrigger>}
+                            {manageableLeagues.length > 0 && <TabsTrigger value="settings">League Settings</TabsTrigger>}
+                        </TabsList>
+                        {manageableLeagues.length > 1 && (
+                            <div className="w-64">
+                                <Select value={selectedLeagueId || ''} onValueChange={setSelectedLeagueId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a league..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {manageableLeagues.map(l => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {currentUser.role === 'site_admin' && (
@@ -1433,38 +1465,58 @@ function AdminPage() {
                  </TabsContent>
                  
                  <TabsContent value="scoring">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>{scoringRuleSet?.name || 'Scoring Rules'}</CardTitle>
-                            <div className="flex items-center gap-2">
-                               <Button size="sm" variant="outline" ><ShieldPlus className="mr-2"/> Add Special Event</Button>
-                               <Button size="sm" onClick={() => setIsAddRuleDialogOpen(true)}><PlusCircle className="mr-2"/> Add Rule</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                             <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Code</TableHead>
-                                        <TableHead>Label</TableHead>
-                                        <TableHead className="text-right">Points</TableHead>
-                                        <TableHead><span className="sr-only">Actions</span></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {scoringRules.map((rule, index) => (
-                                       <RuleRow 
-                                            key={rule.code} 
-                                            rule={rule} 
-                                            index={index}
-                                            onUpdate={handleUpdateRule}
-                                            onRemove={handleRemoveRule}
-                                        />
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card className="lg:col-span-2">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <CardTitle>{scoringRuleSet?.name || 'Scoring Rules'}</CardTitle>
+                                <div className="flex items-center gap-2">
+                                   <Button size="sm" variant="outline" ><ShieldPlus className="mr-2"/> Add Special Event</Button>
+                                   <Button size="sm" onClick={() => setIsAddRuleDialogOpen(true)}><PlusCircle className="mr-2"/> Add Rule</Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                {scoringRuleSet ? (
+                                 <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Code</TableHead>
+                                            <TableHead>Label</TableHead>
+                                            <TableHead className="text-right">Points</TableHead>
+                                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {scoringRules.map((rule, index) => (
+                                           <RuleRow 
+                                                key={rule.code} 
+                                                rule={rule} 
+                                                index={index}
+                                                onUpdate={handleUpdateRule}
+                                                onRemove={handleRemoveRule}
+                                            />
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <p className="text-muted-foreground mb-4">No scoring rule set is configured for this league.</p>
+                                        <Button onClick={handleCreateDefaultRuleSet}>
+                                            <PlusCircle className="mr-2" /> Create Default Rule Set
+                                        </Button>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                        <Card className="lg:col-span-2">
+                            <CardHeader>
+                                <CardTitle>Scoring Breakdown Categories</CardTitle>
+                                <CardDescription>Define categories for the scoring breakdown on the Teams page.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-center text-muted-foreground py-8">Scoring Breakdown management coming soon.</p>
+                            </CardContent>
+                        </Card>
+                    </div>
                  </TabsContent>
 
                  <TabsContent value="settings">
@@ -1995,5 +2047,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
