@@ -204,6 +204,7 @@ function AdminPage() {
   }, [leagueSettings]);
 
   const [leagueToDelete, setLeagueToDelete] = useState<League | null>(null);
+  const [seasonToDelete, setSeasonToDelete] = useState<Season | null>(null);
 
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
@@ -760,6 +761,20 @@ function AdminPage() {
             toast({ title: "Error deleting league", variant: 'destructive' });
         }
     };
+
+    const handleDeleteSeason = async () => {
+        if (!seasonToDelete) return;
+        try {
+            // You might want to add more complex logic here, like checking if any
+            // leagues are using this season before deleting.
+            await deleteDoc(doc(db, 'seasons', seasonToDelete.id));
+            toast({ title: `Season "${seasonToDelete.title}" deleted.` });
+            setSeasonToDelete(null);
+        } catch (error) {
+            console.error("Error deleting season: ", error);
+            toast({ title: "Error deleting season", variant: 'destructive' });
+        }
+    };
     
     const handleAddAdminToLeague = async (userId: string) => {
         if (!leagueToManageAdmins) return;
@@ -1017,7 +1032,15 @@ function AdminPage() {
                                                     <TableCell><Badge variant={season.status === 'in_progress' ? 'default' : 'outline'}>{season.status}</Badge></TableCell>
                                                     <TableCell>{season.year}</TableCell>
                                                     <TableCell>
-                                                      <Button variant="outline" size="sm" onClick={() => setEditingSeason(season)}>Edit</Button>
+                                                      <DropdownMenu>
+                                                          <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon"><MoreHorizontal /></Button>
+                                                          </DropdownMenuTrigger>
+                                                          <DropdownMenuContent>
+                                                            <DropdownMenuItem onClick={() => setEditingSeason(season)}>Edit</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-red-500" onClick={() => setSeasonToDelete(season)}>Delete Season</DropdownMenuItem>
+                                                          </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </TableCell>
                                                 </TableRow>
                                             ))}
@@ -1927,6 +1950,18 @@ function AdminPage() {
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteLeague} className="bg-red-600 hover:bg-red-700">Delete League</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!seasonToDelete} onOpenChange={(open) => !open && setSeasonToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {seasonToDelete?.title}?</AlertDialogTitle>
+                    <AlertDialogDescription>This will permanently delete the season. This action cannot be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteSeason} className="bg-red-600 hover:bg-red-700">Delete Season</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
