@@ -118,10 +118,11 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
 // Dialog for adding a new scoring rule
 const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpenChange: (open: boolean) => void, onAddRule: (rule: ScoringRule) => void }) => {
     const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
+    const { toast } = useToast();
 
     const handleAdd = () => {
         if (!newRuleData.code || !newRuleData.label) {
-             alert("Rule code and label are required."); // Basic validation
+             toast({ title: "Rule code and label are required.", variant: 'destructive' });
              return;
         }
         onAddRule(newRuleData);
@@ -170,7 +171,6 @@ function AdminPage() {
   const storage = getStorage(app);
   const { appUser: currentUser } = useAuth();
   const searchParams = useSearchParams();
-  const initialView = searchParams.get('view');
   
   const [allLeagues, setAllLeagues] = useState<League[]>([]);
   const [selectedLeagueId, setSelectedLeagueId] = useState<string | null>(null);
@@ -329,7 +329,12 @@ function AdminPage() {
   const [teamDraftOrderEdits, setTeamDraftOrderEdits] = useState<{ [key: string]: number }>({});
   const [teamOwnerEdits, setTeamOwnerEdits] = useState<{ [key: string]: string[] }>({});
 
-  const [activeTab, setActiveTab] = useState(currentUser?.role === 'site_admin' ? (initialView === 'site' ? 'site' : 'events') : 'events');
+  const initialView = searchParams.get('view');
+  const [activeTab, setActiveTab] = useState(
+    currentUser?.role === 'site_admin' && initialView === 'site'
+      ? 'site'
+      : (manageableLeagues.length > 0 ? 'events' : 'site')
+  );
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -379,7 +384,12 @@ function AdminPage() {
   
   const totalUserPages = useMemo(() => Math.ceil(filteredUsers.length / USERS_PER_PAGE), [filteredUsers]);
 
-  const sortedLeagues = useMemo(() => [...manageableLeagues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [manageableLeagues]);
+  const sortedLeagues = useMemo(() => [...manageableLeagues].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  }), [manageableLeagues]);
+
   const sortedSeasons = useMemo(() => [...seasons].sort((a, b) => b.year - a.year || (b.seasonNumber || 0) - (b.seasonNumber || 0)), [seasons]);
 
   const paginatedLeagues = useMemo(() => {
@@ -527,10 +537,11 @@ function AdminPage() {
   }, [db, leagueSettings]);
 
   useEffect(() => {
-    const defaultTab = currentUser?.role === 'site_admin' ? (initialView === 'site' ? 'site' : 'events') : 'events';
-    const targetTab = initialView && initialView !== 'site' ? initialView : defaultTab;
-    setActiveTab(targetTab);
-  }, [initialView, currentUser]);
+    const defaultTab = currentUser?.role === 'site_admin' && initialView === 'site'
+      ? 'site'
+      : (manageableLeagues.length > 0 ? 'events' : 'site');
+    setActiveTab(defaultTab);
+  }, [initialView, currentUser, manageableLeagues]);
   
   const handleUpdateLeagueDetails = async () => {
       if (!selectedLeagueId || !editingLeagueDetails) {
@@ -548,9 +559,9 @@ function AdminPage() {
   };
 
   const handleAddRule = (ruleData: ScoringRule) => {
-    if (!scoringRuleSet || !ruleData.code || !ruleData.label) {
-      toast({ title: "Rule code and label are required.", variant: 'destructive' });
-      return;
+    if (!scoringRuleSet) {
+        toast({ title: "No scoring rule set selected.", variant: 'destructive' });
+        return;
     }
     const updatedRules = [...scoringRuleSet.rules, ruleData];
     updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules })
@@ -898,8 +909,8 @@ function AdminPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+      <div className="flex flex-col sm:gap-4 sm:py-4">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
            <Link href="/" className="flex items-center gap-2 font-semibold">
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to App</span>
@@ -1939,3 +1950,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
