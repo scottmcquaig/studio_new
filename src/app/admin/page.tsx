@@ -449,7 +449,7 @@ function AdminPage() {
 
   const handleCropImage = async () => {
     if (croppedAreaPixels && imageSrc && editingContestant) {
-      const croppedImageBase64 = await getCroppedImg(imageSrc, croppedAreaPixels);
+      const croppedImageBase64 = await getCroppedImg(imageSrc, croppedAreaBase64);
       if (croppedImageBase64) {
         try {
           // 1. Upload new image to storage
@@ -1285,15 +1285,15 @@ function AdminPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="rule-code">Rule Code (e.g., HOH_WIN)</Label>
-              <Input id="rule-code" value={newRuleData.code} onChange={(e) => setNewRuleData({ ...newRuleData, code: e.target.value.toUpperCase() })} />
+              <Input id="rule-code" value={newRuleData.code} onChange={(e) => setNewRuleData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="rule-label">Label (e.g., Head of Household Win)</Label>
-              <Input id="rule-label" value={newRuleData.label} onChange={(e) => setNewRuleData({ ...newRuleData, label: e.target.value })} />
+              <Input id="rule-label" value={newRuleData.label} onChange={(e) => setNewRuleData(prev => ({ ...prev, label: e.target.value }))} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="rule-points">Points</Label>
-              <Input id="rule-points" type="number" value={newRuleData.points} onChange={(e) => setNewRuleData({ ...newRuleData, points: Number(e.target.value) })} />
+              <Input id="rule-points" type="number" value={newRuleData.points} onChange={(e) => setNewRuleData(prev => ({ ...prev, points: Number(e.target.value) }))} />
             </div>
           </div>
           <DialogFooter>
@@ -1446,5 +1446,7 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
 
     
