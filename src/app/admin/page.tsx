@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -115,6 +114,10 @@ const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpe
     const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
 
     const handleAdd = () => {
+        if (!newRuleData.code || !newRuleData.label) {
+             alert("Rule code and label are required."); // Basic validation
+             return;
+        }
         onAddRule(newRuleData);
     };
     
@@ -225,6 +228,8 @@ function AdminPage() {
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
+  const [isManageOwnersDialogOpen, setIsManageOwnersDialogOpen] = useState(false);
+  const [teamToManageOwners, setTeamToManageOwners] = useState<Team | null>(null);
   const [leagueToManageAdmins, setLeagueToManageAdmins] = useState<League | null>(null);
   const [isNewSeasonDialogOpen, setIsNewSeasonDialogOpen] = useState(false);
   const [isNewContestantDialogOpen, setIsNewContestantDialogOpen] = useState(false);
@@ -254,11 +259,11 @@ function AdminPage() {
       year: new Date().getFullYear(),
   });
   
-  const [teamNames, setTeamNames] = useState<{[id: string]: string}>({});
+  const [teamNameEdits, setTeamNameEdits] = useState<{ [key: string]: string }>({});
+  const [teamDraftOrderEdits, setTeamDraftOrderEdits] = useState<{ [key: string]: number }>({});
+  const [teamOwnerEdits, setTeamOwnerEdits] = useState<{ [key: string]: string[] }>({});
 
-  const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
-
-  const [activeTab, setActiveTab] = useState(currentUser?.role === 'site_admin' ? 'site' : 'events');
+  const [activeTab, setActiveTab] = useState(currentUser?.role === 'site_admin' ? (initialView === 'site' ? 'site' : 'events') : 'events');
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -273,13 +278,13 @@ function AdminPage() {
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
   const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
-  const teams = useMemo(() => {
+  
+  const teamsInLeague = useMemo(() => {
     if (!leagueSettings) return [];
     const existingTeams = allTeams.filter(t => t.leagueId === selectedLeagueId);
     
-    // Ensure we have the correct number of team objects
     const numTeams = leagueSettings.maxTeams || 0;
-    const teamArray = Array.from({ length: numTeams }, (_, i) => {
+    let teamArray = Array.from({ length: numTeams }, (_, i) => {
         const existing = existingTeams.find(t => t.draftOrder === i + 1);
         return existing || {
             id: `temp-${i}`,
@@ -288,10 +293,10 @@ function AdminPage() {
             leagueId: selectedLeagueId!,
             ownerUserIds: [],
             contestantIds: [],
-        } as Team;
+        };
     });
 
-    return teamArray.sort((a, b) => a.draftOrder - b.draftOrder);
+    return teamArray.sort((a, b) => (a.draftOrder || 0) - (b.draftOrder || 0));
   }, [allTeams, selectedLeagueId, leagueSettings]);
 
   const filteredUsers = useMemo(() => {
@@ -309,7 +314,7 @@ function AdminPage() {
   const totalUserPages = useMemo(() => Math.ceil(filteredUsers.length / USERS_PER_PAGE), [filteredUsers]);
 
   const sortedLeagues = useMemo(() => [...manageableLeagues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [manageableLeagues]);
-  const sortedSeasons = useMemo(() => [...seasons].sort((a, b) => b.year - a.year || (b.seasonNumber || 0) - (a.seasonNumber || 0)), [seasons]);
+  const sortedSeasons = useMemo(() => [...seasons].sort((a, b) => b.year - a.year || (b.seasonNumber || 0) - (b.seasonNumber || 0)), [seasons]);
 
   const paginatedLeagues = useMemo(() => {
     const startIndex = (leaguesCurrentPage - 1) * ITEMS_PER_PAGE;
@@ -337,24 +342,24 @@ function AdminPage() {
   }, [activeContestantsInLeague, picks, selectedLeagueId]);
   
   const draftOrder = useMemo(() => {
-    if (!leagueSettings || !teams.length) return [];
+    if (!leagueSettings || !teamsInLeague.length) return [];
     
     const rounds = leagueSettings.settings.draftRounds || 4;
     const order: { team: Team, round: number, pick: number, overall: number }[] = [];
     
     for (let round = 1; round <= rounds; round++) {
-      const roundOrder = (round % 2 !== 0) ? teams : [...teams].reverse();
+      const roundOrder = (round % 2 !== 0) ? teamsInLeague : [...teamsInLeague].reverse();
       roundOrder.forEach((team, pick) => {
         order.push({
           team,
           round,
           pick: pick + 1,
-          overall: (round - 1) * teams.length + (pick + 1)
+          overall: (round - 1) * teamsInLeague.length + (pick + 1)
         });
       });
     }
     return order;
-  }, [leagueSettings, teams]);
+  }, [leagueSettings, teamsInLeague]);
 
   const nextPick = useMemo(() => {
     const madePicksCount = picks.filter(p => p.leagueId === selectedLeagueId).length;
@@ -750,6 +755,76 @@ function AdminPage() {
             setIsSendingInvite(false);
         }
     };
+    
+    const handleSaveTeamChanges = async () => {
+        if (!selectedLeagueId) return;
+
+        const batch = writeBatch(db);
+        let hasChanges = false;
+
+        teamsInLeague.forEach(team => {
+            const updates: Partial<Team> = {};
+            const newName = teamNameEdits[team.id];
+            const newDraftOrder = teamDraftOrderEdits[team.id];
+            const newOwners = teamOwnerEdits[team.id];
+
+            if (newName !== undefined && newName !== team.name) {
+                updates.name = newName;
+                hasChanges = true;
+            }
+            if (newDraftOrder !== undefined && newDraftOrder !== team.draftOrder) {
+                updates.draftOrder = newDraftOrder;
+                hasChanges = true;
+            }
+            if (newOwners !== undefined) {
+                updates.ownerUserIds = newOwners;
+                hasChanges = true;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                if (team.id.startsWith('temp-')) {
+                    // This is a new team, so we create it
+                    const newTeamRef = doc(collection(db, 'teams'));
+                    batch.set(newTeamRef, {
+                        ...updates,
+                        name: newName || team.name,
+                        draftOrder: newDraftOrder || team.draftOrder,
+                        ownerUserIds: newOwners || [],
+                        leagueId: selectedLeagueId,
+                        createdAt: new Date().toISOString(),
+                    });
+                } else {
+                    // This is an existing team, so we update it
+                    const teamRef = doc(db, 'teams', team.id);
+                    batch.update(teamRef, updates);
+                }
+            }
+        });
+
+        if (!hasChanges) {
+            toast({ title: "No changes to save." });
+            return;
+        }
+
+        try {
+            await batch.commit();
+            toast({ title: "Team changes saved successfully!" });
+            setTeamNameEdits({});
+            setTeamDraftOrderEdits({});
+            setTeamOwnerEdits({});
+        } catch (error) {
+            console.error("Error saving team changes: ", error);
+            toast({ title: "Error saving changes", variant: "destructive" });
+        }
+    };
+
+    const handleToggleOwner = (team: Team, userId: string) => {
+        const currentOwners = teamOwnerEdits[team.id] ?? team.ownerUserIds;
+        const newOwners = currentOwners.includes(userId)
+            ? currentOwners.filter(id => id !== userId)
+            : [...currentOwners, userId];
+        setTeamOwnerEdits(prev => ({ ...prev, [team.id]: newOwners }));
+    };
 
 
     if (!currentUser) {
@@ -789,7 +864,7 @@ function AdminPage() {
                 <div className="flex w-full items-center justify-between">
                     <TabsList>
                         {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
-                        {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams & Draft</TabsTrigger>}
+                        {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams &amp; Draft</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="contestants">{leagueSettings?.contestantTerm?.plural || 'Contestants'}</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="scoring">Scoring</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="settings">League Settings</TabsTrigger>}
@@ -993,21 +1068,45 @@ function AdminPage() {
                       <div className="lg:col-span-1">
                         <Card>
                           <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Teams</CardTitle>
-                             <Button size="sm"><UserPlus2 className="mr-2"/> Add Team</Button>
+                            <CardTitle>Team Settings</CardTitle>
+                             <Button size="sm" onClick={handleSaveTeamChanges}><Save className="mr-2"/> Save Changes</Button>
                           </CardHeader>
                           <CardContent>
-                            {teams.map(team => (
-                                <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
-                                  <div>
-                                    <p className="font-medium">{team.name}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {team.ownerUserIds.map(id => users.find(u => u.id === id)?.displayName).join(' & ')}
-                                    </p>
-                                  </div>
-                                  <Badge variant="outline">#{team.draftOrder}</Badge>
-                                </div>
-                            ))}
+                              <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Draft #</TableHead>
+                                        <TableHead>Team Name</TableHead>
+                                        <TableHead>Owners</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {teamsInLeague.map(team => (
+                                        <TableRow key={team.id}>
+                                            <TableCell>
+                                                <Input 
+                                                    type="number"
+                                                    value={teamDraftOrderEdits[team.id] ?? team.draftOrder}
+                                                    onChange={(e) => setTeamDraftOrderEdits(prev => ({ ...prev, [team.id]: Number(e.target.value) }))}
+                                                    className="h-8 w-16 text-center"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input 
+                                                    value={teamNameEdits[team.id] ?? team.name}
+                                                    onChange={(e) => setTeamNameEdits(prev => ({ ...prev, [team.id]: e.target.value }))}
+                                                    className="h-8"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button variant="outline" size="sm" onClick={() => { setTeamToManageOwners(team); setIsManageOwnersDialogOpen(true); }}>
+                                                    Manage ({teamOwnerEdits[team.id]?.length ?? team.ownerUserIds.length})
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                              </Table>
                           </CardContent>
                         </Card>
                       </div>
@@ -1480,6 +1579,45 @@ function AdminPage() {
             </DialogContent>
         </Dialog>
         
+        {/* Dialog to Manage Team Owners */}
+        <Dialog open={isManageOwnersDialogOpen} onOpenChange={(open) => { if(!open) setTeamToManageOwners(null); setIsManageOwnersDialogOpen(open); }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Manage Owners for {teamToManageOwners?.name}</DialogTitle>
+                </DialogHeader>
+                 <div className="py-2">
+                    <Input placeholder="Search users..."/>
+                    <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                        {users.map(user => {
+                            if (!teamToManageOwners) return null;
+                            const isOwner = (teamOwnerEdits[teamToManageOwners.id] ?? teamToManageOwners.ownerUserIds).includes(user.id);
+                            return (
+                                <div key={user.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                     <div className="flex items-center gap-2">
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={user.photoURL || ''} />
+                                            <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="font-medium text-sm">{user.displayName}</p>
+                                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                                        </div>
+                                    </div>
+                                    <Checkbox
+                                        checked={isOwner}
+                                        onCheckedChange={() => handleToggleOwner(teamToManageOwners, user.id)}
+                                    />
+                                </div>
+                            )
+                        })}
+                    </div>
+                 </div>
+                 <DialogFooter>
+                    <Button onClick={() => setIsManageOwnersDialogOpen(false)}>Done</Button>
+                 </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        
       {/* Dialog for Add Rule */}
       <AddRuleDialog 
         open={isAddRuleDialogOpen} 
@@ -1630,5 +1768,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
