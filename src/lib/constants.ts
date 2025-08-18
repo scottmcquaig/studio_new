@@ -1,3 +1,4 @@
+
 export const BB_RULES = [
   { id: 'HOH_WIN', name: 'Head of Household Win', points: 10 },
   { id: 'POV_WIN', name: 'Power of Veto Win', points: 8 },
@@ -9,6 +10,22 @@ export const BB_RULES = [
   { id: 'RUNNER_UP', name: 'Runner-Up', points: 20 },
   { id: 'WINNER', name: 'Winner', points: 30 },
   { id: 'AFP', name: 'America\'s Favorite Player', points: 10 },
+];
+
+export const BB_RULES_DEFAULT = [
+  { code: 'HOH_WIN', label: 'Head of Household Win', points: 10 },
+  { code: 'VETO_WIN', label: 'Power of Veto Win', points: 8 },
+  { code: 'VETO_USED', label: 'Veto Used on a Player', points: 3 },
+  { code: 'NOMINATED', label: 'Nominated for Eviction', points: -2 },
+  { code: 'FINAL_NOM', label: 'Final Nominee for the Week', points: -3 },
+  { code: 'EVICT_PRE', label: 'Evicted (Pre-Jury)', points: -5 },
+  { code: 'EVICT_POST', label: 'Evicted (Jury)', points: -7 },
+  { code: 'BLOCK_BUSTER_SAFE', label: 'Safe from Block Buster', points: 5 },
+  { code: 'JURY', label: 'Makes the Jury', points: 10 },
+  { code: 'FINAL3', label: 'Makes Final 3', points: 15 },
+  { code: 'RUNNER_UP', label: 'Runner-Up', points: 25 },
+  { code: 'WINNER', label: 'Winner', points: 40 },
+  { code: 'AFP', label: 'America\'s Favorite Player', points: 10 },
 ];
 
 export const SURVIVOR_RULES = [
@@ -25,3 +42,5 @@ export const SURVIVOR_RULES = [
   { id: 'SOLE_SURVIVOR', name: 'Sole Survivor (Winner)', points: 30 },
   { id: 'FAN_FAVORITE', name: 'Sia Award / Fan Favorite', points: 10 },
 ];
+
+    

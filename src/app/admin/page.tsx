@@ -39,6 +39,7 @@ import { useSearchParams } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { inviteUser } from '@/app/actions/userActions';
 import { Switch } from '@/components/ui/switch';
+import { BB_RULES_DEFAULT } from '@/lib/constants';
 
 
 const iconSelection = [
@@ -662,6 +663,15 @@ function AdminPage() {
             return;
         }
         try {
+             // 1. Create the scoring rule set first
+            const ruleSetRef = await addDoc(collection(db, 'scoring_rules'), {
+                name: `${newLeagueData.name} Rules`,
+                seasonId: newLeagueData.seasonId,
+                rules: BB_RULES_DEFAULT,
+                createdAt: new Date().toISOString(),
+            });
+
+            // 2. Then create the league with the new rule set ID
             const leagueData: Omit<League, 'id'> = {
                 ...newLeagueData,
                 name: newLeagueData.name,
@@ -676,7 +686,7 @@ function AdminPage() {
                  contestantTerm: newLeagueData.contestantTerm || { singular: 'Contestant', plural: 'Contestants' },
                 settings: {
                     allowMidSeasonDraft: false,
-                    scoringRuleSetId: 'bb_default', // Default, maybe make selectable
+                    scoringRuleSetId: ruleSetRef.id,
                     transactionLockDuringEpisodes: true,
                     scoringBreakdownCategories: [],
                     draftRounds: newLeagueData.settings?.draftRounds || 4,
@@ -1950,3 +1960,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
