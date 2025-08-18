@@ -1,7 +1,9 @@
 
 
 export interface SeasonWeeklyStatusDisplay {
-    type: 'HOH' | 'NOMINATIONS' | 'VETO' | 'EVICTION' | 'BLOCK_BUSTER';
+    type: 'HOH' | 'NOMINATIONS' | 'VETO' | 'EVICTION' | 'BLOCK_BUSTER' | 'CUSTOM';
+    title: string;
+    icon: string;
     order: number;
 }
 
@@ -154,5 +156,3 @@ export interface Pick {
     pick: number;
     createdAt: string;
 }
-
-    
