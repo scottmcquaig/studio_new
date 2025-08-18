@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -66,11 +67,15 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
     }, [rule]);
 
     const handleChange = (field: keyof ScoringRule, value: string | number) => {
-        setLocalRule(prev => ({ ...prev, [field]: value }));
+        const newRule = { ...localRule, [field]: value };
+        setLocalRule(newRule);
     };
 
     const handleBlur = (field: keyof ScoringRule) => {
-        onUpdate(index, field, localRule[field]);
+        // Only update if the value has actually changed
+        if (localRule[field] !== rule[field]) {
+            onUpdate(index, field, localRule[field]);
+        }
     };
 
     return (
@@ -119,6 +124,7 @@ const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpe
              return;
         }
         onAddRule(newRuleData);
+        onOpenChange(false);
     };
     
     useEffect(() => {
@@ -490,7 +496,6 @@ function AdminPage() {
     updateDoc(doc(db, "scoring_rules", scoringRuleSet.id), { rules: updatedRules })
         .then(() => {
             toast({ title: "Rule added successfully" });
-            setIsAddRuleDialogOpen(false);
         })
         .catch(error => {
             console.error("Error adding rule: ", error);
@@ -1063,6 +1068,43 @@ function AdminPage() {
                   </TabsContent>
                 )}
                 
+                <TabsContent value="events">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Log Head of Household</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {/* HOH Form Here */}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Log Nominations</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Nominations Form Here */}
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Log Power of Veto</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Veto Form Here */}
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Log Eviction</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Eviction Form Here */}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
                  <TabsContent value="teams">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       <div className="lg:col-span-1">
