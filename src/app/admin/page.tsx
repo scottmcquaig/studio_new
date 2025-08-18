@@ -111,19 +111,19 @@ const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index
 };
 
 // Dialog for adding a new scoring rule
-const AddRuleDialog = ({ open, onOpenChange, onAddRule, scoringRuleSetId }: { open: boolean, onOpenChange: (open: boolean) => void, onAddRule: (rule: ScoringRule) => void, scoringRuleSetId: string | undefined }) => {
+const AddRuleDialog = ({ open, onOpenChange, onAddRule }: { open: boolean, onOpenChange: (open: boolean) => void, onAddRule: (rule: ScoringRule) => void }) => {
     const [newRuleData, setNewRuleData] = useState<ScoringRule>({ code: '', label: '', points: 0 });
 
     const handleAdd = () => {
-        if (!scoringRuleSetId || !newRuleData.code || !newRuleData.label) {
-            // This is a local validation, the parent function will also validate
+        if (!newRuleData.code || !newRuleData.label) {
+            // Parent function will also validate and show toast
             return;
         }
         onAddRule(newRuleData);
         setNewRuleData({ code: '', label: '', points: 0 }); // Reset for next time
     };
     
-     useEffect(() => {
+    useEffect(() => {
         if (!open) {
           setNewRuleData({ code: '', label: '', points: 0 });
         }
@@ -247,7 +247,7 @@ function AdminPage() {
 
   const [teamDraftOrders, setTeamDraftOrders] = useState<{[id: string]: number}>({});
 
-  const [activeTab, setActiveTab] = useState('site'); // Default for site admins
+  const [activeTab, setActiveTab] = useState(currentUser?.role === 'site_admin' ? 'site' : 'events');
 
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -278,7 +278,7 @@ function AdminPage() {
   
   const totalUserPages = useMemo(() => Math.ceil(filteredUsers.length / USERS_PER_PAGE), [filteredUsers]);
 
-  const sortedLeagues = useMemo(() => [...allLeagues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [allLeagues]);
+  const sortedLeagues = useMemo(() => [...manageableLeagues].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [manageableLeagues]);
   const sortedSeasons = useMemo(() => [...seasons].sort((a, b) => b.year - a.year || (b.seasonNumber || 0) - (a.seasonNumber || 0)), [seasons]);
 
   const paginatedLeagues = useMemo(() => {
@@ -426,18 +426,12 @@ function AdminPage() {
   }, [db, leagueSettings]);
 
   useEffect(() => {
-    if (currentUser?.role === 'site_admin' && (!activeTab || activeTab === 'site')) {
-        setActiveTab('events');
-    } else if (currentUser?.role === 'league_admin' && !activeTab) {
-        setActiveTab('events');
-    }
-  }, [currentUser, activeTab]);
-
-  useEffect(() => {
     if (initialView && initialView !== 'site') {
         setActiveTab(initialView);
+    } else if (initialView === 'site' && currentUser?.role === 'site_admin') {
+        setActiveTab('site');
     }
-  }, [initialView]);
+  }, [initialView, currentUser]);
   
 
   const handleAddRule = async (ruleData: ScoringRule) => {
@@ -737,6 +731,11 @@ function AdminPage() {
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="flex items-center">
+                    {currentUser.role === 'site_admin' && (
+                        <TabsList className="mr-4">
+                            <TabsTrigger value="site"><Shield className="mr-2" /> Site Admin</TabsTrigger>
+                        </TabsList>
+                    )}
                     <TabsList>
                         {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
                         {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams & Draft</TabsTrigger>}
@@ -758,8 +757,8 @@ function AdminPage() {
                     )}
                 </div>
 
-                {currentUser.role === 'site_admin' && activeTab === 'site' && (
-                  <TabsContent value="site" forceMount>
+                {currentUser.role === 'site_admin' && (
+                  <TabsContent value="site">
                     <div className="grid auto-rows-max items-start gap-4 md:gap-8">
                         <div className="flex justify-center gap-4 py-4">
                             <Button onClick={() => setIsNewUserDialogOpen(true)}><UserPlus className="mr-2"/> Add New User</Button>
@@ -1399,7 +1398,6 @@ function AdminPage() {
         open={isAddRuleDialogOpen} 
         onOpenChange={setIsAddRuleDialogOpen}
         onAddRule={handleAddRule}
-        scoringRuleSetId={scoringRuleSet?.id}
       />
       
       {/* Dialog for Special Event */}
