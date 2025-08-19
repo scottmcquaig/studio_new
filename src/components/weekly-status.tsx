@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import type { Competition, Contestant, Season, SeasonWeeklyStatusDisplay } from '@/lib/data';
 import { Crown, HelpCircle, TriangleAlert, Ban, ShieldOff, UserCheck, RotateCcw, BrickWall, Skull } from "lucide-react";
 import * as LucideIcons from "lucide-react";
-import { getContestantDisplayName } from '@/lib/utils';
+import { cn, getContestantDisplayName } from '@/lib/utils';
 
 interface WeeklyStatusProps {
     competitions: Competition[];
@@ -18,7 +18,7 @@ interface WeeklyStatusProps {
 }
 
 
-const EventCard = ({ type, title, icon, competitions, contestants }: { type: SeasonWeeklyStatusDisplay['type'], title: string, icon: string, competitions: Competition[], contestants: Contestant[] }) => {
+const EventCard = ({ type, title, icon, color, competitions, contestants }: { type: SeasonWeeklyStatusDisplay['type'], title: string, icon: string, color: string, competitions: Competition[], contestants: Contestant[] }) => {
     const IconComponent = (LucideIcons as any)[icon] || HelpCircle;
 
     if (type === 'HOH') {
@@ -26,10 +26,10 @@ const EventCard = ({ type, title, icon, competitions, contestants }: { type: Sea
         const hohWinner = contestants.find(hg => hg.id === hoh?.winnerId);
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
-                <h3 className="font-semibold flex items-center gap-1 text-purple-600"><IconComponent className="h-4 w-4" /> {title}</h3>
+                <h3 className={cn("font-semibold flex items-center gap-1", color)}><IconComponent className="h-4 w-4" /> {title}</h3>
                 {hohWinner ? (
                     <>
-                        <Image src={hohWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(hohWinner, 'full')} width={64} height={64} className="rounded-full border-2 border-purple-600" data-ai-hint="portrait person" />
+                        <Image src={hohWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(hohWinner, 'full')} width={64} height={64} className={cn("rounded-full border-2", color.replace('text-', 'border-'))} data-ai-hint="portrait person" />
                         <span className="text-sm">{getContestantDisplayName(hohWinner, 'short')}</span>
                     </>
                 ) : (
@@ -47,12 +47,12 @@ const EventCard = ({ type, title, icon, competitions, contestants }: { type: Sea
         const nomWinners = contestants.filter(hg => noms?.nominees?.includes(hg.id));
         return (
              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
-                <h3 className="font-semibold flex items-center gap-1 text-red-400"><IconComponent className="h-4 w-4" /> {title}</h3>
+                <h3 className={cn("font-semibold flex items-center gap-1", color)}><IconComponent className="h-4 w-4" /> {title}</h3>
                 <div className="flex items-center justify-center gap-2 min-h-[76px]">
                     {nomWinners.length > 0 ? (
                         nomWinners.map(nom => (
                             <div key={nom.id} className="flex flex-col items-center gap-1">
-                                <Image src={nom.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(nom, 'full')} width={48} height={48} className="rounded-full border-2 border-red-400" data-ai-hint="portrait person" />
+                                <Image src={nom.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(nom, 'full')} width={48} height={48} className={cn("rounded-full border-2", color.replace('text-','border-'))} data-ai-hint="portrait person" />
                                 <span className="text-xs">{getContestantDisplayName(nom, 'short')}</span>
                             </div>
                         ))
@@ -77,10 +77,10 @@ const EventCard = ({ type, title, icon, competitions, contestants }: { type: Sea
         return (
             <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
                 <div className="flex flex-col items-center justify-center flex-grow">
-                    <h3 className="font-semibold flex items-center gap-1 text-amber-500"><IconComponent className="h-4 w-4" /> {title}</h3>
+                    <h3 className={cn("font-semibold flex items-center gap-1", color)}><IconComponent className="h-4 w-4" /> {title}</h3>
                     {povWinner ? (
                         <>
-                            <Image src={povWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(povWinner, 'full')} width={64} height={64} className="rounded-full border-2 border-amber-500 mt-2" data-ai-hint="portrait person" />
+                            <Image src={povWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(povWinner, 'full')} width={64} height={64} className={cn("rounded-full border-2 mt-2", color.replace('text-', 'border-'))} data-ai-hint="portrait person" />
                             <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
                         </>
                     ) : (
@@ -122,10 +122,10 @@ const EventCard = ({ type, title, icon, competitions, contestants }: { type: Sea
         const evictedPlayer = contestants.find(hg => hg.id === eviction?.evictedId);
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
-                <h3 className="font-semibold flex items-center gap-1 text-muted-foreground"><IconComponent className="h-4 w-4" /> {title}</h3>
+                <h3 className={cn("font-semibold flex items-center gap-1", color)}><IconComponent className="h-4 w-4" /> {title}</h3>
                 {evictedPlayer ? (
                     <>
-                        <Image src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(evictedPlayer, 'full')} width={64} height={64} className="rounded-full border-2 border-muted-foreground" data-ai-hint="portrait person" />
+                        <Image src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(evictedPlayer, 'full')} width={64} height={64} className={cn("rounded-full border-2", color.replace('text-', 'border-'))} data-ai-hint="portrait person" />
                         <span className="text-sm">{getContestantDisplayName(evictedPlayer, 'short')}</span>
                     </>
                 ) : (
@@ -143,10 +143,10 @@ const EventCard = ({ type, title, icon, competitions, contestants }: { type: Sea
     const winner = contestants.find(hg => hg.id === event?.winnerId);
     return (
         <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
-            <h3 className="font-semibold flex items-center gap-1 text-sky-500"><IconComponent className="h-4 w-4" /> {title}</h3>
+            <h3 className={cn("font-semibold flex items-center gap-1", color)}><IconComponent className="h-4 w-4" /> {title}</h3>
             {winner ? (
                 <>
-                    <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className="rounded-full border-2 border-sky-500" data-ai-hint="portrait person" />
+                    <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", color.replace('text-', 'border-'))} data-ai-hint="portrait person" />
                     <span className="text-sm">{getContestantDisplayName(winner, 'short')}</span>
                 </>
             ) : (
@@ -173,10 +173,10 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
         
         // Default config if none is set for the week
         return [
-            { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1 },
-            { type: 'NOMINATIONS', title: 'Nominations', icon: 'TriangleAlert', order: 2 },
-            { type: 'VETO', title: 'Power of Veto', icon: 'Ban', order: 3 },
-            { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4 }
+            { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
+            { type: 'NOMINATIONS', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
+            { type: 'VETO', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500' },
+            { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];
     }, [activeSeason, week]);
 
@@ -197,6 +197,7 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
                         type={item.type}
                         title={item.title}
                         icon={item.icon}
+                        color={item.color}
                         competitions={competitions}
                         contestants={contestants}
                    />

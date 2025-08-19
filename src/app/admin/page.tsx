@@ -57,6 +57,7 @@ const colorSelection = [
 ];
 
 const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPECIAL_POWER'];
+const standardEventTypes = ['HOH', 'NOMINATIONS', 'VETO', 'EVICTION'];
 
 const USERS_PER_PAGE = 5;
 const ITEMS_PER_PAGE = 5;
@@ -239,12 +240,12 @@ function AdminPage() {
   });
   
   // State for weekly events form
-  const [selectedWeek, setSelectedWeek] = useState(1);
+  const [viewingWeek, setViewingWeek] = useState(1);
   const [weeklyEventData, setWeeklyEventData] = useState<{ [key: string]: Partial<Competition> }>({});
 
   const weeklyCompetitions = useMemo(() => 
-    competitions.filter(c => c.seasonId === activeSeason?.id && c.week === selectedWeek),
-    [competitions, activeSeason, selectedWeek]
+    competitions.filter(c => c.seasonId === activeSeason?.id && c.week === viewingWeek),
+    [competitions, activeSeason, viewingWeek]
   );
   
   useEffect(() => {
@@ -278,7 +279,7 @@ function AdminPage() {
     
     const dataToSave = {
         seasonId: activeSeason.id,
-        week: selectedWeek,
+        week: viewingWeek,
         type,
         airDate: new Date().toISOString(), // Or a date picker
         ...eventToLog,
@@ -303,6 +304,7 @@ function AdminPage() {
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
   const [isManageOwnersDialogOpen, setIsManageOwnersDialogOpen] = useState(false);
+  const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   const [teamToManageOwners, setTeamToManageOwners] = useState<Team | null>(null);
   const [leagueToManageAdmins, setLeagueToManageAdmins] = useState<League | null>(null);
   const [isNewSeasonDialogOpen, setIsNewSeasonDialogOpen] = useState(false);
@@ -317,7 +319,7 @@ function AdminPage() {
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: '' });
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '', eventDate: new Date() });
+  const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
   const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
       name: '',
       seasonId: '',
@@ -455,6 +457,11 @@ function AdminPage() {
     const madePicksCount = picks.filter(p => p.leagueId === selectedLeagueId).length;
     return draftOrder[madePicksCount];
   }, [draftOrder, picks, selectedLeagueId]);
+  
+  const customEventCards = useMemo(() => {
+      if (!weeklyStatusDisplay) return [];
+      return weeklyStatusDisplay.filter(card => !standardEventTypes.includes(card.type));
+  }, [weeklyStatusDisplay]);
 
   const handleUpdateSeason = async () => {
         if (!editingSeason || !editingSeason.id) return;
@@ -531,13 +538,13 @@ function AdminPage() {
   
   useEffect(() => {
       if (activeSeason) {
-        setSelectedWeek(activeSeason.currentWeek);
+        setViewingWeek(activeSeason.currentWeek);
         const currentWeekKey = `week${activeSeason.currentWeek}`;
         const defaultDisplay = [
-            { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1 },
-            { type: 'NOMINATIONS', title: 'Nominations', icon: 'TriangleAlert', order: 2 },
-            { type: 'VETO', title: 'Power of Veto', icon: 'Ban', order: 3 },
-            { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4 }
+            { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
+            { type: 'NOMINATIONS', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
+            { type: 'VETO', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500' },
+            { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];
 
         let displayData: SeasonWeeklyStatusDisplay[] = [];
@@ -1021,7 +1028,7 @@ function AdminPage() {
     const handleSaveWeeklyStatusDisplay = async () => {
         if (!activeSeason) return;
         const seasonRef = doc(db, 'seasons', activeSeason.id);
-        const weekKey = `week${selectedWeek}`;
+        const weekKey = `week${viewingWeek}`;
         // Remove the temporary _id before saving
         const dataToSave = weeklyStatusDisplay.map(({ _id, ...rest }) => rest);
         try {
@@ -1047,7 +1054,7 @@ function AdminPage() {
         } as EditableSeasonWeeklyStatusDisplay;
         
         setWeeklyStatusDisplay([...weeklyStatusDisplay, newCard]);
-        setNewStatusCard({ title: '', icon: 'Trophy', type: 'CUSTOM' });
+        setNewStatusCard({ title: '', icon: 'Trophy', type: 'CUSTOM', color: 'text-gray-500' });
         setIsAddStatusCardOpen(false);
     };
 
@@ -1055,11 +1062,51 @@ function AdminPage() {
         setWeeklyStatusDisplay(weeklyStatusDisplay.filter(card => card._id !== _id));
     };
 
-    const handleStatusCardOrderChange = (_id: string, newOrder: number) => {
+    const handleStatusCardChange = (_id: string, field: keyof SeasonWeeklyStatusDisplay, value: any) => {
         const updatedDisplay = weeklyStatusDisplay.map(card => 
-            card._id === _id ? { ...card, order: newOrder } : card
+            card._id === _id ? { ...card, [field]: value } : card
         );
         setWeeklyStatusDisplay(updatedDisplay);
+    };
+    
+    const handleStartNewWeek = async () => {
+        if (!activeSeason) return;
+        const newWeek = activeSeason.currentWeek + 1;
+        try {
+            await updateDoc(doc(db, 'seasons', activeSeason.id), {
+                currentWeek: newWeek
+            });
+            toast({ title: `Started Week ${newWeek}` });
+            setViewingWeek(newWeek);
+        } catch(error) {
+            console.error("Error starting new week:", error);
+            toast({ title: "Error starting new week", variant: "destructive" });
+        }
+    };
+    
+    const handleLogSpecialEvent = async () => {
+        if (!activeSeason || !specialEventData.contestantId || !specialEventData.ruleCode) {
+            toast({ title: "Contestant and Event Type are required.", variant: 'destructive' });
+            return;
+        }
+        try {
+            const eventData: Omit<Competition, 'id'> = {
+                seasonId: activeSeason.id,
+                week: viewingWeek,
+                type: 'SPECIAL_EVENT',
+                airDate: new Date().toISOString(),
+                winnerId: specialEventData.contestantId, // Using winnerId to store the affected contestant
+                specialEventCode: specialEventData.ruleCode,
+                notes: specialEventData.notes,
+            };
+            await addDoc(collection(db, 'competitions'), eventData);
+            toast({ title: "Special event logged successfully!" });
+            setIsSpecialEventDialogOpen(false);
+            setSpecialEventData({ contestantId: '', ruleCode: '', notes: '' });
+        } catch (error) {
+            console.error("Error logging special event: ", error);
+            toast({ title: "Error logging event", variant: "destructive" });
+        }
     };
 
 
@@ -1075,38 +1122,44 @@ function AdminPage() {
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to App</span>
            </Link>
-           {currentUser.role === 'site_admin' && (
-             <TooltipProvider>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setActiveTab('site')}>
-                            <Shield className="h-4 w-4"/>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Site Administration</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-           )}
-          <div className="ml-auto flex items-center gap-2">
-             <span className="text-sm text-muted-foreground hidden md:inline-block">
-                Signed in as <strong>{currentUser.displayName || currentUser.email}</strong>
-            </span>
+           <div className="ml-auto flex items-center gap-2">
+             <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground hidden md:inline-block">
+                    {currentUser.displayName || currentUser.email}
+                </span>
+             </div>
+             {currentUser.role === 'site_admin' && (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant={activeTab === 'site' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setActiveTab('site')}>
+                                <Shield className="h-4 w-4"/>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Site Administration</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            )}
           </div>
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="sticky top-[68px] z-20 -mx-6 bg-background/95 px-6 py-2 backdrop-blur-sm">
                     <div className="flex w-full items-center justify-between">
-                        <TabsList>
-                            {manageableLeagues.length > 0 && <TabsTrigger value="events">Weekly Events</TabsTrigger>}
-                            {manageableLeagues.length > 0 && <TabsTrigger value="teams">Teams &amp; Draft</TabsTrigger>}
-                            {manageableLeagues.length > 0 && <TabsTrigger value="contestants">{leagueSettings?.contestantTerm?.plural || 'Contestants'}</TabsTrigger>}
-                            {manageableLeagues.length > 0 && <TabsTrigger value="scoring">Scoring</TabsTrigger>}
-                            {manageableLeagues.length > 0 && <TabsTrigger value="settings">League Settings</TabsTrigger>}
-                        </TabsList>
-                        {manageableLeagues.length > 1 && (
+                        {manageableLeagues.length > 0 && activeTab !== 'site' && (
+                             <TabsList>
+                                <TabsTrigger value="events">Weekly Events</TabsTrigger>
+                                <TabsTrigger value="teams">Teams &amp; Draft</TabsTrigger>
+                                <TabsTrigger value="contestants">{leagueSettings?.contestantTerm?.plural || 'Contestants'}</TabsTrigger>
+                                <TabsTrigger value="scoring">Scoring</TabsTrigger>
+                                <TabsTrigger value="settings">League Settings</TabsTrigger>
+                            </TabsList>
+                        )}
+                        <div className="flex-grow"></div>
+                        {manageableLeagues.length > 1 && activeTab !== 'site' && (
                             <div className="w-64">
                                 <Select value={selectedLeagueId || ''} onValueChange={setSelectedLeagueId}>
                                     <SelectTrigger>
@@ -1314,7 +1367,7 @@ function AdminPage() {
                         <Card className="lg:col-span-3">
                             <CardHeader>
                                 <CardTitle>Log Weekly Events</CardTitle>
-                                <CardDescription>Log the main events for Week {selectedWeek}.</CardDescription>
+                                <CardDescription>Log the main events for Week {viewingWeek}.</CardDescription>
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="space-y-4 p-4 border rounded-lg">
@@ -1369,13 +1422,40 @@ function AdminPage() {
                                     </Select>
                                     <Button size="sm" onClick={() => handleLogEvent('EVICTION')}>Log Eviction</Button>
                                 </div>
+                                {customEventCards.map(card => (
+                                  <div key={card._id} className="space-y-4 p-4 border rounded-lg">
+                                    <Label className="font-semibold">{card.title}</Label>
+                                    <Select value={weeklyEventData[card.type]?.winnerId} onValueChange={val => handleEventChange(card.type, 'winnerId', val)}>
+                                        <SelectTrigger><SelectValue placeholder={`Select ${leagueSettings?.contestantTerm?.singular || 'Contestant'}...`}/></SelectTrigger>
+                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <Button size="sm" onClick={() => handleLogEvent(card.type)}>Log {card.title}</Button>
+                                  </div>
+                                ))}
+                                <div className="space-y-4 p-4 border rounded-lg flex flex-col items-center justify-center">
+                                    <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}>
+                                        <PlusCircle className="mr-2"/> Log Special Event
+                                    </Button>
+                                </div>
                             </CardContent>
+                             <CardFooter className="flex items-center justify-center gap-4">
+                                <Button variant="outline" size="icon" onClick={() => setViewingWeek(w => Math.max(1, w - 1))} disabled={viewingWeek === 1}>
+                                    <ChevronLeftIcon className="h-4 w-4" />
+                                </Button>
+                                <span className="font-medium">Week {viewingWeek}</span>
+                                <Button variant="outline" size="icon" onClick={() => setViewingWeek(w => Math.min(activeSeason?.currentWeek || 1, w + 1))} disabled={viewingWeek === activeSeason?.currentWeek}>
+                                    <ChevronRightIcon className="h-4 w-4" />
+                                </Button>
+                                {viewingWeek === activeSeason?.currentWeek && (
+                                     <Button onClick={handleStartNewWeek}><PlusCircle className="mr-2"/> Start Next Week</Button>
+                                )}
+                            </CardFooter>
                         </Card>
                         
                         <Card className="lg:col-span-3">
                             <CardHeader>
                                 <CardTitle>Weekly Status Display</CardTitle>
-                                <CardDescription>Customize the event cards shown on the dashboard for Week {selectedWeek}.</CardDescription>
+                                <CardDescription>Customize the event cards shown on the dashboard for Week {viewingWeek}.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {weeklyStatusDisplay.sort((a,b) => a.order - b.order).map(card => (
@@ -1384,9 +1464,21 @@ function AdminPage() {
                                         <Input
                                             type="number"
                                             value={card.order}
-                                            onChange={(e) => handleStatusCardOrderChange(card._id, Number(e.target.value))}
+                                            onChange={(e) => handleStatusCardChange(card._id, 'order', Number(e.target.value))}
                                             className="h-8 w-16"
                                         />
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", card.color?.replace('text-', 'bg-'))} />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-2">
+                                                <div className="grid grid-cols-6 gap-1">
+                                                    {colorSelection.map(color => (
+                                                        <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
                                         <div className="flex items-center gap-2 flex-1">
                                             {createElement((LucideIcons as any)[card.icon] || Trophy, { className: "h-5 w-5"})}
                                             <span className="font-medium">{card.title}</span>
@@ -1566,7 +1658,7 @@ function AdminPage() {
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle>{scoringRuleSet?.name || 'Scoring Rules'}</CardTitle>
                                 <div className="flex items-center gap-2">
-                                   <Button size="sm" variant="outline" ><ShieldPlus className="mr-2"/> Add Special Event</Button>
+                                   <Button size="sm" variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}><ShieldPlus className="mr-2"/> Add Special Event</Button>
                                    <Button size="sm" onClick={() => setIsAddRuleDialogOpen(true)}><PlusCircle className="mr-2"/> Add Rule</Button>
                                 </div>
                             </CardHeader>
@@ -2098,7 +2190,7 @@ function AdminPage() {
       />
       
       {/* Dialog for Special Event */}
-       <Dialog open={false}>
+       <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Log Special Scoring Event</DialogTitle>
@@ -2119,18 +2211,18 @@ function AdminPage() {
                 <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
                     <SelectTrigger><SelectValue placeholder="Select an event type..." /></SelectTrigger>
                     <SelectContent>
-                        {specialEventRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label} ({r.points > 0 ? '+': ''}{r.points})</SelectItem>)}
+                        {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label} ({r.points > 0 ? '+': ''}{r.points})</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
              <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>Notes (Optional)</Label>
                 <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" >Cancel</Button>
-            <Button>Log Event</Button>
+            <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleLogSpecialEvent}>Log Event</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
