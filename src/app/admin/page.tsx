@@ -319,7 +319,10 @@ function AdminPage() {
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: '' });
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [specialEventData, setSpecialEventData] = useState({ contestantId: '', ruleCode: '', notes: '' });
+  const [specialEventData, setSpecialEventData] = useState<Partial<Competition>>({ contestantId: '', specialEventCode: '', notes: '' });
+  const [editingSpecialEvent, setEditingSpecialEvent] = useState<Competition | null>(null);
+  const [specialEventToDelete, setSpecialEventToDelete] = useState<Competition | null>(null);
+
   const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
       name: '',
       seasonId: '',
@@ -462,6 +465,10 @@ function AdminPage() {
       if (!weeklyStatusDisplay) return [];
       return weeklyStatusDisplay.filter(card => !standardEventTypes.includes(card.type));
   }, [weeklyStatusDisplay]);
+
+  const weeklySpecialEvents = useMemo(() => 
+    weeklyCompetitions.filter(c => c.type === 'SPECIAL_EVENT'), 
+  [weeklyCompetitions]);
 
   const handleUpdateSeason = async () => {
         if (!editingSeason || !editingSeason.id) return;
@@ -1097,27 +1104,64 @@ function AdminPage() {
     };
     
     const handleLogSpecialEvent = async () => {
-        if (!activeSeason || !specialEventData.contestantId || !specialEventData.ruleCode) {
+        if (!activeSeason || !specialEventData.winnerId || !specialEventData.specialEventCode) {
             toast({ title: "Contestant and Event Type are required.", variant: 'destructive' });
             return;
         }
+    
         try {
-            const eventData: Omit<Competition, 'id'> = {
-                seasonId: activeSeason.id,
-                week: viewingWeek,
-                type: 'SPECIAL_EVENT',
-                airDate: new Date().toISOString(),
-                winnerId: specialEventData.contestantId, // Using winnerId to store the affected contestant
-                specialEventCode: specialEventData.ruleCode,
-                notes: specialEventData.notes,
-            };
-            await addDoc(collection(db, 'competitions'), eventData);
-            toast({ title: "Special event logged successfully!" });
+            if (editingSpecialEvent) {
+                // Update existing event
+                const eventRef = doc(db, 'competitions', editingSpecialEvent.id);
+                await updateDoc(eventRef, {
+                    winnerId: specialEventData.winnerId,
+                    specialEventCode: specialEventData.specialEventCode,
+                    notes: specialEventData.notes,
+                });
+                toast({ title: "Special event updated successfully!" });
+            } else {
+                // Add new event
+                const eventData: Omit<Competition, 'id'> = {
+                    seasonId: activeSeason.id,
+                    week: viewingWeek,
+                    type: 'SPECIAL_EVENT',
+                    airDate: new Date().toISOString(),
+                    winnerId: specialEventData.winnerId,
+                    specialEventCode: specialEventData.specialEventCode,
+                    notes: specialEventData.notes,
+                };
+                await addDoc(collection(db, 'competitions'), eventData);
+                toast({ title: "Special event logged successfully!" });
+            }
+    
             setIsSpecialEventDialogOpen(false);
-            setSpecialEventData({ contestantId: '', ruleCode: '', notes: '' });
+            setEditingSpecialEvent(null);
+            setSpecialEventData({ winnerId: '', specialEventCode: '', notes: '' });
         } catch (error) {
             console.error("Error logging special event: ", error);
             toast({ title: "Error logging event", variant: "destructive" });
+        }
+    };
+
+    const openEditSpecialEventDialog = (event: Competition) => {
+        setEditingSpecialEvent(event);
+        setSpecialEventData({
+            winnerId: event.winnerId,
+            specialEventCode: event.specialEventCode,
+            notes: event.notes
+        });
+        setIsSpecialEventDialogOpen(true);
+    };
+    
+    const handleDeleteSpecialEvent = async () => {
+        if (!specialEventToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'competitions', specialEventToDelete.id));
+            toast({ title: 'Special event deleted.' });
+            setSpecialEventToDelete(null);
+        } catch (error) {
+            console.error('Error deleting special event:', error);
+            toast({ title: 'Error deleting event.', variant: 'destructive' });
         }
     };
 
@@ -1469,11 +1513,6 @@ function AdminPage() {
                                     <Button size="sm" onClick={() => handleLogEvent(card.type)}>Log {card.title}</Button>
                                   </div>
                                 ))}
-                                <div className="space-y-4 p-4 border rounded-lg flex flex-col items-center justify-center">
-                                    <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}>
-                                        <PlusCircle className="mr-2"/> Log Special Event
-                                    </Button>
-                                </div>
                             </CardContent>
                              <CardFooter className="flex items-center justify-center gap-4">
                                 <Button variant="outline" size="icon" onClick={() => setViewingWeek(w => Math.max(1, w - 1))} disabled={viewingWeek === 1}>
@@ -1489,7 +1528,42 @@ function AdminPage() {
                             </CardFooter>
                         </Card>
                         
-                        <Card className="lg:col-span-3">
+                        <Card className="lg:col-span-1">
+                            <CardHeader>
+                                <CardTitle>Logged Special Events</CardTitle>
+                                <CardDescription>Manage one-off events for Week {viewingWeek}.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                                {weeklySpecialEvents.length > 0 ? weeklySpecialEvents.map(event => {
+                                    const contestant = contestants.find(c => c.id === event.winnerId);
+                                    const rule = scoringRules.find(r => r.code === event.specialEventCode);
+                                    return (
+                                        <div key={event.id} className="flex items-center justify-between p-2 border rounded-md text-sm">
+                                            <div>
+                                                <p className="font-medium">{contestant ? getContestantDisplayName(contestant, 'short') : 'N/A'}</p>
+                                                <p className="text-xs text-muted-foreground">{rule?.label || event.specialEventCode}</p>
+                                            </div>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem onClick={() => openEditSpecialEventDialog(event)}>Edit</DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-red-500" onClick={() => setSpecialEventToDelete(event)}>Delete</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    )
+                                }) : (
+                                    <p className="text-xs text-muted-foreground text-center py-4">No special events logged this week.</p>
+                                )}
+                            </CardContent>
+                            <CardFooter>
+                                <Button variant="outline" className="w-full" onClick={() => { setEditingSpecialEvent(null); setSpecialEventData({}); setIsSpecialEventDialogOpen(true); }}>
+                                    <PlusCircle className="mr-2"/> Log New Special Event
+                                </Button>
+                            </CardFooter>
+                        </Card>
+
+                        <Card className="lg:col-span-2">
                             <CardHeader>
                                 <CardTitle>Weekly Status Display</CardTitle>
                                 <CardDescription>Customize the event cards shown on the dashboard for Week {viewingWeek}.</CardDescription>
@@ -1695,7 +1769,6 @@ function AdminPage() {
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle>{scoringRuleSet?.name || 'Scoring Rules'}</CardTitle>
                                 <div className="flex items-center gap-2">
-                                   <Button size="sm" variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}><ShieldPlus className="mr-2"/> Add Special Event</Button>
                                    <Button size="sm" onClick={() => setIsAddRuleDialogOpen(true)}><PlusCircle className="mr-2"/> Add Rule</Button>
                                 </div>
                             </CardHeader>
@@ -2227,16 +2300,16 @@ function AdminPage() {
       />
       
       {/* Dialog for Special Event */}
-       <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+       <Dialog open={isSpecialEventDialogOpen} onOpenChange={(open) => { if (!open) { setEditingSpecialEvent(null); setSpecialEventData({}); } setIsSpecialEventDialogOpen(open); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Log Special Scoring Event</DialogTitle>
+            <DialogTitle>{editingSpecialEvent ? 'Edit' : 'Log'} Special Scoring Event</DialogTitle>
             <DialogDescription>Apply a one-time point adjustment for a specific contestant.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
                 <Label>{leagueSettings?.contestantTerm?.singular || 'Contestant'}</Label>
-                <Select value={specialEventData.contestantId} onValueChange={(val) => setSpecialEventData({...specialEventData, contestantId: val})}>
+                <Select value={specialEventData.winnerId} onValueChange={(val) => setSpecialEventData({...specialEventData, winnerId: val})}>
                     <SelectTrigger><SelectValue placeholder="Select a contestant..." /></SelectTrigger>
                     <SelectContent>
                         {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
@@ -2245,7 +2318,7 @@ function AdminPage() {
             </div>
             <div className="space-y-2">
                 <Label>Event Type</Label>
-                <Select value={specialEventData.ruleCode} onValueChange={(val) => setSpecialEventData({...specialEventData, ruleCode: val})}>
+                <Select value={specialEventData.specialEventCode} onValueChange={(val) => setSpecialEventData({...specialEventData, specialEventCode: val})}>
                     <SelectTrigger><SelectValue placeholder="Select an event type..." /></SelectTrigger>
                     <SelectContent>
                         {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label} ({r.points > 0 ? '+': ''}{r.points})</SelectItem>)}
@@ -2254,12 +2327,12 @@ function AdminPage() {
             </div>
              <div className="space-y-2">
                 <Label>Notes (Optional)</Label>
-                <Textarea value={specialEventData.notes} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} />
+                <Textarea value={specialEventData.notes || ''} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleLogSpecialEvent}>Log Event</Button>
+            <Button onClick={handleLogSpecialEvent}>{editingSpecialEvent ? 'Save Changes' : 'Log Event'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2372,6 +2445,18 @@ function AdminPage() {
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteContestant} className="bg-red-600 hover:bg-red-700">Delete Contestant</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!specialEventToDelete} onOpenChange={(open) => !open && setSpecialEventToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this special event?</AlertDialogTitle>
+                    <AlertDialogDescription>This action cannot be undone and will remove the event permanently.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteSpecialEvent} className="bg-red-600 hover:bg-red-700">Delete Event</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
