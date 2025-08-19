@@ -420,8 +420,8 @@ function AdminPage() {
   }, [sortedSeasons, seasonsCurrentPage]);
   const totalSeasonPages = useMemo(() => Math.ceil(sortedSeasons.length / ITEMS_PER_PAGE), [sortedSeasons]);
   
-  const activeContestants = useMemo(() => contestants.filter(c => c.status === 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants]);
-  const inactiveContestants = useMemo(() => contestants.filter(c => c.status !== 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants]);
+  const activeContestants = useMemo(() => contestants.filter(c => c.seasonId === activeSeason?.id && c.status === 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants, activeSeason]);
+  const inactiveContestants = useMemo(() => contestants.filter(c => c.seasonId === activeSeason?.id && c.status !== 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants, activeSeason]);
 
   const activeContestantsInLeague = useMemo(() => {
       if (!activeSeason) return [];
@@ -871,6 +871,18 @@ function AdminPage() {
         } catch (error) {
             console.error("Error deleting season: ", error);
             toast({ title: "Error deleting season", variant: 'destructive' });
+        }
+    };
+
+    const handleDeleteContestant = async () => {
+        if (!contestantToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'contestants', contestantToDelete.id));
+            toast({ title: `${getContestantDisplayName(contestantToDelete, 'full')} deleted.` });
+            setContestantToDelete(null);
+        } catch (error) {
+            console.error("Error deleting contestant: ", error);
+            toast({ title: "Error deleting contestant", variant: 'destructive' });
         }
     };
     
@@ -2334,7 +2346,7 @@ function AdminPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction className="bg-red-600 hover:bg-red-700">Delete Contestant</AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeleteContestant} className="bg-red-600 hover:bg-red-700">Delete Contestant</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
@@ -2344,5 +2356,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
