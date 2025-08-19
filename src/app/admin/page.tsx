@@ -362,7 +362,7 @@ function AdminPage() {
     // Weekly status display state
     const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<EditableSeasonWeeklyStatusDisplay[]>([]);
     const [isAddStatusCardOpen, setIsAddStatusCardOpen] = useState(false);
-    const availableEventTypes: Competition['type'][] = ['HOH', 'NOMINATIONS', 'VETO', 'EVICTION', 'BLOCK_BUSTER'];
+    const availableEventTypes: Competition['type'][] = ['HOH', 'NOMINATIONS', 'VETO', 'EVICTION', 'CUSTOM'];
     const [newStatusCard, setNewStatusCard] = useState<Partial<SeasonWeeklyStatusDisplay>>({ title: '', icon: 'Trophy', type: 'CUSTOM' });
 
 
@@ -1580,7 +1580,7 @@ function AdminPage() {
                                         />
                                         <Popover>
                                             <PopoverTrigger asChild>
-                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", card.color?.replace('text-', 'bg-'))} />
+                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-2">
                                                 <div className="grid grid-cols-6 gap-1">
@@ -1831,7 +1831,7 @@ function AdminPage() {
                                         </Popover>
                                         <Popover>
                                             <PopoverTrigger asChild>
-                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", category.color.replace('text-', 'bg-'))} />
+                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (category.color || '').replace('text-', 'bg-'))} />
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-2">
                                                 <div className="grid grid-cols-6 gap-1">
@@ -2271,7 +2271,6 @@ function AdminPage() {
                             <SelectTrigger><SelectValue/></SelectTrigger>
                             <SelectContent>
                                 {availableEventTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                                <SelectItem value="CUSTOM">CUSTOM</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

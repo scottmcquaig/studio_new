@@ -1,7 +1,7 @@
 
 
 export interface SeasonWeeklyStatusDisplay {
-    type: 'HOH' | 'NOMINATIONS' | 'VETO' | 'EVICTION' | 'BLOCK_BUSTER' | 'CUSTOM' | string;
+    type: 'HOH' | 'NOMINATIONS' | 'VETO' | 'EVICTION' | 'CUSTOM' | string;
     title: string;
     icon: string;
     order: number;
@@ -50,7 +50,7 @@ export interface Competition {
     id: string;
     seasonId: string;
     week: number;
-    type: 'HOH' | 'VETO' | 'BLOCK_BUSTER' | 'EVICTION' | 'NOMINATIONS' | 'SPECIAL_EVENT' | 'CUSTOM' | string;
+    type: 'HOH' | 'VETO' | 'EVICTION' | 'NOMINATIONS' | 'SPECIAL_EVENT' | 'CUSTOM' | string;
     name?: string;
     winnerId?: string;
     airDate: string;

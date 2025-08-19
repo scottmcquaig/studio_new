@@ -15,6 +15,7 @@ export const BB_RULES = [
 export const BB_RULES_DEFAULT = [
   { code: 'HOH_WIN', label: 'Head of Household Win', points: 10 },
   { code: 'VETO_WIN', label: 'Power of Veto Win', points: 8 },
+  { code: 'COMP_WIN', label: 'Competition Win', points: 5 },
   { code: 'VETO_USED', label: 'Veto Used on a Player', points: 3 },
   { code: 'NOMINATED', label: 'Nominated for Eviction', points: -2 },
   { code: 'FINAL_NOM', label: 'Final Nominee for the Week', points: -3 },
