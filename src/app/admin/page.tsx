@@ -343,12 +343,28 @@ function AdminPage() {
   const [teamOwnerEdits, setTeamOwnerEdits] = useState<{ [key: string]: string[] }>({});
 
   const initialView = searchParams.get('view');
-  const [activeTab, setActiveTab] = useState(
-    currentUser?.role === 'site_admin' && initialView === 'site'
-      ? 'site'
-      : (manageableLeagues.length > 0 ? 'events' : 'site')
-  );
+  const defaultActiveTab = useMemo(() => {
+    if (currentUser?.role === 'site_admin' && initialView === 'site') {
+      return 'site';
+    }
+    if (manageableLeagues.length > 0) {
+      const lastTab = sessionStorage.getItem('adminLastTab');
+      if (lastTab && lastTab !== 'site') {
+        return lastTab;
+      }
+      return 'events';
+    }
+    return 'site';
+  }, [currentUser, initialView, manageableLeagues]);
 
+  const [activeTab, setActiveTab] = useState(defaultActiveTab);
+  
+  useEffect(() => {
+    if (activeTab !== 'site') {
+      sessionStorage.setItem('adminLastTab', activeTab);
+    }
+  }, [activeTab]);
+  
   // Image Cropping State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -1172,8 +1188,8 @@ function AdminPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <div className="flex flex-col sm:gap-4 sm:py-4">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:px-6">
+      <div className="flex flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
            <Link href="/" className="flex items-center gap-2 font-semibold">
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to App</span>
@@ -1530,10 +1546,14 @@ function AdminPage() {
                         
                         <Card className="lg:col-span-1">
                             <CardHeader>
-                                <CardTitle>Logged Special Events</CardTitle>
+                                <CardTitle>Logged Scoring Events</CardTitle>
                                 <CardDescription>Manage one-off events for Week {viewingWeek}.</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-2">
+                            <CardContent>
+                                <Button variant="outline" className="w-full" onClick={() => { setEditingSpecialEvent(null); setSpecialEventData({}); setIsSpecialEventDialogOpen(true); }}>
+                                    <PlusCircle className="mr-2"/> Log New Special Event
+                                </Button>
+                                <div className="space-y-2 mt-4">
                                 {weeklySpecialEvents.length > 0 ? weeklySpecialEvents.map(event => {
                                     const contestant = contestants.find(c => c.id === event.winnerId);
                                     const rule = scoringRules.find(r => r.code === event.specialEventCode);
@@ -1555,12 +1575,8 @@ function AdminPage() {
                                 }) : (
                                     <p className="text-xs text-muted-foreground text-center py-4">No special events logged this week.</p>
                                 )}
+                                </div>
                             </CardContent>
-                            <CardFooter>
-                                <Button variant="outline" className="w-full" onClick={() => { setEditingSpecialEvent(null); setSpecialEventData({}); setIsSpecialEventDialogOpen(true); }}>
-                                    <PlusCircle className="mr-2"/> Log New Special Event
-                                </Button>
-                            </CardFooter>
                         </Card>
 
                         <Card className="lg:col-span-2">

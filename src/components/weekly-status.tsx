@@ -97,17 +97,15 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                     {pov?.used === true && savedPlayer && (
                         <div className="flex flex-col items-start gap-2">
                             <div className="flex items-center gap-2">
-                                <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full" data-ai-hint="portrait person" />
+                                <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" />
                                 <div>
                                     <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
-                                    <p className="text-xs text-left">{getContestantDisplayName(savedPlayer, 'short')}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+                                {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-red-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
                                 <div>
                                     <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500" /> Renom</p>
-                                    <p className="text-xs text-left">{renomPlayer ? getContestantDisplayName(renomPlayer, 'short') : 'TBD'}</p>
                                 </div>
                             </div>
                         </div>

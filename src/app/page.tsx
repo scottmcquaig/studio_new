@@ -363,7 +363,14 @@ function DashboardPage() {
                                           <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
                                       </div>
                                   </div>
-                                  <Badge variant="secondary" className="w-20 justify-center text-base">
+                                  <Badge 
+                                     variant="secondary" 
+                                     className={cn(
+                                        "w-20 justify-center text-base",
+                                        (team.total_score || 0) > 0 && "bg-green-100 text-green-800",
+                                        (team.total_score || 0) < 0 && "bg-red-100 text-red-800",
+                                     )}
+                                  >
                                     <span>{team.total_score || 0}</span>
                                   </Badge>
                               </div>
@@ -474,5 +481,3 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
-
-    
