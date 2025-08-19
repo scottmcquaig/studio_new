@@ -94,10 +94,10 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                 <Separator orientation="vertical" className="h-auto" />
                 <div className="flex flex-col items-start justify-center flex-shrink-0 px-2 space-y-2">
                     {pov?.used === false && <div className="flex flex-col items-center gap-1"><ShieldOff className="h-8 w-8 text-muted-foreground" /><span className="text-xs text-muted-foreground text-center">Not Used</span></div>}
-                    {pov?.used === true && savedPlayer && (
+                    {pov?.used === true && (
                         <div className="flex flex-col items-start gap-2">
-                            <div className="flex items-center gap-2">
-                                <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" />
+                             <div className="flex items-center gap-2">
+                                {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
                                 <div>
                                     <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
                                 </div>
