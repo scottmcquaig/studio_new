@@ -61,6 +61,9 @@ const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPEC
 const USERS_PER_PAGE = 5;
 const ITEMS_PER_PAGE = 5;
 
+// Define a type for editable status display items with a unique key
+type EditableSeasonWeeklyStatusDisplay = SeasonWeeklyStatusDisplay & { _id: string };
+
 // Component to manage a single rule row, preventing input focus loss
 const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index: number, onUpdate: (index: number, field: keyof ScoringRule, value: string | number) => void, onRemove: (code: string) => void }) => {
     const [localRule, setLocalRule] = useState(rule);
@@ -352,7 +355,7 @@ function AdminPage() {
   const [runnerUpId, setRunnerUpId] = useState<string | undefined>();
   
     // Weekly status display state
-    const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<SeasonWeeklyStatusDisplay[]>([]);
+    const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<EditableSeasonWeeklyStatusDisplay[]>([]);
     const [isAddStatusCardOpen, setIsAddStatusCardOpen] = useState(false);
     const availableEventTypes: Competition['type'][] = ['HOH', 'NOMINATIONS', 'VETO', 'EVICTION', 'BLOCK_BUSTER'];
     const [newStatusCard, setNewStatusCard] = useState<Partial<SeasonWeeklyStatusDisplay>>({ title: '', icon: 'Trophy', type: 'CUSTOM' });
@@ -537,14 +540,17 @@ function AdminPage() {
             { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4 }
         ] as SeasonWeeklyStatusDisplay[];
 
+        let displayData: SeasonWeeklyStatusDisplay[] = [];
         if (activeSeason.weeklyStatusDisplay && activeSeason.weeklyStatusDisplay[currentWeekKey]) {
-            setWeeklyStatusDisplay(activeSeason.weeklyStatusDisplay[currentWeekKey]);
+            displayData = activeSeason.weeklyStatusDisplay[currentWeekKey];
         } else if (activeSeason.currentWeek > 1) {
              const prevWeekKey = `week${activeSeason.currentWeek - 1}`;
-             setWeeklyStatusDisplay(activeSeason.weeklyStatusDisplay?.[prevWeekKey] || defaultDisplay);
+             displayData = activeSeason.weeklyStatusDisplay?.[prevWeekKey] || defaultDisplay;
         } else {
-            setWeeklyStatusDisplay(defaultDisplay);
+            displayData = defaultDisplay;
         }
+        // Add unique _id for stable keys in React
+        setWeeklyStatusDisplay(displayData.map((d, i) => ({ ...d, _id: `${Date.now()}-${i}` })));
       }
   }, [activeSeason]);
   
@@ -1016,9 +1022,11 @@ function AdminPage() {
         if (!activeSeason) return;
         const seasonRef = doc(db, 'seasons', activeSeason.id);
         const weekKey = `week${selectedWeek}`;
+        // Remove the temporary _id before saving
+        const dataToSave = weeklyStatusDisplay.map(({ _id, ...rest }) => rest);
         try {
             await updateDoc(seasonRef, {
-                [`weeklyStatusDisplay.${weekKey}`]: weeklyStatusDisplay,
+                [`weeklyStatusDisplay.${weekKey}`]: dataToSave,
             });
             toast({ title: "Weekly display updated successfully!" });
         } catch (error) {
@@ -1032,27 +1040,26 @@ function AdminPage() {
             toast({ title: "Title, Icon and Type are required.", variant: "destructive" });
             return;
         }
-        const newCard: SeasonWeeklyStatusDisplay = {
+        const newCard: EditableSeasonWeeklyStatusDisplay = {
             order: weeklyStatusDisplay.length + 1,
-            ...newStatusCard
-        } as SeasonWeeklyStatusDisplay;
+            ...newStatusCard,
+            _id: `${Date.now()}` // Add unique ID
+        } as EditableSeasonWeeklyStatusDisplay;
         
         setWeeklyStatusDisplay([...weeklyStatusDisplay, newCard]);
         setNewStatusCard({ title: '', icon: 'Trophy', type: 'CUSTOM' });
         setIsAddStatusCardOpen(false);
     };
 
-    const handleRemoveStatusCard = (order: number) => {
-        setWeeklyStatusDisplay(weeklyStatusDisplay.filter(card => card.order !== order));
+    const handleRemoveStatusCard = (_id: string) => {
+        setWeeklyStatusDisplay(weeklyStatusDisplay.filter(card => card._id !== _id));
     };
 
-    const handleStatusCardOrderChange = (order: number, newOrder: number) => {
-        const updatedDisplay = [...weeklyStatusDisplay];
-        const cardIndex = updatedDisplay.findIndex(c => c.order === order);
-        if(cardIndex > -1) {
-            updatedDisplay[cardIndex].order = newOrder;
-            setWeeklyStatusDisplay(updatedDisplay);
-        }
+    const handleStatusCardOrderChange = (_id: string, newOrder: number) => {
+        const updatedDisplay = weeklyStatusDisplay.map(card => 
+            card._id === _id ? { ...card, order: newOrder } : card
+        );
+        setWeeklyStatusDisplay(updatedDisplay);
     };
 
 
@@ -1372,12 +1379,12 @@ function AdminPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {weeklyStatusDisplay.sort((a,b) => a.order - b.order).map(card => (
-                                    <div key={card.order} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                    <div key={card._id} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
                                         <GripVertical className="h-5 w-5 text-muted-foreground" />
                                         <Input
                                             type="number"
                                             value={card.order}
-                                            onChange={(e) => handleStatusCardOrderChange(card.order, Number(e.target.value))}
+                                            onChange={(e) => handleStatusCardOrderChange(card._id, Number(e.target.value))}
                                             className="h-8 w-16"
                                         />
                                         <div className="flex items-center gap-2 flex-1">
@@ -1385,7 +1392,7 @@ function AdminPage() {
                                             <span className="font-medium">{card.title}</span>
                                             <Badge variant="outline">{card.type}</Badge>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card.order)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card._id)}>
                                             <Trash2 className="h-4 w-4 text-red-500" />
                                         </Button>
                                     </div>
