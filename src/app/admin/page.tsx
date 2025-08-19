@@ -1392,13 +1392,38 @@ function AdminPage() {
                                 </div>
                                 <div className="space-y-4 p-4 border rounded-lg">
                                     <Label className="font-semibold">Nominations</Label>
-                                    <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[0]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [val, weeklyEventData['NOMINATIONS']?.nominees?.[1]])}>
-                                        <SelectTrigger><SelectValue placeholder="Select nominee 1..."/></SelectTrigger>
-                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                     <Select value={weeklyEventData['NOMINATIONS']?.nominees?.[1]} onValueChange={val => handleEventChange('NOMINATIONS', 'nominees', [weeklyEventData['NOMINATIONS']?.nominees?.[0], val])}>
-                                        <SelectTrigger><SelectValue placeholder="Select nominee 2..."/></SelectTrigger>
-                                        <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                    <div className="space-y-2">
+                                        {(weeklyEventData['NOMINATIONS']?.nominees || []).map((nomId: string) => {
+                                            const nominee = activeContestantsInLeague.find(c => c.id === nomId);
+                                            return (
+                                                <div key={nomId} className="flex items-center justify-between text-sm p-1 bg-muted rounded-md">
+                                                    <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
+                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
+                                                        const newNoms = (weeklyEventData['NOMINATIONS']?.nominees || []).filter((id: string) => id !== nomId);
+                                                        handleEventChange('NOMINATIONS', 'nominees', newNoms);
+                                                    }}>
+                                                        <XCircle className="h-4 w-4 text-red-500" />
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <Select 
+                                        value=""
+                                        onValueChange={val => {
+                                            if (val) {
+                                                const currentNoms = weeklyEventData['NOMINATIONS']?.nominees || [];
+                                                if (!currentNoms.includes(val)) {
+                                                    handleEventChange('NOMINATIONS', 'nominees', [...currentNoms, val]);
+                                                }
+                                            }
+                                        }}>
+                                        <SelectTrigger><SelectValue placeholder="Add nominee..."/></SelectTrigger>
+                                        <SelectContent>
+                                            {activeContestantsInLeague
+                                                .filter(c => !(weeklyEventData['NOMINATIONS']?.nominees || []).includes(c.id))
+                                                .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
                                     </Select>
                                     <Button size="sm" onClick={() => handleLogEvent('NOMINATIONS')}>Log Nominations</Button>
                                 </div>
