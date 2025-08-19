@@ -137,7 +137,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
         )
     }
 
-    // Default card for Block Buster and other custom types
+    // Default card for custom types
     const event = competitions.find(c => c.type === type);
     const winner = contestants.find(hg => hg.id === event?.winnerId);
     return (
