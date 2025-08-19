@@ -1117,7 +1117,7 @@ function AdminPage() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <div className="flex flex-col sm:gap-4 sm:py-4">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:h-auto sm:border-0 sm:px-6">
            <Link href="/" className="flex items-center gap-2 font-semibold">
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back to App</span>
@@ -1147,7 +1147,7 @@ function AdminPage() {
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="sticky top-[68px] z-20 -mx-6 bg-background/95 px-6 py-2 backdrop-blur-sm">
+                <div className="sticky top-[57px] z-20 -mx-4 sm:-mx-6 bg-background/95 px-4 sm:px-6 py-2 backdrop-blur-sm border-b">
                     <div className="flex w-full items-center justify-between">
                         {manageableLeagues.length > 0 && activeTab !== 'site' && (
                              <TabsList>
