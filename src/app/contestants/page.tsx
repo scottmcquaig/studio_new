@@ -37,8 +37,8 @@ function ContestantsPage() {
         const allLeagues = snap.docs.map(d => ({ ...d.data(), id: d.id } as League));
         setLeagues(allLeagues);
         // This logic needs to be enhanced with a league switcher
-        const currentLeague = allLeagues.find(l => l.id === 'bb27');
-        setActiveLeague(currentLeague || allLeagues[0] || null);
+        const currentLeague = allLeagues.length > 0 ? allLeagues[0] : null;
+        setActiveLeague(currentLeague);
     });
     return () => unsub();
   }, [db]);
@@ -258,4 +258,3 @@ function ContestantsPage() {
 }
 
 export default withAuth(ContestantsPage);
-

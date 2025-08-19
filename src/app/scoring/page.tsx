@@ -36,9 +36,11 @@ function ScoringPage() {
   
   useEffect(() => {
     // This logic should be enhanced with a league switcher
-    const unsubLeagues = onSnapshot(doc(db, "leagues", "bb27"), (docSnap) => {
-        if (docSnap.exists()) {
-            setActiveLeague({ ...docSnap.data(), id: docSnap.id } as League);
+    const unsubLeagues = onSnapshot(collection(db, "leagues"), (snap) => {
+        if (!snap.empty) {
+            const leagues = snap.docs.map(d => ({...d.data(), id: d.id} as League));
+            const currentLeague = leagues.length > 0 ? leagues[0] : null;
+            setActiveLeague(currentLeague);
         }
     });
 
@@ -166,7 +168,7 @@ function ScoringPage() {
       const weekMatch = selectedWeek === 'all' || event.week === Number(selectedWeek);
       const contestantMatch = selectedContestant === 'all' || event.contestantId === selectedContestant;
       const teamMatch = selectedTeam === 'all' || event.teamId === selectedTeam;
-      const eventMatch = selectedEvent === 'all' || event.eventCode === eventMatch;
+      const eventMatch = selectedEvent === 'all' || event.eventCode === selectedEvent;
       return weekMatch && contestantMatch && teamMatch && eventMatch;
     });
   }, [scoringEvents, selectedWeek, selectedContestant, selectedTeam, selectedEvent]);
@@ -324,4 +326,3 @@ function ScoringPage() {
 }
 
 export default withAuth(ScoringPage);
-
