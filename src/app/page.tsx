@@ -147,6 +147,7 @@ function DashboardPage() {
             else if (comp.type === 'VETO') code = 'VETO_WIN';
             else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
             else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
+            else if (comp.type.startsWith('CUSTOM_')) code = comp.type; // For custom events
             if (code) processEvent(comp.winnerId, code);
 
             if (comp.type === 'VETO' && comp.used) {
@@ -367,8 +368,9 @@ function DashboardPage() {
                                      variant="secondary" 
                                      className={cn(
                                         "w-20 justify-center text-base",
-                                        (team.total_score || 0) > 0 && "bg-green-100 text-green-800",
-                                        (team.total_score || 0) < 0 && "bg-red-100 text-red-800",
+                                        (team.total_score || 0) > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
+                                        (team.total_score || 0) < 0 && "bg-red-100 text-red-800 hover:bg-red-200",
+                                        (team.total_score || 0) === 0 && "bg-gray-100 text-gray-800"
                                      )}
                                   >
                                     <span>{team.total_score || 0}</span>

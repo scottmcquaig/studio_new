@@ -105,7 +105,17 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
                             Owned by {owners.length > 0 ? owners.map(o => o.displayName).join(' & ') : 'Unassigned'}
                         </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="text-lg font-bold">{totalScore.toLocaleString()} pts</Badge>
+                    <Badge 
+                        variant="secondary" 
+                        className={cn(
+                            "text-lg font-bold",
+                            totalScore > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
+                            totalScore < 0 && "bg-red-100 text-red-800 hover:bg-red-200",
+                            totalScore === 0 && "bg-gray-100 text-gray-800"
+                        )}
+                    >
+                        {totalScore.toLocaleString()} pts
+                    </Badge>
                 </div>
             </CardHeader>
             <CardContent>
@@ -171,24 +181,23 @@ function TeamsPage() {
     const db = getFirestore(app);
 
     useEffect(() => {
-        // This logic should be enhanced with a league switcher
-        const unsubLeagues = onSnapshot(collection(db, "leagues"), (snap) => {
-            if (!snap.empty) {
-                const leagues = snap.docs.map(d => ({...d.data(), id: d.id} as League));
-                const currentLeague = leagues.length > 0 ? leagues[0] : null;
-                setActiveLeague(currentLeague);
-            }
-        });
+    const unsubLeagues = onSnapshot(collection(db, "leagues"), (snap) => {
+        if (!snap.empty) {
+            const leagues = snap.docs.map(d => ({...d.data(), id: d.id} as League));
+            const currentLeague = leagues.length > 0 ? leagues[0] : null;
+            setActiveLeague(currentLeague);
+        }
+    });
 
-        const unsubSeasons = onSnapshot(collection(db, "seasons"), (snap) => {
-            setSeasons(snap.docs.map(d => ({ ...d.data(), id: d.id } as Season)));
-        });
+    const unsubSeasons = onSnapshot(collection(db, "seasons"), (snap) => {
+        setSeasons(snap.docs.map(d => ({ ...d.data(), id: d.id } as Season)));
+    });
 
-        return () => {
-            unsubLeagues();
-            unsubSeasons();
-        };
-    }, [db]);
+    return () => {
+        unsubLeagues();
+        unsubSeasons();
+    };
+  }, [db]);
 
     useEffect(() => {
         if (activeLeague && seasons.length > 0) {
