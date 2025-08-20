@@ -147,8 +147,8 @@ function DashboardPage() {
         if (comp.winnerId) processEvent(comp.winnerId, comp.type);
         if (comp.evictedId) processEvent(comp.evictedId, comp.type);
         if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
-
     });
+
     return score;
   };
 
@@ -443,3 +443,5 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
+
+    

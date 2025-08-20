@@ -142,26 +142,16 @@ function ScoringPage() {
         }
       };
 
-      if (comp.winnerId) {
-        let eventCode = '';
-        if (comp.type === 'HOH') eventCode = 'HOH_WIN';
-        else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
-        else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE';
-        else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
-        if (eventCode) processEvent(comp.winnerId, eventCode);
-      }
-      
-      if (comp.type === 'NOMINATIONS' && comp.nominees) {
-        comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
-      }
-       if (comp.type === 'EVICTION' && comp.evictedId) {
-          const juryStartWeek = activeLeague?.settings.juryStartWeek;
-          const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-          processEvent(comp.evictedId, eventCode);
-      }
+      const rule = scoringRules.rules.find(r => r.code === comp.type);
+      if (!rule) return;
+
+      if (comp.winnerId) processEvent(comp.winnerId, comp.type);
+      if (comp.evictedId) processEvent(comp.evictedId, comp.type);
+      if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
     });
+    
     return events.sort((a,b) => b.week - a.week);
-  }, [scoringRules, competitions, contestants, teams, picks, activeLeague]);
+  }, [scoringRules, competitions, contestants, teams, picks]);
 
   const filteredEvents = useMemo(() => {
     return scoringEvents.filter(event => {
@@ -326,3 +316,5 @@ function ScoringPage() {
 }
 
 export default withAuth(ScoringPage);
+
+    

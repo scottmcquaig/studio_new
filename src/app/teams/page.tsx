@@ -50,33 +50,12 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
                 }
             };
 
-            if (comp.winnerId) {
-                let eventCode = '';
-                if (comp.type === 'HOH') eventCode = 'HOH_WIN';
-                else if (comp.type === 'VETO') eventCode = 'VETO_WIN';
-                else if (comp.type === 'BLOCK_BUSTER') eventCode = 'BLOCK_BUSTER_SAFE'; // Example, adjust as needed
-                else if (comp.type === 'SPECIAL_EVENT') eventCode = comp.specialEventCode || '';
-                
-                if (eventCode) {
-                    processEvent(comp.winnerId, eventCode);
-                }
-            }
-            
-            if (comp.type === 'NOMINATIONS' && comp.nominees) {
-                comp.nominees.forEach(nomId => {
-                    const isFinalNom = comp.finalNoms?.includes(nomId);
-                    processEvent(nomId, 'NOMINATED');
-                    if (isFinalNom) {
-                        processEvent(nomId, 'FINAL_NOM');
-                    }
-                });
-            }
-            
-            if (comp.type === 'EVICTION' && comp.evictedId) {
-                const juryStartWeek = league?.settings.juryStartWeek;
-                const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-                processEvent(comp.evictedId, eventCode);
-            }
+            const rule = rules.find(r => r.code === comp.type);
+            if (!rule) return;
+
+            if (comp.winnerId) processEvent(comp.winnerId, comp.type);
+            if (comp.evictedId) processEvent(comp.evictedId, comp.type);
+            if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
         });
 
         return { ...kpis };
@@ -250,28 +229,12 @@ function TeamsPage() {
                 }
             };
             
-            if (comp.winnerId) {
-                let code = '';
-                if (comp.type === 'HOH') code = 'HOH_WIN';
-                else if (comp.type === 'VETO') code = 'VETO_WIN';
-                else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
-                else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
-                if (code) processEvent(comp.winnerId, code);
+            const rule = rules.find(r => r.code === comp.type);
+            if (!rule) return;
 
-                if (comp.type === 'VETO' && comp.used) {
-                    processEvent(comp.winnerId, 'VETO_USED');
-                }
-            }
-
-            if (comp.type === 'NOMINATIONS' && comp.nominees) {
-                comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
-            }
-            
-            if (comp.type === 'EVICTION' && comp.evictedId) {
-                const juryStartWeek = activeLeague?.settings.juryStartWeek;
-                const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-                processEvent(comp.evictedId, eventCode);
-            }
+            if (comp.winnerId) processEvent(comp.winnerId, comp.type);
+            if (comp.evictedId) processEvent(comp.evictedId, comp.type);
+            if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
         });
         return score;
     };
@@ -284,7 +247,7 @@ function TeamsPage() {
           const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
           return { ...team, total_score };
         });
-    }, [teams, scoringRules, picks, competitions, activeLeague]);
+    }, [teams, scoringRules, picks, competitions]);
 
 
     const sortedTeams = useMemo(() => {
@@ -359,3 +322,5 @@ function TeamsPage() {
 }
 
 export default withAuth(TeamsPage);
+
+    
