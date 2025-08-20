@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -599,9 +600,10 @@ function AdminPage() {
   }, [db, leagueSettings]);
 
   useEffect(() => {
+    const lastTab = sessionStorage.getItem('adminLastTab');
     const defaultTab = currentUser?.role === 'site_admin' && initialView === 'site'
       ? 'site'
-      : (manageableLeagues.length > 0 ? 'events' : 'site');
+      : (manageableLeagues.length > 0 ? (lastTab || 'events') : 'site');
     setActiveTab(defaultTab);
   }, [initialView, currentUser, manageableLeagues]);
   
@@ -1218,7 +1220,7 @@ function AdminPage() {
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="sticky top-[57px] z-20 bg-background/95 px-4 sm:px-6 py-2 backdrop-blur-sm border-b">
+                <div className="sticky top-[57px] z-20 -mx-4 -mt-4 sm:-mx-6 bg-background/95 px-4 sm:px-6 py-2 backdrop-blur-sm border-b">
                     <div className="flex w-full items-center justify-between">
                         {manageableLeagues.length > 0 && activeTab !== 'site' && (
                              <TabsList>
@@ -1434,8 +1436,8 @@ function AdminPage() {
                 )}
                 
                 <TabsContent value="events">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Card className="lg:col-span-3">
+                    <div className="grid grid-cols-1 gap-4">
+                        <Card>
                             <CardHeader>
                                 <CardTitle>Log Weekly Events</CardTitle>
                                 <CardDescription>Log the main events for Week {viewingWeek}.</CardDescription>
@@ -1543,88 +1545,90 @@ function AdminPage() {
                             </CardFooter>
                         </Card>
                         
-                        <Card className="lg:col-span-1">
-                            <CardHeader>
-                                <CardTitle>Logged Scoring Events</CardTitle>
-                                <CardDescription>Manage one-off events for Week {viewingWeek}.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Button variant="outline" className="w-full" onClick={() => { setEditingSpecialEvent(null); setSpecialEventData({}); setIsSpecialEventDialogOpen(true); }}>
-                                    <PlusCircle className="mr-2"/> Log New Special Event
-                                </Button>
-                                <div className="space-y-2 mt-4">
-                                {weeklySpecialEvents.length > 0 ? weeklySpecialEvents.map(event => {
-                                    const contestant = contestants.find(c => c.id === event.winnerId);
-                                    const rule = scoringRules.find(r => r.code === event.specialEventCode);
-                                    return (
-                                        <div key={event.id} className="flex items-center justify-between p-2 border rounded-md text-sm">
-                                            <div>
-                                                <p className="font-medium">{contestant ? getContestantDisplayName(contestant, 'short') : 'N/A'}</p>
-                                                <p className="text-xs text-muted-foreground">{rule?.label || event.specialEventCode}</p>
-                                            </div>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onClick={() => openEditSpecialEventDialog(event)}>Edit</DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-500" onClick={() => setSpecialEventToDelete(event)}>Delete</DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    )
-                                }) : (
-                                    <p className="text-xs text-muted-foreground text-center py-4">No special events logged this week.</p>
-                                )}
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="lg:col-span-2">
-                            <CardHeader>
-                                <CardTitle>Weekly Status Display</CardTitle>
-                                <CardDescription>Customize the event cards shown on the dashboard for Week {viewingWeek}.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                {weeklyStatusDisplay.sort((a,b) => a.order - b.order).map(card => (
-                                    <div key={card._id} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
-                                        <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                        <Input
-                                            type="number"
-                                            value={card.order}
-                                            onChange={(e) => handleStatusCardChange(card._id, 'order', Number(e.target.value))}
-                                            className="h-8 w-16"
-                                        />
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                 <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-2">
-                                                <div className="grid grid-cols-6 gap-1">
-                                                    {colorSelection.map(color => (
-                                                        <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
-                                                    ))}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <Card className="lg:col-span-1">
+                                <CardHeader>
+                                    <CardTitle>Logged Scoring Events</CardTitle>
+                                    <CardDescription>Manage one-off events for Week {viewingWeek}.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Button variant="outline" className="w-full" onClick={() => { setEditingSpecialEvent(null); setSpecialEventData({}); setIsSpecialEventDialogOpen(true); }}>
+                                        <PlusCircle className="mr-2"/> Log New Special Event
+                                    </Button>
+                                    <div className="space-y-2 mt-4">
+                                    {weeklySpecialEvents.length > 0 ? weeklySpecialEvents.map(event => {
+                                        const contestant = contestants.find(c => c.id === event.winnerId);
+                                        const rule = scoringRules.find(r => r.code === event.specialEventCode);
+                                        return (
+                                            <div key={event.id} className="flex items-center justify-between p-2 border rounded-md text-sm">
+                                                <div>
+                                                    <p className="font-medium">{contestant ? getContestantDisplayName(contestant, 'short') : 'N/A'}</p>
+                                                    <p className="text-xs text-muted-foreground">{rule?.label || event.specialEventCode}</p>
                                                 </div>
-                                            </PopoverContent>
-                                        </Popover>
-                                        <div className="flex items-center gap-2 flex-1">
-                                            {createElement((LucideIcons as any)[card.icon] || Trophy, { className: "h-5 w-5"})}
-                                            <Input 
-                                                value={card.title} 
-                                                onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
-                                                className="h-8 font-medium"
-                                            />
-                                            <Badge variant="outline">{card.type}</Badge>
-                                        </div>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card._id)}>
-                                            <Trash2 className="h-4 w-4 text-red-500" />
-                                        </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuContent>
+                                                        <DropdownMenuItem onClick={() => openEditSpecialEventDialog(event)}>Edit</DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-red-500" onClick={() => setSpecialEventToDelete(event)}>Delete</DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        )
+                                    }) : (
+                                        <p className="text-xs text-muted-foreground text-center py-4">No special events logged this week.</p>
+                                    )}
                                     </div>
-                                ))}
-                                <div className="flex gap-2">
-                                    <Button onClick={() => setIsAddStatusCardOpen(true)} size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Status Card</Button>
-                                    <Button onClick={handleSaveWeeklyStatusDisplay} size="sm"><Save className="mr-2"/> Save Display</Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>Weekly Status Display</CardTitle>
+                                    <CardDescription>Customize the event cards shown on the dashboard for Week {viewingWeek}.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {weeklyStatusDisplay.sort((a,b) => a.order - b.order).map(card => (
+                                        <div key={card._id} className="flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                                            <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                            <Input
+                                                type="number"
+                                                value={card.order}
+                                                onChange={(e) => handleStatusCardChange(card._id, 'order', Number(e.target.value))}
+                                                className="h-8 w-16"
+                                            />
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                     <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-2">
+                                                    <div className="grid grid-cols-6 gap-1">
+                                                        {colorSelection.map(color => (
+                                                            <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
+                                                        ))}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                            <div className="flex items-center gap-2 flex-1">
+                                                {createElement((LucideIcons as any)[card.icon] || Trophy, { className: "h-5 w-5"})}
+                                                <Input 
+                                                    value={card.title} 
+                                                    onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
+                                                    className="h-8 font-medium"
+                                                />
+                                                <Badge variant="outline">{card.type}</Badge>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card._id)}>
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <div className="flex gap-2">
+                                        <Button onClick={() => setIsAddStatusCardOpen(true)} size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Status Card</Button>
+                                        <Button onClick={handleSaveWeeklyStatusDisplay} size="sm"><Save className="mr-2"/> Save Display</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                  </TabsContent>
 
