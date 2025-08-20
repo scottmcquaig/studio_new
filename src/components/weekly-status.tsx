@@ -23,9 +23,9 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
     const safeColor = color || 'text-gray-500';
     const borderColor = safeColor.replace('text-', 'border-');
 
-    if (type === 'HOH' || type === 'EVICTION' || type.startsWith('CUSTOM_')) {
-        const event = competitions.find(c => c.type === type);
-        const winner = contestants.find(hg => hg.id === (type === 'EVICTION' ? event?.evictedId : event?.winnerId));
+    if (type === 'HOH_WIN' || type === 'EVICTED' || type.startsWith('CUSTOM_')) {
+        const event = competitions.find(c => c.type === (type === 'EVICTED' ? 'EVICTION' : type));
+        const winner = contestants.find(hg => hg.id === (type === 'EVICTED' ? event?.evictedId : event?.winnerId));
         
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
@@ -45,8 +45,8 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
         );
     }
     
-    if (type === 'NOMINATIONS') {
-        const noms = competitions.find(c => c.type === 'NOMINATIONS');
+    if (type === 'NOMINATED') {
+        const noms = competitions.find(c => c.type === type);
         const nomWinners = contestants.filter(hg => noms?.nominees?.includes(hg.id));
         return (
              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
@@ -71,7 +71,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
         );
     }
     
-    if (type === 'VETO') {
+    if (type === 'VETO_WIN') {
         const pov = competitions.find(c => c.type === 'VETO');
         const povWinner = contestants.find(hg => hg.id === pov?.winnerId);
         const savedPlayer = contestants.find(hg => hg.id === pov?.usedOnId);
@@ -151,10 +151,10 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
         
         // Default config if none is set for the week
         return [
-            { type: 'HOH', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
-            { type: 'NOMINATIONS', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
-            { type: 'VETO', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500' },
-            { type: 'EVICTION', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
+            { type: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
+            { type: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
+            { type: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500' },
+            { type: 'EVICTED', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];
     }, [activeSeason, week]);
 

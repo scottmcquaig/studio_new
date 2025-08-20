@@ -85,8 +85,9 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
     }
   };
 
-  const canManageLeague = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
   const isSiteAdmin = currentUser?.role === 'site_admin';
+  const isLeagueAdmin = currentUser?.role === 'league_admin';
+  const canManageLeague = isSiteAdmin || isLeagueAdmin;
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:px-6">
