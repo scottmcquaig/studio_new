@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -1387,7 +1388,7 @@ function AdminPage() {
                                 {weeklyStatusCards.map(card => {
                                    const rule = scoringRules.find(r => r.code === card.ruleCode);
                                    const isMultiPick = rule?.label.toLowerCase().includes('nominee') || rule?.label.toLowerCase().includes('nomination');
-                                   const isEviction = card.ruleCode.includes('EVICT');
+                                   const isEviction = card.ruleCode ? card.ruleCode.includes('EVICT') : false;
                                    const hasFollowUps = card.hasFollowUpFields;
                                    const eventKey = card.ruleCode;
 
