@@ -20,6 +20,8 @@ interface WeeklyStatusProps {
 
 const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStatusDisplay, competitions: Competition[], contestants: Contestant[] }) => {
     const { ruleCode, title, icon, color, hasFollowUpFields } = card;
+    if (!ruleCode) return null;
+
     const IconComponent = (LucideIcons as any)[icon] || HelpCircle;
     const safeColor = color || 'text-gray-500';
     const borderColor = safeColor.replace('text-', 'border-');
@@ -98,35 +100,37 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
                     )}
                 </div>
                 {winner && <Separator orientation="vertical" className="h-auto" />}
-                <div className="flex flex-col items-start justify-center flex-shrink-0 space-y-2 w-24">
-                    {event?.used === true && (
-                        <div className="flex flex-col items-start gap-2">
-                             <div className="flex items-center gap-2">
-                                {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
-                                <div>
-                                    <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
+                {winner && (
+                    <div className="flex flex-col items-center justify-center flex-shrink-0 space-y-2 w-24">
+                        {event?.used === true && (
+                            <div className="flex flex-col items-start gap-2">
+                                <div className="flex items-center gap-2">
+                                    {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+                                    <div>
+                                        <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-red-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+                                    <div>
+                                        <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500" /> Renom</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-red-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
-                                <div>
-                                    <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500" /> Renom</p>
-                                </div>
+                        )}
+                        {(event?.used === false || event?.used === undefined) && (
+                            <div className="flex flex-col items-center justify-center w-full gap-1">
+                                {event?.used === false
+                                    ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
+                                    : <HelpCircle className="h-8 w-8 text-muted-foreground" />
+                                }
+                                <span className="text-xs text-muted-foreground text-center">
+                                    {event?.used === false ? 'Not Used' : 'TBD'}
+                                </span>
                             </div>
-                        </div>
-                    )}
-                    {(event?.used === false || (event?.used === undefined && winner)) && (
-                         <div className="flex flex-col items-start justify-center w-full gap-1">
-                            {event?.used === false 
-                                ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
-                                : <HelpCircle className="h-8 w-8 text-muted-foreground" />
-                            }
-                            <span className="text-xs text-muted-foreground text-left">
-                                {event?.used === false ? 'Not Used' : 'TBD'}
-                            </span>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     }
@@ -173,9 +177,9 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
                 </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap justify-center gap-4">
-               {displayConfig.map(item => (
+               {displayConfig.map((item, index) => (
                    <EventCard 
-                        key={item.order}
+                        key={item.ruleCode ? `${item.ruleCode}-${index}`: index}
                         card={item}
                         competitions={competitions}
                         contestants={contestants}
