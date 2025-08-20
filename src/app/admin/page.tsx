@@ -349,10 +349,19 @@ function AdminPage() {
   const [activeTab, setActiveTab] = useState('events');
 
   useEffect(() => {
+    if (initialView === 'league') {
+        setActiveTab('events');
+        return;
+    }
+    if (initialView === 'site') {
+        setActiveTab('site');
+        return;
+    }
+
     const lastTab = sessionStorage.getItem('adminLastTab');
     const defaultTab = lastTab 
       ? lastTab
-      : (currentUser?.role === 'site_admin' && initialView === 'site' ? 'site' : (manageableLeagues.length > 0 ? 'events' : 'site'));
+      : (currentUser?.role === 'site_admin' ? 'site' : (manageableLeagues.length > 0 ? 'events' : 'site'));
     
     // Fallback if the saved tab is not accessible
     if (defaultTab !== 'site' && manageableLeagues.length === 0) {
