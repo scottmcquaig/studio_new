@@ -1852,7 +1852,7 @@ function AdminPage() {
                                             <PopoverContent className="w-auto p-2">
                                                 <div className="grid grid-cols-6 gap-1">
                                                     {colorSelection.map(color => (
-                                                        <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color.replace('bg-', 'bg-'))} onClick={() => handleBreakdownChange(index, 'color', color.replace('bg-', 'text-'))} />
+                                                        <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleBreakdownChange(index, 'color', color.replace('bg-', 'text-'))} />
                                                     ))}
                                                 </div>
                                             </PopoverContent>
@@ -2481,3 +2481,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
