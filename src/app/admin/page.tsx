@@ -1388,8 +1388,7 @@ function AdminPage() {
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {weeklyStatusCards.map(card => {
                                    if (!card.ruleCode) return null;
-                                   const rule = scoringRules.find(r => r.code === card.ruleCode);
-                                   const isMultiPick = rule?.label.toLowerCase().includes('nominee') || rule?.label.toLowerCase().includes('nomination');
+                                   const isMultiPick = card.isMultiPick;
                                    const isEviction = card.ruleCode ? card.ruleCode.includes('EVICT') : false;
                                    const hasFollowUps = card.hasFollowUpFields;
                                    const eventKey = card.ruleCode;
@@ -1525,6 +1524,7 @@ function AdminPage() {
                                                 <TableRow>
                                                     <TableHead>Event</TableHead>
                                                     <TableHead>Player(s)</TableHead>
+                                                    <TableHead className="text-right">Points</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -1540,6 +1540,9 @@ function AdminPage() {
                                                             <TableCell>{rule?.label || comp.type}</TableCell>
                                                             <TableCell>
                                                                 {players.map(p => p ? getContestantDisplayName(p, 'short') : '...').join(', ')}
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-mono font-bold">
+                                                                {rule?.points}
                                                             </TableCell>
                                                         </TableRow>
                                                     )
@@ -1599,6 +1602,14 @@ function AdminPage() {
                                                     onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUpFields', val)}
                                                 />
                                                 <Label htmlFor={`followup-${card._id}`}>Follow-ups?</Label>
+                                            </div>
+                                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Switch 
+                                                    id={`multipick-${card._id}`}
+                                                    checked={card.isMultiPick}
+                                                    onCheckedChange={val => handleStatusCardChange(card._id, 'isMultiPick', val)}
+                                                />
+                                                <Label htmlFor={`multipick-${card._id}`}>Multi-pick?</Label>
                                             </div>
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card._id)}>
                                                 <Trash2 className="h-4 w-4 text-red-500" />
@@ -2431,3 +2442,5 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    

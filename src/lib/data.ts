@@ -1,6 +1,7 @@
 
 
 
+
 export interface SeasonWeeklyStatusDisplay {
     ruleCode: string;
     title: string;
@@ -8,6 +9,7 @@ export interface SeasonWeeklyStatusDisplay {
     order: number;
     color: string;
     hasFollowUpFields?: boolean;
+    isMultiPick?: boolean;
 }
 
 export interface Season {
@@ -158,3 +160,5 @@ export interface Pick {
     pick: number;
     createdAt: string;
 }
+
+    
