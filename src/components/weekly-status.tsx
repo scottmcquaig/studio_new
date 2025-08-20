@@ -22,16 +22,17 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
     const IconComponent = (LucideIcons as any)[icon] || HelpCircle;
     const safeColor = color || 'text-gray-500';
 
-    if (type === 'HOH') {
-        const hoh = competitions.find(c => c.type === 'HOH');
-        const hohWinner = contestants.find(hg => hg.id === hoh?.winnerId);
+    if (type === 'HOH' || type === 'EVICTION' || type.startsWith('CUSTOM_')) {
+        const event = competitions.find(c => c.type === type);
+        const winner = contestants.find(hg => hg.id === (type === 'EVICTION' ? event?.evictedId : event?.winnerId));
+        
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
                 <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-                {hohWinner ? (
+                {winner ? (
                     <>
-                        <Image src={hohWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(hohWinner, 'full')} width={64} height={64} className={cn("rounded-full border-2", safeColor.replace('text-', 'border-'))} data-ai-hint="portrait person" />
-                        <span className="text-sm">{getContestantDisplayName(hohWinner, 'short')}</span>
+                        <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", safeColor.replace('text-', 'border-'))} data-ai-hint="portrait person" />
+                        <span className="text-sm">{getContestantDisplayName(winner, 'short')}</span>
                     </>
                 ) : (
                     <>
@@ -76,8 +77,8 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
         const renomPlayer = contestants.find(hg => hg.id === pov?.replacementNomId);
 
         return (
-            <div className="flex items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
-                <div className="flex flex-col items-center justify-center flex-grow">
+            <div className="flex items-center justify-center text-center gap-4 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
+                <div className="flex flex-col items-center justify-center">
                     <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
                     {povWinner ? (
                         <>
@@ -91,8 +92,8 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                         </>
                     )}
                 </div>
-                <Separator orientation="vertical" className="h-auto" />
-                <div className="flex flex-col items-start justify-center flex-shrink-0 px-2 space-y-2 w-24">
+                {(pov?.used !== undefined || povWinner) && <Separator orientation="vertical" className="h-auto" />}
+                <div className="flex flex-col items-start justify-center flex-shrink-0 space-y-2 w-24">
                     {pov?.used === true && (
                         <div className="flex flex-col items-start gap-2">
                              <div className="flex items-center gap-2">
@@ -111,12 +112,12 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                     )}
                     {(pov?.used === false || (pov?.used === undefined && povWinner)) && (
                          <div className="flex flex-col items-center justify-center w-full gap-1">
-                            {pov.used === false 
+                            {pov?.used === false 
                                 ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
                                 : <HelpCircle className="h-8 w-8 text-muted-foreground" />
                             }
                             <span className="text-xs text-muted-foreground text-center">
-                                {pov.used === false ? 'Not Used' : 'TBD'}
+                                {pov?.used === false ? 'Not Used' : 'TBD'}
                             </span>
                         </div>
                     )}
@@ -124,45 +125,13 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
             </div>
         );
     }
-    
-    if (type === 'EVICTION') {
-        const eviction = competitions.find(c => c.type === 'EVICTION');
-        const evictedPlayer = contestants.find(hg => hg.id === eviction?.evictedId);
-        return (
-            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
-                <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-                {evictedPlayer ? (
-                    <>
-                        <Image src={evictedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(evictedPlayer, 'full')} width={64} height={64} className={cn("rounded-full border-2", safeColor.replace('text-', 'border-'))} data-ai-hint="portrait person" />
-                        <span className="text-sm">{getContestantDisplayName(evictedPlayer, 'short')}</span>
-                    </>
-                ) : (
-                    <>
-                        <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
-                        <span className="text-sm text-muted-foreground">TBD</span>
-                    </>
-                )}
-            </div>
-        )
-    }
 
-    // Default card for custom types
-    const event = competitions.find(c => c.type === type);
-    const winner = contestants.find(hg => hg.id === event?.winnerId);
+    // Should not be reached if types are correct, but as a fallback
     return (
         <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
             <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-            {winner ? (
-                <>
-                    <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", safeColor.replace('text-', 'border-'))} data-ai-hint="portrait person" />
-                    <span className="text-sm">{getContestantDisplayName(winner, 'short')}</span>
-                </>
-            ) : (
-                <>
-                    <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
-                    <span className="text-sm text-muted-foreground">TBD</span>
-                </>
-            )}
+            <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
+            <span className="text-sm text-muted-foreground">TBD</span>
         </div>
     );
 };
