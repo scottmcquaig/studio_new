@@ -265,45 +265,46 @@ function AdminPage() {
     }));
   };
 
-  const handleLogEvent = async (type: Competition['type']) => {
-    if (!activeSeason || !leagueSettings || !type) return;
+    const handleLogEvent = async (type: Competition['type']) => {
+        if (!activeSeason || !leagueSettings || !type) return;
 
-    const eventToLog = weeklyEventData[type];
-    if (!eventToLog) {
-        toast({ title: "No data to log.", variant: "destructive" });
-        return;
-    }
-    
-    let competitionType = type;
-    // Special handling for evictions to apply pre/post jury logic
-    if (type.includes('EVICT')) {
-        const juryStartWeek = leagueSettings.settings.juryStartWeek;
-        competitionType = juryStartWeek && viewingWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-    }
+        let eventToLog = weeklyEventData[type];
 
-    const existingEvent = weeklyCompetitions.find(c => c.type === type);
-    
-    const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string } = {
-        seasonId: activeSeason.id,
-        week: viewingWeek,
-        type: competitionType,
-        airDate: new Date().toISOString(),
-        ...eventToLog,
-    };
-
-    try {
-        if (existingEvent) {
-            await updateDoc(doc(db, 'competitions', existingEvent.id), dataToSave);
-            toast({ title: `Event updated successfully.` });
-        } else {
-            await addDoc(collection(db, 'competitions'), dataToSave);
-            toast({ title: `Event logged successfully.` });
+        // For new multi-pick events, initialize if it doesn't exist
+        if (!eventToLog) {
+            eventToLog = {}; 
         }
-    } catch (error) {
-        console.error("Error logging event:", error);
-        toast({ title: "Error logging event.", variant: "destructive" });
-    }
-  };
+
+        let competitionType = type;
+        // Special handling for evictions to apply pre/post jury logic
+        if (type.includes('EVICT')) {
+            const juryStartWeek = leagueSettings.settings.juryStartWeek;
+            competitionType = (juryStartWeek && viewingWeek >= juryStartWeek) ? 'EVICT_POST' : 'EVICT_PRE';
+        }
+
+        const existingEvent = weeklyCompetitions.find(c => c.type === type);
+        
+        const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string } = {
+            seasonId: activeSeason.id,
+            week: viewingWeek,
+            type: competitionType,
+            airDate: new Date().toISOString(),
+            ...eventToLog,
+        };
+
+        try {
+            if (existingEvent) {
+                await updateDoc(doc(db, 'competitions', existingEvent.id), dataToSave);
+                toast({ title: `Event updated successfully.` });
+            } else {
+                await addDoc(collection(db, 'competitions'), dataToSave);
+                toast({ title: `Event logged successfully.` });
+            }
+        } catch (error) {
+            console.error("Error logging event:", error);
+            toast({ title: "Error logging event.", variant: "destructive" });
+        }
+    };
 
 
   const [isNewUserDialogOpen, setIsNewUserDialogOpen] = useState(false);
@@ -1512,7 +1513,45 @@ function AdminPage() {
                         </Card>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <Card className="lg:col-span-3">
+                             <Card className="lg:col-span-1">
+                                <CardHeader>
+                                    <CardTitle>Logged Scoring Events</CardTitle>
+                                    <CardDescription>Events logged for Week {viewingWeek}.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {weeklyCompetitions.length > 0 ? (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Event</TableHead>
+                                                    <TableHead>Player(s)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {weeklyCompetitions.map(comp => {
+                                                    const rule = scoringRules.find(r => r.code === comp.type);
+                                                    let players: (Contestant | undefined)[] = [];
+                                                    if (comp.winnerId) players.push(contestants.find(c => c.id === comp.winnerId));
+                                                    if (comp.evictedId) players.push(contestants.find(c => c.id === comp.evictedId));
+                                                    if (comp.nominees) players = comp.nominees.map(id => contestants.find(c => c.id === id));
+
+                                                    return (
+                                                        <TableRow key={comp.id}>
+                                                            <TableCell>{rule?.label || comp.type}</TableCell>
+                                                            <TableCell>
+                                                                {players.map(p => p ? getContestantDisplayName(p, 'short') : '...').join(', ')}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )
+                                                })}
+                                            </TableBody>
+                                        </Table>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground text-center py-4">No events logged for this week.</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+                            <Card className="lg:col-span-2">
                                 <CardHeader>
                                     <CardTitle>Weekly Status Display</CardTitle>
                                     <CardDescription>Customize the event cards shown on the dashboard for Week {viewingWeek}.</CardDescription>
