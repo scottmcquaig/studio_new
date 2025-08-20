@@ -92,8 +92,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                     )}
                 </div>
                 <Separator orientation="vertical" className="h-auto" />
-                <div className="flex flex-col items-start justify-center flex-shrink-0 px-2 space-y-2">
-                    {pov?.used === false && <div className="flex flex-col items-center gap-1"><ShieldOff className="h-8 w-8 text-muted-foreground" /><span className="text-xs text-muted-foreground text-center">Not Used</span></div>}
+                <div className="flex flex-col items-start justify-center flex-shrink-0 px-2 space-y-2 w-24">
                     {pov?.used === true && (
                         <div className="flex flex-col items-start gap-2">
                              <div className="flex items-center gap-2">
@@ -110,7 +109,17 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                             </div>
                         </div>
                     )}
-                    {pov?.used === undefined && povWinner && <div className="flex flex-col items-center gap-1"><HelpCircle className="h-8 w-8 text-muted-foreground" /><span className="text-xs text-muted-foreground text-center">TBD</span></div>}
+                    {(pov?.used === false || (pov?.used === undefined && povWinner)) && (
+                         <div className="flex flex-col items-center justify-center w-full gap-1">
+                            {pov.used === false 
+                                ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
+                                : <HelpCircle className="h-8 w-8 text-muted-foreground" />
+                            }
+                            <span className="text-xs text-muted-foreground text-center">
+                                {pov.used === false ? 'Not Used' : 'TBD'}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
         );
