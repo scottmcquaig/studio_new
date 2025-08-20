@@ -266,7 +266,7 @@ function AdminPage() {
   };
 
   const handleLogEvent = async (type: Competition['type']) => {
-    if (!activeSeason || !leagueSettings) return;
+    if (!activeSeason || !leagueSettings || !type) return;
 
     const eventToLog = weeklyEventData[type];
     if (!eventToLog) {
@@ -276,14 +276,14 @@ function AdminPage() {
     
     let competitionType = type;
     // Special handling for evictions to apply pre/post jury logic
-    if (type === 'EVICT_PRE' || type === 'EVICT_POST') {
-        const juryStartWeek = leagueSettings.settings.juryStartWeek || 99; // Default to a high number if not set
-        competitionType = viewingWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+    if (type.includes('EVICT')) {
+        const juryStartWeek = leagueSettings.settings.juryStartWeek;
+        competitionType = juryStartWeek && viewingWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
     }
 
     const existingEvent = weeklyCompetitions.find(c => c.type === type);
     
-    const dataToSave = {
+    const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string } = {
         seasonId: activeSeason.id,
         week: viewingWeek,
         type: competitionType,
@@ -1386,6 +1386,7 @@ function AdminPage() {
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {weeklyStatusCards.map(card => {
+                                   if (!card.ruleCode) return null;
                                    const rule = scoringRules.find(r => r.code === card.ruleCode);
                                    const isMultiPick = rule?.label.toLowerCase().includes('nominee') || rule?.label.toLowerCase().includes('nomination');
                                    const isEviction = card.ruleCode ? card.ruleCode.includes('EVICT') : false;
@@ -1903,7 +1904,7 @@ function AdminPage() {
                                     <Label>Jury Start Week</Label>
                                     <Input 
                                         type="number" 
-                                        value={editingLeagueDetails?.settings?.juryStartWeek || 0}
+                                        value={editingLeagueDetails?.settings?.juryStartWeek || ''}
                                         onChange={(e) => setEditingLeagueDetails(prev => ({...prev, settings: {...prev?.settings, juryStartWeek: Number(e.target.value)} }))}
                                     />
                                 </div>
