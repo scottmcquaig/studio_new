@@ -240,6 +240,9 @@ function AdminPage() {
   const [viewingWeek, setViewingWeek] = useState(1);
   const [weeklyEventData, setWeeklyEventData] = useState<{ [key: string]: Partial<Competition> }>({});
   const [isDeletingWeekEvents, setIsDeletingWeekEvents] = useState(false);
+  const [competitionToDelete, setCompetitionToDelete] = useState<Competition | null>(null);
+  const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
+  const [newSpecialEventData, setNewSpecialEventData] = useState<{ contestantId: string, ruleCode: string }>({ contestantId: '', ruleCode: '' });
 
 
   const weeklyCompetitions = useMemo(() => 
@@ -269,14 +272,11 @@ function AdminPage() {
         if (!activeSeason || !leagueSettings || !type) return;
 
         let eventToLog = weeklyEventData[type];
-
-        // For new multi-pick events, initialize if it doesn't exist
         if (!eventToLog) {
             eventToLog = {}; 
         }
 
         let competitionType = type;
-        // Special handling for evictions to apply pre/post jury logic
         if (type.includes('EVICT')) {
             const juryStartWeek = leagueSettings.settings.juryStartWeek;
             competitionType = (juryStartWeek && viewingWeek >= juryStartWeek) ? 'EVICT_POST' : 'EVICT_PRE';
@@ -1133,6 +1133,43 @@ function AdminPage() {
             setIsDeletingWeekEvents(false);
         }
     };
+    
+    const handleDeleteCompetition = async () => {
+        if (!competitionToDelete) return;
+        try {
+            await deleteDoc(doc(db, 'competitions', competitionToDelete.id));
+            toast({ title: 'Event deleted successfully.' });
+            setCompetitionToDelete(null);
+        } catch (error) {
+            console.error('Error deleting competition:', error);
+            toast({ title: 'Error deleting event.', variant: 'destructive' });
+        }
+    };
+    
+    const handleLogSpecialEvent = async () => {
+        if (!activeSeason || !newSpecialEventData.contestantId || !newSpecialEventData.ruleCode) {
+            toast({ title: "Contestant and Event must be selected.", variant: "destructive" });
+            return;
+        }
+
+        const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string; winnerId: string } = {
+            seasonId: activeSeason.id,
+            week: viewingWeek,
+            type: newSpecialEventData.ruleCode,
+            winnerId: newSpecialEventData.contestantId,
+            airDate: new Date().toISOString(),
+        };
+
+        try {
+            await addDoc(collection(db, 'competitions'), dataToSave);
+            toast({ title: 'Special event logged successfully.' });
+            setIsSpecialEventDialogOpen(false);
+            setNewSpecialEventData({ contestantId: '', ruleCode: '' });
+        } catch (error) {
+            console.error("Error logging special event:", error);
+            toast({ title: "Error logging special event.", variant: "destructive" });
+        }
+    };
 
 
     if (!currentUser) {
@@ -1522,9 +1559,14 @@ function AdminPage() {
                         
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                              <Card className="lg:col-span-1">
-                                <CardHeader>
-                                    <CardTitle>Logged Scoring Events</CardTitle>
-                                    <CardDescription>Events logged for Week {viewingWeek}.</CardDescription>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle>Logged Scoring Events</CardTitle>
+                                        <CardDescription>Events logged for Week {viewingWeek}.</CardDescription>
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => setIsSpecialEventDialogOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Log Special Event
+                                    </Button>
                                 </CardHeader>
                                 <CardContent>
                                     {weeklyCompetitions.length > 0 ? (
@@ -1534,6 +1576,7 @@ function AdminPage() {
                                                     <TableHead>Event</TableHead>
                                                     <TableHead>Player(s)</TableHead>
                                                     <TableHead className="text-right">Points</TableHead>
+                                                    <TableHead><span className="sr-only">Actions</span></TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -1552,6 +1595,11 @@ function AdminPage() {
                                                             </TableCell>
                                                             <TableCell className="text-right font-mono font-bold">
                                                                 {rule?.points}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCompetitionToDelete(comp)}>
+                                                                    <Trash2 className="h-4 w-4 text-red-500"/>
+                                                                </Button>
                                                             </TableCell>
                                                         </TableRow>
                                                     )
@@ -2326,6 +2374,40 @@ function AdminPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Dialog to Log Special Event */}
+        <Dialog open={isSpecialEventDialogOpen} onOpenChange={setIsSpecialEventDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Log Special Event</DialogTitle>
+                    <DialogDescription>Log a one-off scoring event for any contestant.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                        <Label>Contestant</Label>
+                        <Select value={newSpecialEventData.contestantId} onValueChange={(val) => setNewSpecialEventData(prev => ({...prev, contestantId: val}))}>
+                            <SelectTrigger><SelectValue placeholder="Select a contestant..."/></SelectTrigger>
+                            <SelectContent>
+                                {activeContestants.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Scoring Rule</Label>
+                        <Select value={newSpecialEventData.ruleCode} onValueChange={(val) => setNewSpecialEventData(prev => ({...prev, ruleCode: val}))}>
+                            <SelectTrigger><SelectValue placeholder="Select a rule..."/></SelectTrigger>
+                            <SelectContent>
+                                {scoringRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label} ({rule.points})</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleLogSpecialEvent}>Log Event</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
         
       {/* Dialog for Add Rule */}
       <AddRuleDialog 
@@ -2445,11 +2527,25 @@ function AdminPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+        <AlertDialog open={!!competitionToDelete} onOpenChange={(open) => !open && setCompetitionToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this event?</AlertDialogTitle>
+                    <AlertDialogDescription>This action cannot be undone. This will permanently delete this logged event.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteCompetition} className="bg-red-600 hover:bg-red-700">Delete Event</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
     </div>
   );
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+    
 
     
