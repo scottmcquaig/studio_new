@@ -141,29 +141,13 @@ function DashboardPage() {
             }
         };
         
-        if (comp.winnerId) {
-            let code = '';
-            if (comp.type === 'HOH') code = 'HOH_WIN';
-            else if (comp.type === 'VETO') code = 'VETO_WIN';
-            else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
-            else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
-            else if (comp.type.startsWith('CUSTOM_')) code = comp.type; // For custom events
-            if (code) processEvent(comp.winnerId, code);
+        const rule = rules.find(r => r.code === comp.type);
+        if (!rule) return;
 
-            if (comp.type === 'VETO' && comp.used) {
-                processEvent(comp.winnerId, 'VETO_USED');
-            }
-        }
+        if (comp.winnerId) processEvent(comp.winnerId, comp.type);
+        if (comp.evictedId) processEvent(comp.evictedId, comp.type);
+        if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
 
-        if (comp.type === 'NOMINATIONS' && comp.nominees) {
-            comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
-        }
-        
-        if (comp.type === 'EVICTION' && comp.evictedId) {
-            const juryStartWeek = activeLeague?.settings.juryStartWeek;
-            const eventCode = juryStartWeek && comp.week >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
-            processEvent(comp.evictedId, eventCode);
-        }
     });
     return score;
   };
@@ -176,7 +160,7 @@ function DashboardPage() {
       const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
       return { ...team, total_score };
     });
-  }, [teams, scoringRules, picks, competitions, activeLeague]);
+  }, [teams, scoringRules, picks, competitions]);
 
   const sortedTeams = useMemo(() => {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
@@ -190,28 +174,18 @@ function DashboardPage() {
     contestants.forEach(c => weeklyScores[c.id] = { contestant: c, score: 0 });
 
     currentWeekEvents.forEach(comp => {
-        const processEvent = (contestantId: string, eventCode: string) => {
-            const rule = scoringRules.rules.find(r => r.code === eventCode);
-            if (rule && weeklyScores[contestantId] !== undefined) {
+        const rule = scoringRules.rules.find(r => r.code === comp.type);
+        if (!rule) return;
+
+        const processEvent = (contestantId: string) => {
+            if (weeklyScores[contestantId] !== undefined) {
                 weeklyScores[contestantId].score += rule.points;
             }
         };
-
-        if (comp.winnerId) {
-            let code = '';
-            if (comp.type === 'HOH') code = 'HOH_WIN';
-            else if (comp.type === 'VETO') code = 'VETO_WIN';
-            else if (comp.type === 'BLOCK_BUSTER') code = 'BLOCK_BUSTER_SAFE';
-            else if (comp.type === 'SPECIAL_EVENT') code = comp.specialEventCode || '';
-            if (code) processEvent(comp.winnerId, code);
-
-            if (comp.type === 'VETO' && comp.used) {
-                processEvent(comp.winnerId, 'VETO_USED');
-            }
-        }
-        if (comp.type === 'NOMINATIONS' && comp.nominees) {
-            comp.nominees.forEach(nomId => processEvent(nomId, 'NOMINATED'));
-        }
+        
+        if(comp.winnerId) processEvent(comp.winnerId);
+        if(comp.evictedId) processEvent(comp.evictedId);
+        if(comp.nominees) comp.nominees.forEach(processEvent);
     });
     
     const movers = Object.values(weeklyScores)
@@ -248,42 +222,28 @@ function DashboardPage() {
   }, [contestants, scoringRules, currentWeekEvents]);
   
   const weeklyActivity = useMemo(() => {
-    if (!scoringRules?.rules || !contestants.length) return [];
+    if (!scoringRules?.rules || !contestants.length || !currentWeekEvents.length) return [];
     
     const activities: any[] = [];
     currentWeekEvents.forEach(event => {
-        if (event.type === 'HOH' && event.winnerId) {
-            const player = contestants.find(c => c.id === event.winnerId);
-            const rule = scoringRules.rules.find(r => r.code === 'HOH_WIN');
-            if(player && rule) activities.push({
-                player,
-                description: `${getContestantDisplayName(player, 'full')} won Head of Household.`,
-                points: rule.points,
-                type: 'HOH Win'
-            });
-        }
-        if (event.type === 'NOMINATIONS' && event.nominees) {
-            event.nominees.forEach(nomId => {
-                const player = contestants.find(c => c.id === nomId);
-                const rule = scoringRules.rules.find(r => r.code === 'NOMINATED');
-                if(player && rule) activities.push({
+        const rule = scoringRules.rules.find(r => r.code === event.type);
+        if (!rule) return;
+
+        const processPlayer = (playerId: string) => {
+            const player = contestants.find(c => c.id === playerId);
+            if (player) {
+                activities.push({
                     player,
-                    description: `${getContestantDisplayName(player, 'full')} was nominated for eviction.`,
+                    description: `${getContestantDisplayName(player, 'full')} ${rule.label}.`,
                     points: rule.points,
-                    type: 'Nomination'
+                    type: rule.label,
                 });
-            });
-        }
-        if (event.type === 'VETO' && event.winnerId) {
-            const player = contestants.find(c => c.id === event.winnerId);
-            const rule = scoringRules.rules.find(r => r.code === 'VETO_WIN');
-            if(player && rule) activities.push({
-                player,
-                description: `${getContestantDisplayName(player, 'full')} won the Power of Veto.`,
-                points: rule.points,
-                type: 'Veto Win'
-            });
-        }
+            }
+        };
+
+        if (event.winnerId) processPlayer(event.winnerId);
+        if (event.evictedId) processPlayer(event.evictedId);
+        if (event.nominees) event.nominees.forEach(processPlayer);
     });
     return activities;
   }, [currentWeekEvents, contestants, scoringRules]);

@@ -268,29 +268,36 @@ function AdminPage() {
     }));
   };
 
-    const handleLogEvent = async (type: Competition['type']) => {
-        if (!activeSeason || !leagueSettings || !type) return;
+    const handleLogEvent = async (ruleCode: string) => {
+        if (!activeSeason || !leagueSettings || !ruleCode) return;
 
-        let eventToLog = weeklyEventData[type];
-        if (!eventToLog) {
-            eventToLog = {}; 
-        }
+        let eventToLog = weeklyEventData[ruleCode] || {};
 
-        let competitionType = type;
-        if (type.includes('EVICT')) {
+        let competitionType = ruleCode;
+        if (ruleCode.includes('EVICT')) {
             const juryStartWeek = leagueSettings.settings.juryStartWeek;
             competitionType = (juryStartWeek && viewingWeek >= juryStartWeek) ? 'EVICT_POST' : 'EVICT_PRE';
         }
 
-        const existingEvent = weeklyCompetitions.find(c => c.type === type);
+        const existingEvent = weeklyCompetitions.find(c => c.type === ruleCode);
         
         const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string } = {
             seasonId: activeSeason.id,
             week: viewingWeek,
-            type: competitionType,
+            type: ruleCode, // Always save the original ruleCode as the type
             airDate: new Date().toISOString(),
             ...eventToLog,
         };
+        
+        // Handle eviction-specific side effects
+        if (ruleCode.includes('EVICT') && dataToSave.evictedId) {
+            const contestantRef = doc(db, 'contestants', dataToSave.evictedId);
+            await updateDoc(contestantRef, {
+                status: 'evicted',
+                evictedDay: (viewingWeek * 7) - 1, // Approximate day
+            });
+        }
+
 
         try {
             if (existingEvent) {
@@ -569,7 +576,7 @@ function AdminPage() {
         const currentWeekKey = `week${activeSeason.currentWeek}`;
         const defaultDisplay = [
             { ruleCode: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
-            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
+            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500', isMultiPick: true },
             { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUpFields: true },
             { ruleCode: 'EVICT_PRE', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];

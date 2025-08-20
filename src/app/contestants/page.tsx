@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick } from '@/lib/data';
+import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick, SeasonWeeklyStatusDisplay } from '@/lib/data';
 import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck, TriangleAlert, Ban, Blocks, Skull } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { AppHeader } from '@/components/app-header';
@@ -89,11 +89,26 @@ function ContestantsPage() {
       return competitions.filter(c => c.week === activeSeason.currentWeek);
   }, [competitions, activeSeason]);
 
+  const weeklyStatusDisplay = useMemo(() => {
+    if (!activeSeason) return [];
+    const weekKey = `week${activeSeason.currentWeek}`;
+    return activeSeason.weeklyStatusDisplay?.[weekKey] || [];
+  }, [activeSeason]);
+
+  const hohEvent = useMemo(() => {
+      const hohCard = weeklyStatusDisplay.find(c => c.title.toUpperCase().includes('HOH'));
+      return hohCard ? weekEvents.find(e => e.type === hohCard.ruleCode) : undefined;
+  }, [weekEvents, weeklyStatusDisplay]);
   
-  const hoh = useMemo(() => weekEvents.find(c => c.type === 'HOH'), [weekEvents]);
-  const pov = useMemo(() => weekEvents.find(c => c.type === 'VETO'), [weekEvents]);
-  const noms = useMemo(() => weekEvents.find(c => c.type === 'NOMINATIONS'), [weekEvents]);
-  const blockBuster = useMemo(() => weekEvents.find(c => c.type === 'BLOCK_BUSTER'), [weekEvents]);
+  const povEvent = useMemo(() => {
+      const povCard = weeklyStatusDisplay.find(c => c.title.toUpperCase().includes('VETO'));
+      return povCard ? weekEvents.find(e => e.type === povCard.ruleCode) : undefined;
+  }, [weekEvents, weeklyStatusDisplay]);
+
+  const nomEvent = useMemo(() => {
+      const nomCard = weeklyStatusDisplay.find(c => c.isMultiPick);
+      return nomCard ? weekEvents.find(e => e.type === nomCard.ruleCode) : undefined;
+  }, [weekEvents, weeklyStatusDisplay]);
 
   type ContestantWithStats = Contestant & {
     teamName: string;
@@ -109,21 +124,39 @@ function ContestantsPage() {
       const team = teams.find(t => t.id === pick?.teamId);
       
       let totalPoints = 0;
-      const hohWins = competitions.filter(c => c.type === 'HOH' && c.winnerId === hg.id).length;
-      const vetoWins = competitions.filter(c => c.type === 'VETO' && c.winnerId === hg.id).length;
-      const nomCount = competitions.filter(c => c.type === 'NOMINATIONS' && c.nominees?.includes(hg.id)).length;
-      
-      if (scoringRules?.rules.length) {
-          totalPoints += hohWins * (scoringRules.rules.find(r => r.code === 'HOH_WIN')?.points || 0);
-          totalPoints += vetoWins * (scoringRules.rules.find(r => r.code === 'VETO_WIN')?.points || 0);
-          totalPoints += nomCount * (scoringRules.rules.find(r => r.code === 'NOMINATED')?.points || 0);
-      }
+      let totalWins = 0;
+      let totalNoms = 0;
 
+      if (scoringRules?.rules.length) {
+        competitions.forEach(comp => {
+            if (comp.winnerId === hg.id) {
+                const rule = scoringRules.rules.find(r => r.code === comp.type);
+                if (rule && rule.points > 0) {
+                   totalWins += 1;
+                   totalPoints += rule.points;
+                }
+            }
+            if (comp.nominees?.includes(hg.id)) {
+                const rule = scoringRules.rules.find(r => r.code === comp.type);
+                if (rule && rule.points < 0) {
+                    totalNoms += 1;
+                    totalPoints += rule.points;
+                }
+            }
+             if (comp.evictedId === hg.id) {
+                const rule = scoringRules.rules.find(r => r.code === comp.type);
+                if (rule) {
+                    totalPoints += rule.points;
+                }
+            }
+        });
+      }
+      
       return {
         ...hg,
         teamName: team?.name || 'Unassigned',
-        totalWins: hohWins + vetoWins,
-        totalNoms: nomCount,
+        totalWins: totalWins,
+        totalNoms: totalNoms,
         totalPoints: totalPoints,
         evictionWeek: hg.evictedDay ? Math.ceil(hg.evictedDay / 7) : undefined,
       };
@@ -138,24 +171,24 @@ function ContestantsPage() {
         return (b.evictedDay || 0) - (a.evictedDay || 0); 
       }
 
-      const aIsHoh = a.id === hoh?.winnerId;
-      const bIsHoh = b.id === hoh?.winnerId;
+      const aIsHoh = a.id === hohEvent?.winnerId;
+      const bIsHoh = b.id === hohEvent?.winnerId;
       if (aIsHoh) return -1;
       if (bIsHoh) return 1;
 
-      const aIsPov = a.id === pov?.winnerId;
-      const bIsPov = b.id === pov?.winnerId;
+      const aIsPov = a.id === povEvent?.winnerId;
+      const bIsPov = b.id === povEvent?.winnerId;
       if (aIsPov) return -1;
       if (bIsPov) return 1;
 
-      const aIsNom = noms?.nominees?.includes(a.id);
-      const bIsNom = noms?.nominees?.includes(b.id);
+      const aIsNom = nomEvent?.nominees?.includes(a.id);
+      const bIsNom = nomEvent?.nominees?.includes(b.id);
       if (aIsNom && !bIsNom) return -1;
       if (!aIsNom && bIsNom) return 1;
 
       return getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'));
     });
-  }, [contestantStats, hoh, pov, noms]);
+  }, [contestantStats, hohEvent, povEvent, nomEvent]);
 
   if (!activeLeague || !contestants.length || !activeSeason) {
     return (
@@ -175,10 +208,9 @@ function ContestantsPage() {
           <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedContestant(null)}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedContestants.map(hg => {
-                const isHoh = hg.id === hoh?.winnerId;
-                const isPov = hg.id === pov?.winnerId;
-                const isNom = noms?.nominees?.includes(hg.id);
-                const isBlockBuster = hg.id === blockBuster?.winnerId;
+                const isHoh = hg.id === hohEvent?.winnerId;
+                const isPov = hg.id === povEvent?.winnerId;
+                const isNom = nomEvent?.nominees?.includes(hg.id);
                 
                 return (
                 <DialogTrigger key={hg.id} asChild onClick={() => setSelectedContestant(hg)}>
@@ -202,9 +234,9 @@ function ContestantsPage() {
                         <Badge 
                           variant={hg.status === 'active' ? 'default' : 'destructive'} 
                           className={cn('h-fit', hg.status === 'active' && 'bg-green-600 text-white')}>
-                          {hg.status === 'active' ? 'Active' : 'Evicted'}
+                          {hg.status === 'active' ? 'Active' : hg.status.charAt(0).toUpperCase() + hg.status.slice(1)}
                         </Badge>
-                        {hg.status === 'evicted' && hg.evictionWeek && (
+                        {hg.status !== 'active' && hg.evictionWeek && (
                             <Badge variant="secondary" className="bg-gray-700 text-white">
                               Week {hg.evictionWeek}
                             </Badge>
@@ -212,7 +244,6 @@ function ContestantsPage() {
                           <div className="flex flex-wrap justify-end gap-1 mt-1">
                               {hg.status === 'active' && isHoh && <Badge className="bg-purple-600 text-white hover:bg-purple-700">HOH</Badge>}
                               {hg.status === 'active' && isPov && !isHoh && <Badge className="bg-amber-500 text-white hover:bg-amber-600">Veto</Badge>}
-                              {hg.status === 'active' && isBlockBuster && <Badge className="bg-sky-500 text-white hover:bg-sky-600">BB Winner</Badge>}
                               {hg.status === 'active' && isNom && <Badge variant="destructive" className="bg-red-500 hover:bg-red-600">Nominee</Badge>}
                           </div>
                       </div>
