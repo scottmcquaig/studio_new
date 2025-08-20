@@ -57,7 +57,7 @@ const colorSelection = [
 ];
 
 const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPECIAL_POWER'];
-const standardEventTypes = ['HOH', 'VETO', 'EVICTION']; // Removed 'NOMINATIONS' as it has multiple winners
+const standardEventTypes = ['HOH', 'VETO', 'EVICTION', 'NOMINATIONS']; 
 
 const USERS_PER_PAGE = 5;
 const ITEMS_PER_PAGE = 5;
@@ -253,12 +253,7 @@ function AdminPage() {
   useEffect(() => {
     const data: { [key: string]: Partial<Competition> } = {};
     weeklyCompetitions.forEach(comp => {
-        if (standardEventTypes.includes(comp.type) || comp.type === 'SPECIAL_EVENT') {
-            data[comp.type] = comp;
-        } else {
-            // Handle custom event types from status display
-            data[comp.type] = comp;
-        }
+      data[comp.type] = comp;
     });
     setWeeklyEventData(data);
   }, [weeklyCompetitions]);
@@ -274,7 +269,7 @@ function AdminPage() {
   };
 
   const handleLogEvent = async (type: Competition['type']) => {
-    if (!activeSeason) return;
+    if (!activeSeason || !leagueSettings) return;
 
     const eventToLog = weeklyEventData[type];
     if (!eventToLog) {
@@ -282,15 +277,29 @@ function AdminPage() {
         return;
     }
     
-    const existingEvent = weeklyCompetitions.find(c => c.type === type);
+    let competitionType = type;
+    if (type === 'EVICTION') {
+        const juryStartWeek = leagueSettings.settings.juryStartWeek || 99; // Default to a high number if not set
+        competitionType = viewingWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
+    }
+
+    const existingEvent = weeklyCompetitions.find(c => c.type === competitionType || c.type === type);
     
     const dataToSave = {
         seasonId: activeSeason.id,
         week: viewingWeek,
-        type,
-        airDate: new Date().toISOString(), // Or a date picker
+        type: competitionType,
+        airDate: new Date().toISOString(),
         ...eventToLog,
     };
+     // Clear out evictedId if it's not an eviction event
+    if (type !== 'EVICTION') {
+        delete (dataToSave as Partial<Competition>).evictedId;
+    } else {
+        // Ensure winnerId isn't carried over to eviction events
+        delete (dataToSave as Partial<Competition>).winnerId;
+    }
+
 
     try {
         if (existingEvent) {
@@ -350,21 +359,16 @@ function AdminPage() {
   const [teamOwnerEdits, setTeamOwnerEdits] = useState<{ [key: string]: string[] }>({});
 
   const initialView = searchParams.get('view');
-  const defaultActiveTab = useMemo(() => {
-    const lastTab = sessionStorage.getItem('adminLastTab');
-    if (lastTab) return lastTab;
+  const [activeTab, setActiveTab] = useState('events');
 
-    if (currentUser?.role === 'site_admin' && initialView === 'site') {
-      return 'site';
-    }
-    if (manageableLeagues.length > 0) {
-      return 'events';
-    }
-    return 'site';
-  }, [currentUser, initialView, manageableLeagues]);
-  
-  const [activeTab, setActiveTab] = useState(defaultActiveTab);
-  
+  useEffect(() => {
+    const lastTab = sessionStorage.getItem('adminLastTab');
+    const defaultTab = lastTab 
+      ? lastTab
+      : (currentUser?.role === 'site_admin' && initialView === 'site' ? 'site' : (manageableLeagues.length > 0 ? 'events' : 'site'));
+    setActiveTab(defaultTab);
+  }, [initialView, currentUser, manageableLeagues]);
+
   useEffect(() => {
     sessionStorage.setItem('adminLastTab', activeTab);
   }, [activeTab]);
@@ -382,7 +386,6 @@ function AdminPage() {
     // Weekly status display state
     const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<EditableSeasonWeeklyStatusDisplay[]>([]);
     const [isAddStatusCardOpen, setIsAddStatusCardOpen] = useState(false);
-    const availableEventTypes: Competition['type'][] = ['HOH', 'VETO', 'EVICTION', 'CUSTOM'];
     const [newStatusCard, setNewStatusCard] = useState<Partial<SeasonWeeklyStatusDisplay>>({ title: '', icon: 'Trophy', type: 'CUSTOM' });
 
 
@@ -602,14 +605,6 @@ function AdminPage() {
         setScoringRuleSet(null);
     }
   }, [db, leagueSettings]);
-
-  useEffect(() => {
-    const lastTab = sessionStorage.getItem('adminLastTab');
-    const defaultTab = lastTab 
-      ? lastTab
-      : (currentUser?.role === 'site_admin' && initialView === 'site' ? 'site' : (manageableLeagues.length > 0 ? 'events' : 'site'));
-    setActiveTab(defaultTab);
-  }, [initialView, currentUser, manageableLeagues]);
   
   const handleUpdateLeagueDetails = async () => {
       if (!selectedLeagueId || !editingLeagueDetails) {
@@ -1242,8 +1237,8 @@ function AdminPage() {
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="sticky top-[57px] z-20 -mx-4 sm:-mx-6 bg-background/95 px-4 sm:px-6 py-2 backdrop-blur-sm border-b">
-                    <div className="flex w-full items-center justify-between">
+                <div className="sticky top-[57px] z-20 bg-background/95 py-2 backdrop-blur-sm border-b">
+                    <div className="flex w-full items-center justify-between px-4 sm:px-6">
                         {manageableLeagues.length > 0 && activeTab !== 'site' && (
                              <TabsList>
                                 <TabsTrigger value="events">Weekly Events</TabsTrigger>
@@ -1466,7 +1461,7 @@ function AdminPage() {
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {weeklyStatusCards.map(card => {
-                                   if (card.type === 'NOMINATED') { // Special handling for nominations
+                                   if (card.type === 'NOMINATIONS' || card.type === 'NOMS') { // Special handling for nominations
                                         return (
                                             <div key={card._id} className="space-y-4 p-4 border rounded-lg">
                                                 <Label className="font-semibold">{card.title}</Label>
@@ -1510,21 +1505,21 @@ function AdminPage() {
                                        return (
                                             <div key={card._id} className="space-y-4 p-4 border rounded-lg">
                                                 <Label className="font-semibold">{card.title}</Label>
-                                                <Select value={weeklyEventData[card.type]?.winnerId} onValueChange={val => handleEventChange(card.type, 'winnerId', val)}>
+                                                <Select value={weeklyEventData[card.type]?.winnerId || ''} onValueChange={val => handleEventChange(card.type, 'winnerId', val)}>
                                                     <SelectTrigger><SelectValue placeholder="Select winner..."/></SelectTrigger>
                                                     <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                 </Select>
                                                 <div className="flex items-center space-x-2">
-                                                    <Switch id="veto-used" checked={weeklyEventData[card.type]?.used} onCheckedChange={val => handleEventChange(card.type, 'used', val)} />
+                                                    <Switch id="veto-used" checked={!!weeklyEventData[card.type]?.used} onCheckedChange={val => handleEventChange(card.type, 'used', val)} />
                                                     <Label htmlFor="veto-used">Veto Used?</Label>
                                                 </div>
                                                 {weeklyEventData[card.type]?.used && (
                                                     <>
-                                                        <Select value={weeklyEventData[card.type]?.usedOnId} onValueChange={val => handleEventChange(card.type, 'usedOnId', val)}>
+                                                        <Select value={weeklyEventData[card.type]?.usedOnId || ''} onValueChange={val => handleEventChange(card.type, 'usedOnId', val)}>
                                                             <SelectTrigger><SelectValue placeholder="Used on..."/></SelectTrigger>
                                                             <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                         </Select>
-                                                        <Select value={weeklyEventData[card.type]?.replacementNomId} onValueChange={val => handleEventChange(card.type, 'replacementNomId', val)}>
+                                                        <Select value={weeklyEventData[card.type]?.replacementNomId || ''} onValueChange={val => handleEventChange(card.type, 'replacementNomId', val)}>
                                                             <SelectTrigger><SelectValue placeholder="Replacement..."/></SelectTrigger>
                                                             <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                         </Select>
@@ -1534,11 +1529,11 @@ function AdminPage() {
                                             </div>
                                        )
                                    } else { // Handle HOH, EVICTION, and CUSTOM
-                                       const field: keyof Competition = card.type === 'EVICTED' ? 'evictedId' : 'winnerId';
+                                       const field: keyof Competition = card.type === 'EVICTION' ? 'evictedId' : 'winnerId';
                                        return (
                                           <div key={card._id} className="space-y-4 p-4 border rounded-lg">
                                             <Label className="font-semibold">{card.title}</Label>
-                                            <Select value={weeklyEventData[card.type]?.[field]} onValueChange={val => handleEventChange(card.type, field, val)}>
+                                            <Select value={weeklyEventData[card.type]?.[field] || ''} onValueChange={val => handleEventChange(card.type, field, val)}>
                                                 <SelectTrigger><SelectValue placeholder={`Select ${leagueSettings?.contestantTerm?.singular || 'Contestant'}...`}/></SelectTrigger>
                                                 <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -1995,6 +1990,16 @@ function AdminPage() {
                                         type="number" 
                                         value={editingLeagueDetails?.settings?.draftRounds || 0}
                                         onChange={(e) => setEditingLeagueDetails(prev => ({...prev, settings: {...prev?.settings, draftRounds: Number(e.target.value)} }))}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-1">
+                                    <Label>Jury Start Week</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={editingLeagueDetails?.settings?.juryStartWeek || 0}
+                                        onChange={(e) => setEditingLeagueDetails(prev => ({...prev, settings: {...prev?.settings, juryStartWeek: Number(e.target.value)} }))}
                                     />
                                 </div>
                             </div>
@@ -2530,7 +2535,3 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
-
-    
-
-    
