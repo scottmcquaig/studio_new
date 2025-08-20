@@ -184,3 +184,5 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
         </Card>
     );
 }
+
+    

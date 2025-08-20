@@ -1,4 +1,3 @@
-
 // This file is used to safelist Tailwind CSS classes that are generated dynamically.
 // By including these class names, we ensure that Tailwind's JIT compiler
 // includes them in the final CSS build, even if they aren't statically visible in the code.
@@ -44,3 +43,5 @@ export const tailwindColorSafelist = [
     // Rose
     'text-rose-500', 'border-rose-500', 'bg-rose-500',
 ];
+
+    
