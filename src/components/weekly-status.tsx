@@ -18,14 +18,18 @@ interface WeeklyStatusProps {
 }
 
 
-const EventCard = ({ type, title, icon, color, competitions, contestants }: { type: SeasonWeeklyStatusDisplay['type'], title: string, icon: string, color: string, competitions: Competition[], contestants: Contestant[] }) => {
+const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStatusDisplay, competitions: Competition[], contestants: Contestant[] }) => {
+    const { ruleCode, title, icon, color, hasFollowUpFields } = card;
     const IconComponent = (LucideIcons as any)[icon] || HelpCircle;
     const safeColor = color || 'text-gray-500';
     const borderColor = safeColor.replace('text-', 'border-');
 
-    if (type === 'HOH_WIN' || type === 'EVICTED' || type.startsWith('CUSTOM_')) {
-        const event = competitions.find(c => c.type === (type === 'EVICTED' ? 'EVICTION' : type));
-        const winner = contestants.find(hg => hg.id === (type === 'EVICTED' ? event?.evictedId : event?.winnerId));
+    const event = competitions.find(c => c.type === ruleCode);
+    
+    // Logic for single-winner events (HOH, Eviction, simple custom events)
+    if (!hasFollowUpFields && !ruleCode.toLowerCase().includes('nom')) {
+        const isEviction = ruleCode.includes('EVICT');
+        const winner = contestants.find(hg => hg.id === (isEviction ? event?.evictedId : event?.winnerId));
         
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
@@ -45,15 +49,15 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
         );
     }
     
-    if (type === 'NOMINATED') {
-        const noms = competitions.find(c => c.type === type);
-        const nomWinners = contestants.filter(hg => noms?.nominees?.includes(hg.id));
+    // Logic for nomination-style events (multi-pick)
+    if (ruleCode.toLowerCase().includes('nom')) {
+        const nominees = contestants.filter(hg => event?.nominees?.includes(hg.id));
         return (
              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
                 <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
                 <div className="flex items-center justify-center gap-2 min-h-[76px]">
-                    {nomWinners.length > 0 ? (
-                        nomWinners.map(nom => (
+                    {nominees.length > 0 ? (
+                        nominees.map(nom => (
                             <div key={nom.id} className="flex flex-col items-center gap-1">
                                 <Image src={nom.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(nom, 'full')} width={48} height={48} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
                                 <span className="text-xs">{getContestantDisplayName(nom, 'short')}</span>
@@ -66,25 +70,25 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                         </>
                     )}
                 </div>
-                {nomWinners.length === 0 && <span className="text-sm text-muted-foreground -mt-2">TBD</span>}
+                {nominees.length === 0 && <span className="text-sm text-muted-foreground -mt-2">TBD</span>}
             </div>
         );
     }
     
-    if (type === 'VETO_WIN') {
-        const pov = competitions.find(c => c.type === 'VETO');
-        const povWinner = contestants.find(hg => hg.id === pov?.winnerId);
-        const savedPlayer = contestants.find(hg => hg.id === pov?.usedOnId);
-        const renomPlayer = contestants.find(hg => hg.id === pov?.replacementNomId);
+    // Logic for complex events with follow-up fields (like Veto)
+    if (hasFollowUpFields) {
+        const winner = contestants.find(hg => hg.id === event?.winnerId);
+        const savedPlayer = contestants.find(hg => hg.id === event?.usedOnId);
+        const renomPlayer = contestants.find(hg => hg.id === event?.replacementNomId);
 
         return (
             <div className="flex items-center justify-center text-center gap-4 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
                 <div className="flex flex-col items-center justify-center">
                     <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-                    {povWinner ? (
+                    {winner ? (
                         <>
-                            <Image src={povWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(povWinner, 'full')} width={64} height={64} className={cn("rounded-full border-2 mt-2", borderColor)} data-ai-hint="portrait person" />
-                            <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
+                            <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2 mt-2", borderColor)} data-ai-hint="portrait person" />
+                            <span className="text-sm mt-1">{getContestantDisplayName(winner, 'short')}</span>
                         </>
                     ) : (
                         <>
@@ -93,9 +97,9 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                         </>
                     )}
                 </div>
-                {povWinner && <Separator orientation="vertical" className="h-auto" />}
+                {winner && <Separator orientation="vertical" className="h-auto" />}
                 <div className="flex flex-col items-start justify-center flex-shrink-0 space-y-2 w-24">
-                    {pov?.used === true && (
+                    {event?.used === true && (
                         <div className="flex flex-col items-start gap-2">
                              <div className="flex items-center gap-2">
                                 {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
@@ -111,14 +115,14 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                             </div>
                         </div>
                     )}
-                    {(pov?.used === false || (pov?.used === undefined && povWinner)) && (
+                    {(event?.used === false || (event?.used === undefined && winner)) && (
                          <div className="flex flex-col items-start justify-center w-full gap-1">
-                            {pov?.used === false 
+                            {event?.used === false 
                                 ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
                                 : <HelpCircle className="h-8 w-8 text-muted-foreground" />
                             }
                             <span className="text-xs text-muted-foreground text-left">
-                                {pov?.used === false ? 'Not Used' : 'TBD'}
+                                {event?.used === false ? 'Not Used' : 'TBD'}
                             </span>
                         </div>
                     )}
@@ -127,7 +131,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
         );
     }
 
-    // Should not be reached if types are correct, but as a fallback
+    // Fallback for any unhandled card types
     return (
         <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
             <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
@@ -151,10 +155,10 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
         
         // Default config if none is set for the week
         return [
-            { type: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
-            { type: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
-            { type: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500' },
-            { type: 'EVICTED', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
+            { ruleCode: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
+            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
+            { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUpFields: true },
+            { ruleCode: 'EVICT_PRE', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];
     }, [activeSeason, week]);
 
@@ -172,10 +176,7 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
                {displayConfig.map(item => (
                    <EventCard 
                         key={item.order}
-                        type={item.type}
-                        title={item.title}
-                        icon={item.icon}
-                        color={item.color}
+                        card={item}
                         competitions={competitions}
                         contestants={contestants}
                    />
@@ -184,5 +185,3 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
         </Card>
     );
 }
-
-    

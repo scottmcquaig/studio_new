@@ -1,11 +1,13 @@
 
 
+
 export interface SeasonWeeklyStatusDisplay {
-    type: 'HOH' | 'NOMINATIONS' | 'VETO' | 'EVICTION' | 'CUSTOM' | string;
+    ruleCode: string;
     title: string;
     icon: string;
     order: number;
     color: string;
+    hasFollowUpFields?: boolean;
 }
 
 export interface Season {
@@ -50,7 +52,7 @@ export interface Competition {
     id: string;
     seasonId: string;
     week: number;
-    type: 'HOH' | 'VETO' | 'EVICTION' | 'NOMINATIONS' | 'SPECIAL_EVENT' | 'CUSTOM' | string;
+    type: string;
     name?: string;
     winnerId?: string;
     airDate: string;
@@ -64,7 +66,6 @@ export interface Competition {
     day?: number;
     nominees?: string[];
     grantedSafety?: boolean;
-    specialEventCode?: string;
 }
 
 export interface LeagueScoringBreakdownCategory {

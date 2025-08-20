@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -45,7 +44,7 @@ import { BB_RULES_DEFAULT } from '@/lib/constants';
 const iconSelection = [
     'Crown', 'Ban', 'Gem', 'Gift', 'HeartPulse', 'KeyRound', 'ShieldPlus', 'Trophy',
     'Medal', 'DollarSign', 'Rocket', 'Cctv', 'Skull', 'CloudSun', 'XCircle', 'BrickWall',
-    'Swords', 'Handshake', 'Angry', 'Smile', 'Star', 'TrendingUp', 'TrendingDown'
+    'Swords', 'Handshake', 'Angry', 'Smile', 'Star', 'TrendingUp', 'TrendingDown', 'ShieldAlert',
 ] as const;
 
 const colorSelection = [
@@ -55,9 +54,6 @@ const colorSelection = [
     'bg-indigo-500', 'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500',
     'bg-pink-500', 'bg-rose-500'
 ];
-
-const specialEventRuleCodes = ['SAVED', 'POWER', 'PUNISH', 'PENALTY_RULE', 'SPECIAL_POWER'];
-const standardEventTypes = ['HOH', 'VETO', 'EVICTION', 'NOMINATIONS']; 
 
 const USERS_PER_PAGE = 5;
 const ITEMS_PER_PAGE = 5;
@@ -278,12 +274,13 @@ function AdminPage() {
     }
     
     let competitionType = type;
-    if (type === 'EVICTION') {
+    // Special handling for evictions to apply pre/post jury logic
+    if (type === 'EVICT_PRE' || type === 'EVICT_POST') {
         const juryStartWeek = leagueSettings.settings.juryStartWeek || 99; // Default to a high number if not set
         competitionType = viewingWeek >= juryStartWeek ? 'EVICT_POST' : 'EVICT_PRE';
     }
 
-    const existingEvent = weeklyCompetitions.find(c => c.type === competitionType || c.type === type);
+    const existingEvent = weeklyCompetitions.find(c => c.type === type);
     
     const dataToSave = {
         seasonId: activeSeason.id,
@@ -292,14 +289,6 @@ function AdminPage() {
         airDate: new Date().toISOString(),
         ...eventToLog,
     };
-     // Clear out evictedId if it's not an eviction event
-    if (type !== 'EVICTION') {
-        delete (dataToSave as Partial<Competition>).evictedId;
-    } else {
-        // Ensure winnerId isn't carried over to eviction events
-        delete (dataToSave as Partial<Competition>).winnerId;
-    }
-
 
     try {
         if (existingEvent) {
@@ -320,7 +309,6 @@ function AdminPage() {
   const [isNewLeagueDialogOpen, setIsNewLeagueDialogOpen] = useState(false);
   const [isManageAdminsDialogOpen, setIsManageAdminsDialogOpen] = useState(false);
   const [isManageOwnersDialogOpen, setIsManageOwnersDialogOpen] = useState(false);
-  const [isSpecialEventDialogOpen, setIsSpecialEventDialogOpen] = useState(false);
   const [teamToManageOwners, setTeamToManageOwners] = useState<Team | null>(null);
   const [leagueToManageAdmins, setLeagueToManageAdmins] = useState<League | null>(null);
   const [isNewSeasonDialogOpen, setIsNewSeasonDialogOpen] = useState(false);
@@ -335,10 +323,7 @@ function AdminPage() {
 
   const [newUserData, setNewUserData] = useState({ displayName: '', email: '' });
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [specialEventData, setSpecialEventData] = useState<Partial<Competition>>({ contestantId: '', specialEventCode: '', notes: '' });
-  const [editingSpecialEvent, setEditingSpecialEvent] = useState<Competition | null>(null);
-  const [specialEventToDelete, setSpecialEventToDelete] = useState<Competition | null>(null);
-
+  
   const [newLeagueData, setNewLeagueData] = useState<Partial<League>>({
       name: '',
       seasonId: '',
@@ -366,7 +351,13 @@ function AdminPage() {
     const defaultTab = lastTab 
       ? lastTab
       : (currentUser?.role === 'site_admin' && initialView === 'site' ? 'site' : (manageableLeagues.length > 0 ? 'events' : 'site'));
-    setActiveTab(defaultTab);
+    
+    // Fallback if the saved tab is not accessible
+    if (defaultTab !== 'site' && manageableLeagues.length === 0) {
+        setActiveTab('site');
+    } else {
+        setActiveTab(defaultTab);
+    }
   }, [initialView, currentUser, manageableLeagues]);
 
   useEffect(() => {
@@ -386,11 +377,10 @@ function AdminPage() {
     // Weekly status display state
     const [weeklyStatusDisplay, setWeeklyStatusDisplay] = useState<EditableSeasonWeeklyStatusDisplay[]>([]);
     const [isAddStatusCardOpen, setIsAddStatusCardOpen] = useState(false);
-    const [newStatusCard, setNewStatusCard] = useState<Partial<SeasonWeeklyStatusDisplay>>({ title: '', icon: 'Trophy', type: 'CUSTOM' });
+    const [newStatusCard, setNewStatusCard] = useState<Partial<SeasonWeeklyStatusDisplay>>({ title: '', icon: 'Trophy', ruleCode: '' });
 
 
   const scoringRules = useMemo(() => scoringRuleSet?.rules || [], [scoringRuleSet]);
-  const specialEventRules = useMemo(() => scoringRules.filter(r => specialEventRuleCodes.includes(r.code)) || [], [scoringRules]);
   
   const teamsInLeague = useMemo(() => {
     if (!leagueSettings) return [];
@@ -489,10 +479,6 @@ function AdminPage() {
     return weeklyStatusDisplay;
   }, [weeklyStatusDisplay]);
 
-  const weeklySpecialEvents = useMemo(() => 
-    weeklyCompetitions.filter(c => c.type === 'SPECIAL_EVENT'), 
-  [weeklyCompetitions]);
-
   const handleUpdateSeason = async () => {
         if (!editingSeason || !editingSeason.id) return;
         try {
@@ -571,10 +557,10 @@ function AdminPage() {
         setViewingWeek(activeSeason.currentWeek);
         const currentWeekKey = `week${activeSeason.currentWeek}`;
         const defaultDisplay = [
-            { type: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
-            { type: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
-            { type: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500' },
-            { type: 'EVICTED', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
+            { ruleCode: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
+            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
+            { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUpFields: true },
+            { ruleCode: 'EVICT_PRE', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];
 
         let displayData: SeasonWeeklyStatusDisplay[] = [];
@@ -1078,8 +1064,8 @@ function AdminPage() {
     };
     
     const handleAddStatusCard = () => {
-        if (!newStatusCard.title || !newStatusCard.icon || !newStatusCard.type) {
-            toast({ title: "Title, Icon and Type are required.", variant: "destructive" });
+        if (!newStatusCard.title || !newStatusCard.icon || !newStatusCard.ruleCode) {
+            toast({ title: "Title, Icon and Rule are required.", variant: "destructive" });
             return;
         }
         const newCard: EditableSeasonWeeklyStatusDisplay = {
@@ -1089,7 +1075,7 @@ function AdminPage() {
         } as EditableSeasonWeeklyStatusDisplay;
         
         setWeeklyStatusDisplay([...weeklyStatusDisplay, newCard]);
-        setNewStatusCard({ title: '', icon: 'Trophy', type: 'CUSTOM', color: 'text-gray-500' });
+        setNewStatusCard({ title: '', icon: 'Trophy', ruleCode: '', color: 'text-gray-500' });
         setIsAddStatusCardOpen(false);
     };
 
@@ -1116,68 +1102,6 @@ function AdminPage() {
         } catch(error) {
             console.error("Error starting new week:", error);
             toast({ title: "Error starting new week", variant: "destructive" });
-        }
-    };
-    
-    const handleLogSpecialEvent = async () => {
-        if (!activeSeason || !specialEventData.winnerId || !specialEventData.specialEventCode) {
-            toast({ title: "Contestant and Event Type are required.", variant: 'destructive' });
-            return;
-        }
-    
-        try {
-            if (editingSpecialEvent) {
-                // Update existing event
-                const eventRef = doc(db, 'competitions', editingSpecialEvent.id);
-                await updateDoc(eventRef, {
-                    winnerId: specialEventData.winnerId,
-                    specialEventCode: specialEventData.specialEventCode,
-                    notes: specialEventData.notes,
-                });
-                toast({ title: "Special event updated successfully!" });
-            } else {
-                // Add new event
-                const eventData: Omit<Competition, 'id'> = {
-                    seasonId: activeSeason.id,
-                    week: viewingWeek,
-                    type: 'SPECIAL_EVENT',
-                    airDate: new Date().toISOString(),
-                    winnerId: specialEventData.winnerId,
-                    specialEventCode: specialEventData.specialEventCode,
-                    notes: specialEventData.notes,
-                };
-                await addDoc(collection(db, 'competitions'), eventData);
-                toast({ title: "Special event logged successfully!" });
-            }
-    
-            setIsSpecialEventDialogOpen(false);
-            setEditingSpecialEvent(null);
-            setSpecialEventData({ winnerId: '', specialEventCode: '', notes: '' });
-        } catch (error) {
-            console.error("Error logging special event: ", error);
-            toast({ title: "Error logging event", variant: "destructive" });
-        }
-    };
-
-    const openEditSpecialEventDialog = (event: Competition) => {
-        setEditingSpecialEvent(event);
-        setSpecialEventData({
-            winnerId: event.winnerId,
-            specialEventCode: event.specialEventCode,
-            notes: event.notes
-        });
-        setIsSpecialEventDialogOpen(true);
-    };
-    
-    const handleDeleteSpecialEvent = async () => {
-        if (!specialEventToDelete) return;
-        try {
-            await deleteDoc(doc(db, 'competitions', specialEventToDelete.id));
-            toast({ title: 'Special event deleted.' });
-            setSpecialEventToDelete(null);
-        } catch (error) {
-            console.error('Error deleting special event:', error);
-            toast({ title: 'Error deleting event.', variant: 'destructive' });
         }
     };
     
@@ -1461,19 +1385,25 @@ function AdminPage() {
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {weeklyStatusCards.map(card => {
-                                   if (card.type === 'NOMINATIONS' || card.type === 'NOMS') { // Special handling for nominations
+                                   const rule = scoringRules.find(r => r.code === card.ruleCode);
+                                   const isMultiPick = rule?.label.toLowerCase().includes('nominee') || rule?.label.toLowerCase().includes('nomination');
+                                   const isEviction = card.ruleCode.includes('EVICT');
+                                   const hasFollowUps = card.hasFollowUpFields;
+                                   const eventKey = card.ruleCode;
+
+                                   if (isMultiPick) {
                                         return (
                                             <div key={card._id} className="space-y-4 p-4 border rounded-lg">
                                                 <Label className="font-semibold">{card.title}</Label>
                                                 <div className="space-y-2">
-                                                    {(weeklyEventData[card.type]?.nominees || []).map((nomId: string) => {
+                                                    {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
                                                         const nominee = activeContestantsInLeague.find(c => c.id === nomId);
                                                         return (
                                                             <div key={nomId} className="flex items-center justify-between text-sm p-1 bg-muted rounded-md">
                                                                 <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
                                                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
-                                                                    const newNoms = (weeklyEventData[card.type]?.nominees || []).filter((id: string) => id !== nomId);
-                                                                    handleEventChange(card.type, 'nominees', newNoms);
+                                                                    const newNoms = (weeklyEventData[eventKey]?.nominees || []).filter((id: string) => id !== nomId);
+                                                                    handleEventChange(eventKey, 'nominees', newNoms);
                                                                 }}>
                                                                     <XCircle className="h-4 w-4 text-red-500" />
                                                                 </Button>
@@ -1485,59 +1415,59 @@ function AdminPage() {
                                                     value=""
                                                     onValueChange={val => {
                                                         if (val) {
-                                                            const currentNoms = weeklyEventData[card.type]?.nominees || [];
+                                                            const currentNoms = weeklyEventData[eventKey]?.nominees || [];
                                                             if (!currentNoms.includes(val)) {
-                                                                handleEventChange(card.type, 'nominees', [...currentNoms, val]);
+                                                                handleEventChange(eventKey, 'nominees', [...currentNoms, val]);
                                                             }
                                                         }
                                                     }}>
                                                     <SelectTrigger><SelectValue placeholder="Add nominee..."/></SelectTrigger>
                                                     <SelectContent>
                                                         {activeContestantsInLeague
-                                                            .filter(c => !(weeklyEventData[card.type]?.nominees || []).includes(c.id))
+                                                            .filter(c => !(weeklyEventData[eventKey]?.nominees || []).includes(c.id))
                                                             .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
-                                                <Button size="sm" onClick={() => handleLogEvent(card.type)}>Log Nominations</Button>
+                                                <Button size="sm" onClick={() => handleLogEvent(eventKey)}>Log {card.title}</Button>
                                             </div>
                                         );
-                                   } else if (card.type === 'VETO_WIN') {
+                                   } else if (hasFollowUps) {
                                        return (
                                             <div key={card._id} className="space-y-4 p-4 border rounded-lg">
                                                 <Label className="font-semibold">{card.title}</Label>
-                                                <Select value={weeklyEventData[card.type]?.winnerId || ''} onValueChange={val => handleEventChange(card.type, 'winnerId', val)}>
+                                                <Select value={weeklyEventData[eventKey]?.winnerId || ''} onValueChange={val => handleEventChange(eventKey, 'winnerId', val)}>
                                                     <SelectTrigger><SelectValue placeholder="Select winner..."/></SelectTrigger>
                                                     <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                 </Select>
                                                 <div className="flex items-center space-x-2">
-                                                    <Switch id="veto-used" checked={!!weeklyEventData[card.type]?.used} onCheckedChange={val => handleEventChange(card.type, 'used', val)} />
-                                                    <Label htmlFor="veto-used">Veto Used?</Label>
+                                                    <Switch id={`${eventKey}-used`} checked={!!weeklyEventData[eventKey]?.used} onCheckedChange={val => handleEventChange(eventKey, 'used', val)} />
+                                                    <Label htmlFor={`${eventKey}-used`}>Event Used?</Label>
                                                 </div>
-                                                {weeklyEventData[card.type]?.used && (
+                                                {weeklyEventData[eventKey]?.used && (
                                                     <>
-                                                        <Select value={weeklyEventData[card.type]?.usedOnId || ''} onValueChange={val => handleEventChange(card.type, 'usedOnId', val)}>
+                                                        <Select value={weeklyEventData[eventKey]?.usedOnId || ''} onValueChange={val => handleEventChange(eventKey, 'usedOnId', val)}>
                                                             <SelectTrigger><SelectValue placeholder="Used on..."/></SelectTrigger>
                                                             <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                         </Select>
-                                                        <Select value={weeklyEventData[card.type]?.replacementNomId || ''} onValueChange={val => handleEventChange(card.type, 'replacementNomId', val)}>
+                                                        <Select value={weeklyEventData[eventKey]?.replacementNomId || ''} onValueChange={val => handleEventChange(eventKey, 'replacementNomId', val)}>
                                                             <SelectTrigger><SelectValue placeholder="Replacement..."/></SelectTrigger>
                                                             <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                         </Select>
                                                     </>
                                                 )}
-                                                <Button size="sm" onClick={() => handleLogEvent(card.type)}>Log Veto</Button>
+                                                <Button size="sm" onClick={() => handleLogEvent(eventKey)}>Log {card.title}</Button>
                                             </div>
                                        )
-                                   } else { // Handle HOH, EVICTION, and CUSTOM
-                                       const field: keyof Competition = card.type === 'EVICTION' ? 'evictedId' : 'winnerId';
+                                   } else { // Standard single-pick event
+                                       const field: keyof Competition = isEviction ? 'evictedId' : 'winnerId';
                                        return (
                                           <div key={card._id} className="space-y-4 p-4 border rounded-lg">
                                             <Label className="font-semibold">{card.title}</Label>
-                                            <Select value={weeklyEventData[card.type]?.[field] || ''} onValueChange={val => handleEventChange(card.type, field, val)}>
+                                            <Select value={weeklyEventData[eventKey]?.[field] || ''} onValueChange={val => handleEventChange(eventKey, field, val)}>
                                                 <SelectTrigger><SelectValue placeholder={`Select ${leagueSettings?.contestantTerm?.singular || 'Contestant'}...`}/></SelectTrigger>
                                                 <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                             </Select>
-                                            <Button size="sm" onClick={() => handleLogEvent(card.type)}>Log {card.title}</Button>
+                                            <Button size="sm" onClick={() => handleLogEvent(eventKey)}>Log {card.title}</Button>
                                           </div>
                                        )
                                    }
@@ -1580,42 +1510,7 @@ function AdminPage() {
                         </Card>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            <Card className="lg:col-span-1">
-                                <CardHeader>
-                                    <CardTitle>Logged Scoring Events</CardTitle>
-                                    <CardDescription>Manage one-off events for Week {viewingWeek}.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Button variant="outline" className="w-full" onClick={() => { setEditingSpecialEvent(null); setSpecialEventData({}); setIsSpecialEventDialogOpen(true); }}>
-                                        <PlusCircle className="mr-2"/> Log New Special Event
-                                    </Button>
-                                    <div className="space-y-2 mt-4">
-                                    {weeklySpecialEvents.length > 0 ? weeklySpecialEvents.map(event => {
-                                        const contestant = contestants.find(c => c.id === event.winnerId);
-                                        const rule = scoringRules.find(r => r.code === event.specialEventCode);
-                                        return (
-                                            <div key={event.id} className="flex items-center justify-between p-2 border rounded-md text-sm">
-                                                <div>
-                                                    <p className="font-medium">{contestant ? getContestantDisplayName(contestant, 'short') : 'N/A'}</p>
-                                                    <p className="text-xs text-muted-foreground">{rule?.label || event.specialEventCode}</p>
-                                                </div>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal /></Button></DropdownMenuTrigger>
-                                                    <DropdownMenuContent>
-                                                        <DropdownMenuItem onClick={() => openEditSpecialEventDialog(event)}>Edit</DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-red-500" onClick={() => setSpecialEventToDelete(event)}>Delete</DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        )
-                                    }) : (
-                                        <p className="text-xs text-muted-foreground text-center py-4">No special events logged this week.</p>
-                                    )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="lg:col-span-2">
+                            <Card className="lg:col-span-3">
                                 <CardHeader>
                                     <CardTitle>Weekly Status Display</CardTitle>
                                     <CardDescription>Customize the event cards shown on the dashboard for Week {viewingWeek}.</CardDescription>
@@ -1649,11 +1544,20 @@ function AdminPage() {
                                                     onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
                                                     className="h-8 font-medium"
                                                 />
-                                                 <Input 
-                                                    value={card.type} 
-                                                    onChange={(e) => handleStatusCardChange(card._id, 'type', e.target.value.toUpperCase())}
-                                                    className="h-8 font-mono text-xs w-28"
+                                                <Select value={card.ruleCode} onValueChange={val => handleStatusCardChange(card._id, 'ruleCode', val)}>
+                                                    <SelectTrigger className="h-8 font-mono text-xs w-48"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>
+                                                        {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Switch 
+                                                    id={`followup-${card._id}`}
+                                                    checked={card.hasFollowUpFields}
+                                                    onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUpFields', val)}
                                                 />
+                                                <Label htmlFor={`followup-${card._id}`}>Follow-ups?</Label>
                                             </div>
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card._id)}>
                                                 <Trash2 className="h-4 w-4 text-red-500" />
@@ -2337,12 +2241,13 @@ function AdminPage() {
                         <Input value={newStatusCard.title || ''} onChange={e => setNewStatusCard(prev => ({ ...prev, title: e.target.value }))} />
                     </div>
                     <div className="space-y-2">
-                        <Label>Event Type (Code)</Label>
-                        <Input 
-                            placeholder="e.g. HOH_WIN"
-                            value={newStatusCard.type} 
-                            onChange={(e) => setNewStatusCard(prev => ({...prev, type: e.target.value.toUpperCase()}))} 
-                        />
+                        <Label>Scoring Rule</Label>
+                        <Select value={newStatusCard.ruleCode} onValueChange={(val) => setNewStatusCard(prev => ({...prev, ruleCode: val}))}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                {scoringRules.map(rule => <SelectItem key={rule.code} value={rule.code}>{rule.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <Label>Icon</Label>
@@ -2367,44 +2272,6 @@ function AdminPage() {
         onOpenChange={setIsAddRuleDialogOpen}
         onAddRule={handleAddRule}
       />
-      
-      {/* Dialog for Special Event */}
-       <Dialog open={isSpecialEventDialogOpen} onOpenChange={(open) => { if (!open) { setEditingSpecialEvent(null); setSpecialEventData({}); } setIsSpecialEventDialogOpen(open); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingSpecialEvent ? 'Edit' : 'Log'} Special Scoring Event</DialogTitle>
-            <DialogDescription>Apply a one-time point adjustment for a specific contestant.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-                <Label>{leagueSettings?.contestantTerm?.singular || 'Contestant'}</Label>
-                <Select value={specialEventData.winnerId} onValueChange={(val) => setSpecialEventData({...specialEventData, winnerId: val})}>
-                    <SelectTrigger><SelectValue placeholder="Select a contestant..." /></SelectTrigger>
-                    <SelectContent>
-                        {activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-                <Label>Event Type</Label>
-                <Select value={specialEventData.specialEventCode} onValueChange={(val) => setSpecialEventData({...specialEventData, specialEventCode: val})}>
-                    <SelectTrigger><SelectValue placeholder="Select an event type..." /></SelectTrigger>
-                    <SelectContent>
-                        {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label} ({r.points > 0 ? '+': ''}{r.points})</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-             <div className="space-y-2">
-                <Label>Notes (Optional)</Label>
-                <Textarea value={specialEventData.notes || ''} onChange={(e) => setSpecialEventData({...specialEventData, notes: e.target.value})} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSpecialEventDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleLogSpecialEvent}>{editingSpecialEvent ? 'Save Changes' : 'Log Event'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
       {/* Dialog for Make Draft Pick */}
        <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
@@ -2514,18 +2381,6 @@ function AdminPage() {
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteContestant} className="bg-red-600 hover:bg-red-700">Delete Contestant</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-        <AlertDialog open={!!specialEventToDelete} onOpenChange={(open) => !open && setSpecialEventToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this special event?</AlertDialogTitle>
-                    <AlertDialogDescription>This action cannot be undone and will remove the event permanently.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteSpecialEvent} className="bg-red-600 hover:bg-red-700">Delete Event</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
