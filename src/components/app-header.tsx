@@ -132,7 +132,7 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button asChild variant="ghost" size="icon">
-                            <Link href="/admin"><Settings className="h-5 w-5"/></Link>
+                            <Link href="/admin?view=league"><Settings className="h-5 w-5"/></Link>
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent>
