@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, createElement, useMemo, useCallback } from 'react';
@@ -1219,7 +1218,7 @@ function AdminPage() {
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <div className="sticky top-[57px] z-20 -mx-4 sm:-mx-6 bg-background/95 px-4 sm:px-6 py-2 backdrop-blur-sm border-b">
+                <div className="sticky top-[57px] z-20 bg-background/95 px-4 sm:px-6 py-2 backdrop-blur-sm border-b">
                     <div className="flex w-full items-center justify-between">
                         {manageableLeagues.length > 0 && activeTab !== 'site' && (
                              <TabsList>
@@ -1608,7 +1607,11 @@ function AdminPage() {
                                         </Popover>
                                         <div className="flex items-center gap-2 flex-1">
                                             {createElement((LucideIcons as any)[card.icon] || Trophy, { className: "h-5 w-5"})}
-                                            <span className="font-medium">{card.title}</span>
+                                            <Input 
+                                                value={card.title} 
+                                                onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
+                                                className="h-8 font-medium"
+                                            />
                                             <Badge variant="outline">{card.type}</Badge>
                                         </div>
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemoveStatusCard(card._id)}>

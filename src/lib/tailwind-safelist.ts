@@ -43,5 +43,3 @@ export const tailwindColorSafelist = [
     // Rose
     'text-rose-500', 'border-rose-500', 'bg-rose-500',
 ];
-
-    
