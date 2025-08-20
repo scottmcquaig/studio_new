@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 const config = {
@@ -7,7 +8,7 @@ const config = {
     './components/**/*.{ts,tsx}',
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
-    './tailwind.config.ts'
+    './src/lib/tailwind-safelist.ts', // Scan the safelist file
   ],
   prefix: '',
   theme: {

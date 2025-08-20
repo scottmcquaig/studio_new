@@ -21,6 +21,7 @@ interface WeeklyStatusProps {
 const EventCard = ({ type, title, icon, color, competitions, contestants }: { type: SeasonWeeklyStatusDisplay['type'], title: string, icon: string, color: string, competitions: Competition[], contestants: Contestant[] }) => {
     const IconComponent = (LucideIcons as any)[icon] || HelpCircle;
     const safeColor = color || 'text-gray-500';
+    const borderColor = safeColor.replace('text-', 'border-');
 
     if (type === 'HOH' || type === 'EVICTION' || type.startsWith('CUSTOM_')) {
         const event = competitions.find(c => c.type === type);
@@ -31,7 +32,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                 <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
                 {winner ? (
                     <>
-                        <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", safeColor.replace('text-', 'border-'))} data-ai-hint="portrait person" />
+                        <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
                         <span className="text-sm">{getContestantDisplayName(winner, 'short')}</span>
                     </>
                 ) : (
@@ -54,7 +55,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                     {nomWinners.length > 0 ? (
                         nomWinners.map(nom => (
                             <div key={nom.id} className="flex flex-col items-center gap-1">
-                                <Image src={nom.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(nom, 'full')} width={48} height={48} className={cn("rounded-full border-2", safeColor.replace('text-','border-'))} data-ai-hint="portrait person" />
+                                <Image src={nom.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(nom, 'full')} width={48} height={48} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
                                 <span className="text-xs">{getContestantDisplayName(nom, 'short')}</span>
                             </div>
                         ))
@@ -82,7 +83,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                     <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
                     {povWinner ? (
                         <>
-                            <Image src={povWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(povWinner, 'full')} width={64} height={64} className={cn("rounded-full border-2 mt-2", safeColor.replace('text-', 'border-'))} data-ai-hint="portrait person" />
+                            <Image src={povWinner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(povWinner, 'full')} width={64} height={64} className={cn("rounded-full border-2 mt-2", borderColor)} data-ai-hint="portrait person" />
                             <span className="text-sm mt-1">{getContestantDisplayName(povWinner, 'short')}</span>
                         </>
                     ) : (
@@ -92,7 +93,7 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                         </>
                     )}
                 </div>
-                {(pov?.used !== undefined || povWinner) && <Separator orientation="vertical" className="h-auto" />}
+                {povWinner && <Separator orientation="vertical" className="h-auto" />}
                 <div className="flex flex-col items-start justify-center flex-shrink-0 space-y-2 w-24">
                     {pov?.used === true && (
                         <div className="flex flex-col items-start gap-2">
@@ -111,12 +112,12 @@ const EventCard = ({ type, title, icon, color, competitions, contestants }: { ty
                         </div>
                     )}
                     {(pov?.used === false || (pov?.used === undefined && povWinner)) && (
-                         <div className="flex flex-col items-center justify-center w-full gap-1">
+                         <div className="flex flex-col items-start justify-center w-full gap-1">
                             {pov?.used === false 
                                 ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
                                 : <HelpCircle className="h-8 w-8 text-muted-foreground" />
                             }
-                            <span className="text-xs text-muted-foreground text-center">
+                            <span className="text-xs text-muted-foreground text-left">
                                 {pov?.used === false ? 'Not Used' : 'TBD'}
                             </span>
                         </div>
