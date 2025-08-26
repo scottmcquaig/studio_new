@@ -55,7 +55,10 @@ const ContestantProfileDialog = ({ contestant, team, rules, competitions, totalW
                         alt={getContestantDisplayName(contestant, 'full')}
                         width={96}
                         height={96}
-                        className="rounded-full border-4"
+                        className={cn(
+                            "rounded-full border-4",
+                            contestant.status === 'active' ? 'border-green-500' : 'border-red-500 grayscale'
+                        )}
                         data-ai-hint="portrait person"
                     />
                     <div className="flex items-center justify-around w-full text-center gap-2 text-sm pt-2">
