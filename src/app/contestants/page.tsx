@@ -96,12 +96,12 @@ function ContestantsPage() {
   }, [activeSeason]);
 
   const hohEvent = useMemo(() => {
-      const hohCard = weeklyStatusDisplay.find(c => c.title.toUpperCase().includes('HOH'));
+      const hohCard = weeklyStatusDisplay.find(c => c.ruleCode && c.ruleCode.includes('HOH'));
       return hohCard ? weekEvents.find(e => e.type === hohCard.ruleCode) : undefined;
   }, [weekEvents, weeklyStatusDisplay]);
   
   const povEvent = useMemo(() => {
-      const povCard = weeklyStatusDisplay.find(c => c.title.toUpperCase().includes('VETO'));
+      const povCard = weeklyStatusDisplay.find(c => c.ruleCode && c.ruleCode.includes('VETO'));
       return povCard ? weekEvents.find(e => e.type === povCard.ruleCode) : undefined;
   }, [weekEvents, weeklyStatusDisplay]);
 
@@ -158,28 +158,30 @@ function ContestantsPage() {
   }, [contestants, competitions, teams, scoringRules, picks]);
 
   const sortedContestants = useMemo(() => {
+    const getSortPriority = (hg: Contestant) => {
+        if (hg.status !== 'active') return 10; // Evicted are last among major groups
+        if (hg.id === hohEvent?.winnerId) return 1;
+        if (hg.id === povEvent?.winnerId) return 2;
+        // Add special event logic here if needed, e.g., checking for another ruleCode
+        if (nomEvent?.nominees?.includes(hg.id)) return 3;
+        if (hg.id === povEvent?.replacementNomId) return 4;
+        return 5; // Active, no special status
+    };
+
     return [...contestantStats].sort((a, b) => {
-      if (a.status !== 'active' && b.status === 'active') return 1;
-      if (a.status === 'active' && b.status !== 'active') return -1;
-      if (a.status !== 'active' && b.status !== 'active') {
-        return (b.evictedDay || 0) - (a.evictedDay || 0); 
+      const priorityA = getSortPriority(a);
+      const priorityB = getSortPriority(b);
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
       }
 
-      const aIsHoh = a.id === hohEvent?.winnerId;
-      const bIsHoh = b.id === hohEvent?.winnerId;
-      if (aIsHoh) return -1;
-      if (bIsHoh) return 1;
-
-      const aIsPov = a.id === povEvent?.winnerId;
-      const bIsPov = b.id === povEvent?.winnerId;
-      if (aIsPov) return -1;
-      if (bIsPov) return 1;
-
-      const aIsNom = nomEvent?.nominees?.includes(a.id);
-      const bIsNom = nomEvent?.nominees?.includes(b.id);
-      if (aIsNom && !bIsNom) return -1;
-      if (!aIsNom && bIsNom) return 1;
-
+      // If priorities are the same, handle sub-sorting
+      if (priorityA === 10) { // Both are evicted
+        return (b.evictedDay || 0) - (a.evictedDay || 0);
+      }
+      
+      // Both are active with same highest status or no status
       return getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'));
     });
   }, [contestantStats, hohEvent, povEvent, nomEvent]);
