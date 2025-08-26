@@ -84,53 +84,55 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
         const renomPlayer = contestants.find(hg => hg.id === event?.replacementNomId);
 
         return (
-            <div className="flex items-center justify-center text-center gap-4 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
-                <div className="flex flex-col items-center justify-center w-28">
-                    <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-                    {winner ? (
-                        <>
-                            <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2 mt-2", borderColor)} data-ai-hint="portrait person" />
-                            <span className="text-sm mt-1">{getContestantDisplayName(winner, 'short')}</span>
-                        </>
-                    ) : (
-                        <>
-                            <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50 mt-2"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
-                            <span className="text-sm text-muted-foreground mt-1">TBD</span>
-                        </>
-                    )}
-                </div>
-                {winner && <Separator orientation="vertical" className="h-auto" />}
-                {winner && (
-                    <div className="flex flex-col items-center justify-center flex-shrink-0 space-y-2 w-24">
-                        {event?.used === true && (
-                            <div className="flex flex-col items-start gap-2">
-                                <div className="flex items-center gap-2">
-                                    {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-green-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
-                                    <div>
-                                        <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-red-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
-                                    <div>
-                                        <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500" /> Renom</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        {(event?.used === false || event?.used === undefined) && (
-                            <div className="flex flex-col items-center justify-center w-full gap-1">
-                                {event?.used === false
-                                    ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
-                                    : <HelpCircle className="h-8 w-8 text-muted-foreground" />
-                                }
-                                <span className="text-xs text-muted-foreground text-center">
-                                    {event?.used === false ? 'Not Used' : 'TBD'}
-                                </span>
-                            </div>
+            <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
+                <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
+                <div className="flex items-center justify-center gap-4 w-full mt-2">
+                    <div className="flex flex-col items-center justify-center w-28">
+                        {winner ? (
+                            <>
+                                <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
+                                <span className="text-sm mt-1">{getContestantDisplayName(winner, 'short')}</span>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
+                                <span className="text-sm text-muted-foreground mt-1">TBD</span>
+                            </>
                         )}
                     </div>
-                )}
+                    {winner && <Separator orientation="vertical" className="h-auto self-stretch" />}
+                    {winner && (
+                        <div className="flex flex-col items-center justify-center flex-shrink-0 space-y-2 w-24">
+                            {event?.used === true && (
+                                <div className="flex flex-col items-start gap-2">
+                                    <div className="flex items-center gap-2">
+                                        {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-green-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+                                        <div>
+                                            <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-red-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+                                        <div>
+                                            <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500" /> Renom</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {(event?.used === false || event?.used === undefined) && (
+                                <div className="flex flex-col items-center justify-center w-full gap-1">
+                                    {event?.used === false
+                                        ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
+                                        : <HelpCircle className="h-8 w-8 text-muted-foreground" />
+                                    }
+                                    <span className="text-xs text-muted-foreground text-center">
+                                        {event?.used === false ? 'Not Used' : 'TBD'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         );
     }
