@@ -20,27 +20,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 
-const ContestantProfileDialog = ({ contestant, team, rules, weeklyEvents, totalWins, totalNoms, totalPoints }: {
+const ContestantProfileDialog = ({ contestant, team, rules, competitions, totalWins, totalNoms, totalPoints }: {
     contestant: Contestant,
     team: Team,
     rules: ScoringRule[],
-    weeklyEvents: Competition[],
+    competitions: Competition[],
     totalWins: number,
     totalNoms: number,
     totalPoints: number,
 }) => {
-    const contestantWeeklyEvents = useMemo(() => {
-        const events = [];
-        for (const event of weeklyEvents) {
+    const contestantAllEvents = useMemo(() => {
+        const events: { week: number, label: string, points: number }[] = [];
+        for (const event of competitions) {
             const rule = rules.find(r => r.code === event.type);
             if (!rule) continue;
 
             if (event.winnerId === contestant.id || event.evictedId === contestant.id || event.nominees?.includes(contestant.id)) {
-                events.push({ label: rule.label, points: rule.points });
+                events.push({ week: event.week, label: rule.label, points: rule.points });
             }
         }
-        return events;
-    }, [weeklyEvents, rules, contestant]);
+        return events.sort((a, b) => b.week - a.week);
+    }, [competitions, rules, contestant]);
 
     return (
         <DialogContent className="sm:max-w-[425px]">
@@ -77,32 +77,35 @@ const ContestantProfileDialog = ({ contestant, team, rules, weeklyEvents, totalW
                     </div>
                 </div>
                 <Separator className="my-4" />
-                <h4 className="font-semibold mb-2">Current Week Scoring</h4>
-                {contestantWeeklyEvents.length > 0 ? (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Event</TableHead>
-                                <TableHead className="text-right">Points</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {contestantWeeklyEvents.map((event, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{event.label}</TableCell>
-                                    <TableCell className={cn(
-                                        "text-right font-mono font-bold",
-                                        event.points >= 0 ? "text-green-600" : "text-red-600"
-                                    )}>
-                                        {event.points > 0 ? `+${event.points}` : event.points}
-                                    </TableCell>
+                <div className="max-h-60 overflow-y-auto">
+                    {contestantAllEvents.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Wk</TableHead>
+                                    <TableHead>Event</TableHead>
+                                    <TableHead className="text-right">Points</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-2">No scoring events this week.</p>
-                )}
+                            </TableHeader>
+                            <TableBody>
+                                {contestantAllEvents.map((event, index) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{event.week}</TableCell>
+                                        <TableCell>{event.label}</TableCell>
+                                        <TableCell className={cn(
+                                            "text-right font-mono font-bold",
+                                            event.points >= 0 ? "text-green-600" : "text-red-600"
+                                        )}>
+                                            {event.points > 0 ? `+${event.points}` : event.points}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-2">No scoring events this season.</p>
+                    )}
+                </div>
             </div>
         </DialogContent>
     );
@@ -514,7 +517,7 @@ function TeamsPage() {
                     contestant={selectedContestant}
                     team={selectedTeam}
                     rules={rules}
-                    weeklyEvents={weeklyEvents}
+                    competitions={competitions}
                     totalWins={contestantStats.totalWins}
                     totalNoms={contestantStats.totalNoms}
                     totalPoints={contestantStats.totalPoints}
