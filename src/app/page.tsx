@@ -362,7 +362,7 @@ function DashboardPage() {
                                       )}>
                                           <RankChangeIndicator />
                                           <span className="ml-1 font-mono">
-                                              {weeklyScore > 0 ? '+':''}{weeklyScore} this week
+                                              {weeklyScore > 0 ? '+':''}{weeklyScore} Week {activeSeason.currentWeek}
                                           </span>
                                       </div>
                                   </div>
