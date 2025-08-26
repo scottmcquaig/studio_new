@@ -135,21 +135,18 @@ function DashboardPage() {
     const teamContestantIds = teamPicks.map(p => p.contestantId);
 
     relevantCompetitions.forEach(comp => {
-        const processEvent = (contestantId: string, eventCode: string) => {
-            if (teamContestantIds.includes(contestantId)) {
-                const rule = rules.find(r => r.code === eventCode);
-                if (rule) {
-                    score += rule.points;
-                }
-            }
-        };
-        
         const rule = rules.find(r => r.code === comp.type);
         if (!rule) return;
 
-        if (comp.winnerId) processEvent(comp.winnerId, comp.type);
-        if (comp.evictedId) processEvent(comp.evictedId, comp.type);
-        if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
+        const processEvent = (contestantId: string) => {
+            if (teamContestantIds.includes(contestantId)) {
+                score += rule.points;
+            }
+        };
+        
+        if (comp.winnerId) processEvent(comp.winnerId);
+        if (comp.evictedId) processEvent(comp.evictedId);
+        if (comp.nominees) comp.nominees.forEach(processEvent);
     });
 
     return score;
@@ -343,7 +340,7 @@ function DashboardPage() {
                                           <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
                                       </div>
                                   </div>
-                                  <div className="flex flex-col items-end">
+                                  <div className="flex flex-col items-center">
                                       <Badge 
                                          variant="secondary" 
                                          className={cn(
@@ -355,7 +352,7 @@ function DashboardPage() {
                                       >
                                         <span>{team.total_score || 0}</span>
                                       </Badge>
-                                      <div className={cn("flex items-center text-xs mt-1",
+                                      <div className={cn("flex items-center justify-center text-xs mt-1 w-20",
                                           weeklyScore > 0 && "text-green-600",
                                           weeklyScore < 0 && "text-red-600",
                                           weeklyScore === 0 && "text-muted-foreground"
