@@ -98,6 +98,7 @@ export interface League {
         transactionLockDuringEpisodes: boolean;
         scoringBreakdownCategories: LeagueScoringBreakdownCategory[];
         juryStartWeek?: number;
+        endWeek?: number;
         seasonStartDate?: string;
         seasonEndDate?: string;
         draftRounds?: number;

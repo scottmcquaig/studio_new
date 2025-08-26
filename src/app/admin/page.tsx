@@ -273,11 +273,7 @@ function AdminPage() {
 
         let eventToLog = weeklyEventData[ruleCode] || {};
 
-        let competitionType = ruleCode;
-        if (ruleCode.includes('EVICT')) {
-            const juryStartWeek = leagueSettings.settings.juryStartWeek;
-            competitionType = (juryStartWeek && viewingWeek >= juryStartWeek) ? 'EVICT_POST' : 'EVICT_PRE';
-        }
+        const isEviction = ruleCode.includes('EVICT');
 
         const existingEvent = weeklyCompetitions.find(c => c.type === ruleCode);
         
@@ -290,7 +286,7 @@ function AdminPage() {
         };
         
         // Handle eviction-specific side effects
-        if (ruleCode.includes('EVICT') && dataToSave.evictedId) {
+        if (isEviction && dataToSave.evictedId) {
             const contestantRef = doc(db, 'contestants', dataToSave.evictedId);
             await updateDoc(contestantRef, {
                 status: 'evicted',
@@ -2022,6 +2018,14 @@ function AdminPage() {
                                         onChange={(e) => setEditingLeagueDetails(prev => ({...prev, settings: {...prev?.settings, juryStartWeek: Number(e.target.value)} }))}
                                     />
                                 </div>
+                                 <div className="space-y-1">
+                                    <Label>End Week</Label>
+                                    <Input 
+                                        type="number" 
+                                        value={editingLeagueDetails?.settings?.endWeek || ''}
+                                        onChange={(e) => setEditingLeagueDetails(prev => ({...prev, settings: {...prev?.settings, endWeek: Number(e.target.value)} }))}
+                                    />
+                                </div>
                             </div>
                              <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
@@ -2556,3 +2560,4 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
