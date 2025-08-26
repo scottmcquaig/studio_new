@@ -85,7 +85,7 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
 
         return (
             <div className="flex items-center justify-center text-center gap-4 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
-                <div className="flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center justify-center w-28">
                     <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
                     {winner ? (
                         <>
@@ -105,7 +105,7 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
                         {event?.used === true && (
                             <div className="flex flex-col items-start gap-2">
                                 <div className="flex items-center gap-2">
-                                    {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-slate-400" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+                                    {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-green-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
                                     <div>
                                         <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
                                     </div>
