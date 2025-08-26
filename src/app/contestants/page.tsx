@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import type { Contestant, Competition, Season, League, ScoringRuleSet, Team, Pick, SeasonWeeklyStatusDisplay } from '@/lib/data';
-import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck, TriangleAlert, Ban, Blocks, Skull } from "lucide-react";
+import { UserSquare, Crown, Shield, Users, BarChart2, TrendingUp, TrendingDown, Star, Trophy, Minus, ShieldCheck, TriangleAlert, Ban, Blocks, Skull, RotateCcw } from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 import { AppHeader } from '@/components/app-header';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where } from 'firebase/firestore';
@@ -129,25 +129,19 @@ function ContestantsPage() {
 
       if (scoringRules?.rules.length) {
         competitions.forEach(comp => {
+            const rule = scoringRules.rules.find(r => r.code === comp.type);
+            if (!rule) return;
+            
             if (comp.winnerId === hg.id) {
-                const rule = scoringRules.rules.find(r => r.code === comp.type);
-                if (rule && rule.points > 0) {
-                   totalWins += 1;
-                   totalPoints += rule.points;
-                }
+                if (rule.points > 0) totalWins += 1;
+                totalPoints += rule.points;
             }
             if (comp.nominees?.includes(hg.id)) {
-                const rule = scoringRules.rules.find(r => r.code === comp.type);
-                if (rule && rule.points < 0) {
-                    totalNoms += 1;
-                    totalPoints += rule.points;
-                }
+                if (rule.points < 0) totalNoms += 1;
+                totalPoints += rule.points;
             }
              if (comp.evictedId === hg.id) {
-                const rule = scoringRules.rules.find(r => r.code === comp.type);
-                if (rule) {
-                    totalPoints += rule.points;
-                }
+                totalPoints += rule.points;
             }
         });
       }
@@ -208,9 +202,14 @@ function ContestantsPage() {
           <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedContestant(null)}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedContestants.map(hg => {
-                const isHoh = hg.id === hohEvent?.winnerId;
-                const isPov = hg.id === povEvent?.winnerId;
-                const isNom = nomEvent?.nominees?.includes(hg.id);
+                 const weeklyStatuses: { label: string; className: string; icon?: React.ElementType }[] = [];
+                if (hg.status === 'active') {
+                    if (hg.id === hohEvent?.winnerId) weeklyStatuses.push({ label: 'HOH', className: 'bg-purple-600 text-white hover:bg-purple-700', icon: Crown });
+                    if (hg.id === povEvent?.winnerId) weeklyStatuses.push({ label: 'Veto', className: 'bg-amber-500 text-white hover:bg-amber-600', icon: Ban });
+                    if (hg.id === povEvent?.usedOnId) weeklyStatuses.push({ label: 'Saved', className: 'bg-sky-500 text-white hover:bg-sky-600', icon: ShieldCheck });
+                    if (nomEvent?.nominees?.includes(hg.id)) weeklyStatuses.push({ label: 'Nominee', className: 'bg-red-500 text-white hover:bg-red-600', icon: TriangleAlert });
+                    if (hg.id === povEvent?.replacementNomId) weeklyStatuses.push({ label: 'Renom', className: 'bg-orange-500 text-white hover:bg-orange-600', icon: RotateCcw });
+                }
                 
                 return (
                 <DialogTrigger key={hg.id} asChild onClick={() => setSelectedContestant(hg)}>
@@ -241,11 +240,14 @@ function ContestantsPage() {
                               Week {hg.evictionWeek}
                             </Badge>
                           )}
-                          <div className="flex flex-wrap justify-end gap-1 mt-1">
-                              {hg.status === 'active' && isHoh && <Badge className="bg-purple-600 text-white hover:bg-purple-700">HOH</Badge>}
-                              {hg.status === 'active' && isPov && !isHoh && <Badge className="bg-amber-500 text-white hover:bg-amber-600">Veto</Badge>}
-                              {hg.status === 'active' && isNom && <Badge variant="destructive" className="bg-red-500 hover:bg-red-600">Nominee</Badge>}
-                          </div>
+                        <div className="flex flex-col items-end space-y-1 mt-1">
+                            {weeklyStatuses.map(({ label, className, icon: Icon }) => (
+                                <Badge key={label} className={cn("text-xs", className)}>
+                                    {Icon && <Icon className="h-3 w-3 mr-1" />}
+                                    {label}
+                                </Badge>
+                            ))}
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="flex-grow flex items-center justify-around text-center gap-2 text-sm pt-2">
