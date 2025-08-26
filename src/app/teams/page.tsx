@@ -15,13 +15,52 @@ import type { Team, League, ScoringRuleSet, ScoringRule, Competition, Contestant
 import { AppHeader } from '@/components/app-header';
 import withAuth from '@/components/withAuth';
 import { PageLayout } from '@/components/page-layout';
+import { Crown, Ban, ShieldCheck, TriangleAlert, RotateCcw } from 'lucide-react';
 
-const TeamCard = ({ team, league, rules, competitions, contestants, users, picks, totalScore }: { team: Team, league: League, rules: ScoringRule[], competitions: Competition[], contestants: Contestant[], users: User[], picks: Pick[], totalScore: number }) => {
+
+const TeamCard = ({ team, league, rules, competitions, contestants, users, picks, totalScore, weeklyEvents, weeklyStatusDisplay }: { 
+    team: Team, 
+    league: League, 
+    rules: ScoringRule[], 
+    competitions: Competition[], 
+    contestants: Contestant[], 
+    users: User[], 
+    picks: Pick[], 
+    totalScore: number,
+    weeklyEvents: Competition[],
+    weeklyStatusDisplay: any[]
+}) => {
     const owners = (team.ownerUserIds || []).map(id => users.find(u => u.id === id)).filter(Boolean) as User[];
     const teamPicks = picks.filter(p => p.teamId === team.id);
     const teamContestantIds = teamPicks.map(p => p.contestantId);
     const teamContestants = contestants.filter(hg => teamContestantIds.includes(hg.id));
     const breakdownCategories = (league.settings.scoringBreakdownCategories || []).filter(c => c.displayName);
+
+    const hohEvent = useMemo(() => {
+        const hohCard = weeklyStatusDisplay.find(c => c.ruleCode && c.ruleCode.includes('HOH'));
+        return hohCard ? weeklyEvents.find(e => e.type === hohCard.ruleCode) : undefined;
+    }, [weeklyEvents, weeklyStatusDisplay]);
+    
+    const povEvent = useMemo(() => {
+        const povCard = weeklyStatusDisplay.find(c => c.ruleCode && c.ruleCode.includes('VETO'));
+        return povCard ? weeklyEvents.find(e => e.type === povCard.ruleCode) : undefined;
+    }, [weeklyEvents, weeklyStatusDisplay]);
+
+    const nomEvent = useMemo(() => {
+        const nomCard = weeklyStatusDisplay.find(c => c.isMultiPick);
+        return nomCard ? weeklyEvents.find(e => e.type === nomCard.ruleCode) : undefined;
+    }, [weeklyEvents, weeklyStatusDisplay]);
+
+    const getContestantStatus = (hg: Contestant) => {
+        if (hg.status !== 'active') return null;
+        if (hg.id === hohEvent?.winnerId) return { label: 'HOH', className: 'bg-purple-600 text-white hover:bg-purple-700', icon: Crown };
+        if (hg.id === povEvent?.winnerId) return { label: 'Veto', className: 'bg-amber-500 text-white hover:bg-amber-600', icon: Ban };
+        if (hg.id === povEvent?.usedOnId) return { label: 'Saved', className: 'bg-sky-500 text-white hover:bg-sky-600', icon: ShieldCheck };
+        if (nomEvent?.nominees?.includes(hg.id)) return { label: 'Nominee', className: 'bg-red-500 text-white hover:bg-red-600', icon: TriangleAlert };
+        if (hg.id === povEvent?.replacementNomId) return { label: 'Renom', className: 'bg-orange-500 text-white hover:bg-orange-600', icon: RotateCcw };
+        return null;
+    };
+
 
     const calculateKpis = (teamPicks: Pick[], league: League, scoringRules: ScoringRule[], competitions: Competition[]) => {
         const breakdownCategories = league.settings.scoringBreakdownCategories || [];
@@ -101,19 +140,26 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
                <div className="mb-4">
                  <h4 className="text-sm font-semibold text-muted-foreground mb-2">Roster</h4>
                  <div className="flex flex-wrap items-center gap-2">
-                    {teamContestants.length > 0 ? teamContestants.map(hg => (
-                        <Badge key={hg.id} variant="outline" className={cn("py-1", hg.status !== 'active' && 'bg-muted text-muted-foreground')}>
-                          <Image
-                              src={hg.photoUrl || "https://placehold.co/100x100.png"}
-                              alt={getContestantDisplayName(hg, 'full')}
-                              width={20}
-                              height={20}
-                              className={cn("rounded-full mr-2", hg.status !== 'active' && 'grayscale')}
-                              data-ai-hint="portrait person"
-                          />
-                          {getContestantDisplayName(hg, 'short')}
-                        </Badge>
-                    )) : (
+                    {teamContestants.length > 0 ? teamContestants.map(hg => {
+                        const status = getContestantStatus(hg);
+                        return (
+                            <Badge key={hg.id} variant="outline" className={cn(
+                                "py-1", 
+                                hg.status !== 'active' && 'bg-muted text-muted-foreground',
+                                status && `${status.className} border-none`
+                            )}>
+                              <Image
+                                  src={hg.photoUrl || "https://placehold.co/100x100.png"}
+                                  alt={getContestantDisplayName(hg, 'full')}
+                                  width={20}
+                                  height={20}
+                                  className={cn("rounded-full mr-2", hg.status !== 'active' && 'grayscale')}
+                                  data-ai-hint="portrait person"
+                              />
+                              {getContestantDisplayName(hg, 'short')}
+                            </Badge>
+                        );
+                    }) : (
                         <p className="text-xs text-muted-foreground">No contestants drafted yet.</p>
                     )}
                  </div>
@@ -256,7 +302,19 @@ function TeamsPage() {
 
     const rules = useMemo(() => scoringRules?.rules || [], [scoringRules]);
     
-  if (!activeLeague || !contestants.length) {
+    const weeklyEvents = useMemo(() => {
+        if (!activeSeason) return [];
+        return competitions.filter(c => c.week === activeSeason.currentWeek);
+    }, [competitions, activeSeason]);
+
+    const weeklyStatusDisplay = useMemo(() => {
+        if (!activeSeason) return [];
+        const weekKey = `week${activeSeason.currentWeek}`;
+        return activeSeason.weeklyStatusDisplay?.[weekKey] || [];
+    }, [activeSeason]);
+
+
+  if (!activeLeague || !contestants.length || !activeSeason) {
     return (
         <div className="flex flex-1 items-center justify-center">
             <div>Loading Teams...</div>
@@ -312,6 +370,8 @@ function TeamsPage() {
                       users={users}
                       picks={picks}
                       totalScore={team.total_score}
+                      weeklyEvents={weeklyEvents}
+                      weeklyStatusDisplay={weeklyStatusDisplay}
                   />
               ))}
           </div>
