@@ -174,7 +174,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
                     if (rule) {
                         breakdownCategories.forEach(category => {
                             if (category.ruleCodes.includes(rule.code)) {
-                                kpis[category.displayName] = (kpis[category.displayName] || 0) + rule.points;
+                                kpis[category.displayName] = (kpis[category.displayName] || 0) + 1;
                             }
                         });
                     }
@@ -277,7 +277,7 @@ const TeamCard = ({ team, league, rules, competitions, contestants, users, picks
                                       <DynamicIcon name={category.icon} className={cn("h-4 w-4", category.color)} />
                                       {category.displayName}
                                     </span>
-                                    <span className="font-mono font-medium">{value > 0 ? '+':''}{value}</span>
+                                    <span className="font-mono font-medium">{value}</span>
                                 </div>
                             );
                         })}
