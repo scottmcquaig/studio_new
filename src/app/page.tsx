@@ -156,41 +156,21 @@ function DashboardPage() {
   };
 
   const teamsWithScores = useMemo(() => {
-    if (!teams.length || !scoringRules?.rules.length || !picks.length) return [];
+    if (!teams.length || !scoringRules?.rules.length || !picks.length || !activeSeason) return [];
     
+    const currentWeekCompetitions = competitions.filter(c => c.week === activeSeason.currentWeek);
+
     return teams.map(team => {
       const teamPicks = picks.filter(p => p.teamId === team.id);
       const total_score = calculateTeamScore(team, scoringRules.rules, teamPicks, competitions);
-      return { ...team, total_score };
+      const weekly_score = calculateTeamScore(team, scoringRules.rules, teamPicks, currentWeekCompetitions);
+      return { ...team, total_score, weekly_score };
     });
-  }, [teams, scoringRules, picks, competitions]);
+  }, [teams, scoringRules, picks, competitions, activeSeason]);
 
   const sortedTeams = useMemo(() => {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
   }, [teamsWithScores]);
-  
-  const previousWeekRanks = useMemo(() => {
-    if (!activeSeason || activeSeason.currentWeek <= 1 || !teams.length || !scoringRules?.rules.length || !picks.length) {
-      return new Map<string, number>();
-    }
-
-    const previousWeekCompetitions = competitions.filter(c => c.week < activeSeason.currentWeek);
-    
-    const teamsWithPreviousScores = teams.map(team => {
-      const teamPicks = picks.filter(p => p.teamId === team.id);
-      const previous_score = calculateTeamScore(team, scoringRules.rules, teamPicks, previousWeekCompetitions);
-      return { ...team, previous_score };
-    });
-
-    const sortedTeamsLastWeek = [...teamsWithPreviousScores].sort((a, b) => b.previous_score - a.previous_score || a.draftOrder - b.draftOrder);
-
-    const rankMap = new Map<string, number>();
-    sortedTeamsLastWeek.forEach((team, index) => {
-      rankMap.set(team.id, index + 1);
-    });
-
-    return rankMap;
-  }, [activeSeason, teams, scoringRules, picks, competitions]);
 
 
   const topMovers = useMemo(() => {
@@ -336,21 +316,18 @@ function DashboardPage() {
                       <div className="flex justify-between items-center px-4 mb-2">
                           <span className="text-xs font-medium text-muted-foreground">TEAM</span>
                            <div className="flex items-center gap-8">
-                            <span className="text-xs font-medium text-muted-foreground">WEEKLY</span>
-                            <span className="text-xs font-medium text-muted-foreground">POINTS</span>
+                            <span className="text-xs font-medium text-muted-foreground text-right">POINTS</span>
                            </div>
                       </div>
-                       <TooltipProvider>
                       <div className="space-y-4">
                           {sortedTeams.map((team, index) => {
                                const currentRank = index + 1;
-                               const lastWeekRank = previousWeekRanks.get(team.id);
-                               const rankChange = lastWeekRank ? lastWeekRank - currentRank : 0;
-
-                               const RankIndicator = () => {
-                                   if (!lastWeekRank || rankChange === 0) return <Minus className="h-4 w-4 text-muted-foreground" />;
-                                   if (rankChange > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
-                                   return <TrendingDown className="h-4 w-4 text-red-500" />;
+                               const weeklyScore = team.weekly_score || 0;
+                               
+                               const RankChangeIndicator = () => {
+                                   if (weeklyScore === 0) return <Minus className="h-3 w-3 text-muted-foreground" />;
+                                   if (weeklyScore > 0) return <TrendingUp className="h-3 w-3 text-green-500" />;
+                                   return <TrendingDown className="h-3 w-3 text-red-500" />;
                                };
                                
                                return (
@@ -366,20 +343,7 @@ function DashboardPage() {
                                           <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
                                       </div>
                                   </div>
-                                  <div className="flex items-center gap-4">
-                                       <Tooltip>
-                                          <TooltipTrigger>
-                                            <div className="flex items-center justify-center w-12 text-sm">
-                                                <RankIndicator />
-                                                {rankChange !== 0 && <span className="ml-1 font-mono">{Math.abs(rankChange)}</span>}
-                                            </div>
-                                          </TooltipTrigger>
-                                           {lastWeekRank && (
-                                            <TooltipContent>
-                                                <p>Previously Rank #{lastWeekRank}</p>
-                                            </TooltipContent>
-                                           )}
-                                       </Tooltip>
+                                  <div className="flex flex-col items-end">
                                       <Badge 
                                          variant="secondary" 
                                          className={cn(
@@ -391,11 +355,20 @@ function DashboardPage() {
                                       >
                                         <span>{team.total_score || 0}</span>
                                       </Badge>
+                                      <div className={cn("flex items-center text-xs mt-1",
+                                          weeklyScore > 0 && "text-green-600",
+                                          weeklyScore < 0 && "text-red-600",
+                                          weeklyScore === 0 && "text-muted-foreground"
+                                      )}>
+                                          <RankChangeIndicator />
+                                          <span className="ml-1 font-mono">
+                                              {weeklyScore > 0 ? '+':''}{weeklyScore} this week
+                                          </span>
+                                      </div>
                                   </div>
                               </div>
                           )})}
                       </div>
-                      </TooltipProvider>
                   </CardContent>
               </Card>
               
