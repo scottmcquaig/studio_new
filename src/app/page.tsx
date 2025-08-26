@@ -15,6 +15,8 @@ import {
   ListOrdered,
   Flame,
   PlusCircle,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { cn, getContestantDisplayName } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,7 @@ import { WeeklyStatus } from "@/components/weekly-status";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 function DashboardPage() {
   const db = getFirestore(app);
@@ -124,14 +127,14 @@ function DashboardPage() {
     return competitions.filter((c) => c.week === activeSeason.currentWeek);
    }, [competitions, activeSeason]
   );
-
-  const calculateTeamScore = (team: Team, rules: ScoringRule[], teamPicks: Pick[], competitions: Competition[]): number => {
+  
+  const calculateTeamScore = (team: Team, rules: ScoringRule[], teamPicks: Pick[], relevantCompetitions: Competition[]): number => {
     let score = 0;
     if (!rules.length || !teamPicks.length) return 0;
 
     const teamContestantIds = teamPicks.map(p => p.contestantId);
 
-    competitions.forEach(comp => {
+    relevantCompetitions.forEach(comp => {
         const processEvent = (contestantId: string, eventCode: string) => {
             if (teamContestantIds.includes(contestantId)) {
                 const rule = rules.find(r => r.code === eventCode);
@@ -166,6 +169,30 @@ function DashboardPage() {
     return [...teamsWithScores].sort((a, b) => (b.total_score || 0) - (a.total_score || 0) || a.draftOrder - b.draftOrder);
   }, [teamsWithScores]);
   
+  const previousWeekRanks = useMemo(() => {
+    if (!activeSeason || activeSeason.currentWeek <= 1 || !teams.length || !scoringRules?.rules.length || !picks.length) {
+      return new Map<string, number>();
+    }
+
+    const previousWeekCompetitions = competitions.filter(c => c.week < activeSeason.currentWeek);
+    
+    const teamsWithPreviousScores = teams.map(team => {
+      const teamPicks = picks.filter(p => p.teamId === team.id);
+      const previous_score = calculateTeamScore(team, scoringRules.rules, teamPicks, previousWeekCompetitions);
+      return { ...team, previous_score };
+    });
+
+    const sortedTeamsLastWeek = [...teamsWithPreviousScores].sort((a, b) => b.previous_score - a.previous_score || a.draftOrder - b.draftOrder);
+
+    const rankMap = new Map<string, number>();
+    sortedTeamsLastWeek.forEach((team, index) => {
+      rankMap.set(team.id, index + 1);
+    });
+
+    return rankMap;
+  }, [activeSeason, teams, scoringRules, picks, competitions]);
+
+
   const topMovers = useMemo(() => {
     if (!scoringRules?.rules.length || !contestants.length || !currentWeekEvents.length) return [];
     
@@ -308,36 +335,67 @@ function DashboardPage() {
                   <CardContent>
                       <div className="flex justify-between items-center px-4 mb-2">
                           <span className="text-xs font-medium text-muted-foreground">TEAM</span>
-                          <span className="text-xs font-medium text-muted-foreground">POINTS</span>
+                           <div className="flex items-center gap-8">
+                            <span className="text-xs font-medium text-muted-foreground">WEEKLY</span>
+                            <span className="text-xs font-medium text-muted-foreground">POINTS</span>
+                           </div>
                       </div>
+                       <TooltipProvider>
                       <div className="space-y-4">
-                          {sortedTeams.map((team, index) => (
+                          {sortedTeams.map((team, index) => {
+                               const currentRank = index + 1;
+                               const lastWeekRank = previousWeekRanks.get(team.id);
+                               const rankChange = lastWeekRank ? lastWeekRank - currentRank : 0;
+
+                               const RankIndicator = () => {
+                                   if (!lastWeekRank || rankChange === 0) return <Minus className="h-4 w-4 text-muted-foreground" />;
+                                   if (rankChange > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
+                                   return <TrendingDown className="h-4 w-4 text-red-500" />;
+                               };
+                               
+                               return (
                                <div key={team.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                   <div className="flex items-center gap-3">
                                       <span className={cn("text-lg font-bold w-6 text-center", 
                                           index === 0 && "text-amber-400",
                                           index === 1 && "text-slate-300",
                                           index === 2 && "text-orange-400"
-                                      )}>{index + 1}</span>
+                                      )}>{currentRank}</span>
                                       <div>
                                           <p className="font-medium">{team.name}</p>
                                           <p className="text-sm text-muted-foreground">{getOwnerNames(team)}</p>
                                       </div>
                                   </div>
-                                  <Badge 
-                                     variant="secondary" 
-                                     className={cn(
-                                        "w-20 justify-center text-base",
-                                        (team.total_score || 0) > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
-                                        (team.total_score || 0) < 0 && "bg-red-100 text-red-800 hover:bg-red-200",
-                                        (team.total_score || 0) === 0 && "bg-gray-100 text-gray-800"
-                                     )}
-                                  >
-                                    <span>{team.total_score || 0}</span>
-                                  </Badge>
+                                  <div className="flex items-center gap-4">
+                                       <Tooltip>
+                                          <TooltipTrigger>
+                                            <div className="flex items-center justify-center w-12 text-sm">
+                                                <RankIndicator />
+                                                {rankChange !== 0 && <span className="ml-1 font-mono">{Math.abs(rankChange)}</span>}
+                                            </div>
+                                          </TooltipTrigger>
+                                           {lastWeekRank && (
+                                            <TooltipContent>
+                                                <p>Previously Rank #{lastWeekRank}</p>
+                                            </TooltipContent>
+                                           )}
+                                       </Tooltip>
+                                      <Badge 
+                                         variant="secondary" 
+                                         className={cn(
+                                            "w-20 justify-center text-base",
+                                            (team.total_score || 0) > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
+                                            (team.total_score || 0) < 0 && "bg-red-100 text-red-800 hover:bg-red-200",
+                                            (team.total_score || 0) === 0 && "bg-gray-100 text-gray-800"
+                                         )}
+                                      >
+                                        <span>{team.total_score || 0}</span>
+                                      </Badge>
+                                  </div>
                               </div>
-                          ))}
+                          )})}
                       </div>
+                      </TooltipProvider>
                   </CardContent>
               </Card>
               
@@ -443,5 +501,3 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
-
-    
