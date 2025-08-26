@@ -159,13 +159,12 @@ function ContestantsPage() {
 
   const sortedContestants = useMemo(() => {
     const getSortPriority = (hg: Contestant) => {
-        if (hg.status !== 'active') return 10; // Evicted are last among major groups
+        if (hg.status !== 'active') return 10;
         if (hg.id === hohEvent?.winnerId) return 1;
         if (hg.id === povEvent?.winnerId) return 2;
-        // Add special event logic here if needed, e.g., checking for another ruleCode
         if (nomEvent?.nominees?.includes(hg.id)) return 3;
         if (hg.id === povEvent?.replacementNomId) return 4;
-        return 5; // Active, no special status
+        return 5;
     };
 
     return [...contestantStats].sort((a, b) => {
@@ -176,12 +175,10 @@ function ContestantsPage() {
         return priorityA - priorityB;
       }
 
-      // If priorities are the same, handle sub-sorting
-      if (priorityA === 10) { // Both are evicted
+      if (priorityA === 10) {
         return (b.evictedDay || 0) - (a.evictedDay || 0);
       }
       
-      // Both are active with same highest status or no status
       return getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'));
     });
   }, [contestantStats, hohEvent, povEvent, nomEvent]);
@@ -222,7 +219,7 @@ function ContestantsPage() {
                         alt={getContestantDisplayName(hg, 'full')}
                         width={64}
                         height={64}
-                        className="rounded-full border-2"
+                        className={cn("rounded-full border-2", hg.status !== 'active' && 'grayscale')}
                         data-ai-hint="portrait person"
                       />
                       <div className="flex-1">
