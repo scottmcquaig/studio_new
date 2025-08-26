@@ -202,13 +202,26 @@ function ContestantsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedContestants.map(hg => {
                  const weeklyStatuses: { label: string; className: string; icon?: React.ElementType }[] = [];
-                if (hg.status === 'active') {
+                 if (hg.status === 'active') {
                     if (hg.id === hohEvent?.winnerId) weeklyStatuses.push({ label: 'HOH', className: 'bg-purple-600 text-white hover:bg-purple-700', icon: Crown });
                     if (hg.id === povEvent?.winnerId) weeklyStatuses.push({ label: 'Veto', className: 'bg-amber-500 text-white hover:bg-amber-600', icon: Ban });
                     if (hg.id === povEvent?.usedOnId) weeklyStatuses.push({ label: 'Saved', className: 'bg-sky-500 text-white hover:bg-sky-600', icon: ShieldCheck });
                     if (nomEvent?.nominees?.includes(hg.id)) weeklyStatuses.push({ label: 'Nominee', className: 'bg-red-500 text-white hover:bg-red-600', icon: TriangleAlert });
                     if (hg.id === povEvent?.replacementNomId) weeklyStatuses.push({ label: 'Renom', className: 'bg-orange-500 text-white hover:bg-orange-600', icon: RotateCcw });
                 }
+
+                const getBorderColor = () => {
+                    if (hg.status !== 'active') return 'border-muted-foreground';
+                    const highestStatus = weeklyStatuses[0]; // weeklyStatuses is already sorted by implicit priority
+                    if (highestStatus) {
+                        if (highestStatus.label === 'HOH') return 'border-purple-600';
+                        if (highestStatus.label === 'Veto') return 'border-amber-500';
+                        if (highestStatus.label === 'Saved') return 'border-sky-500';
+                        if (highestStatus.label === 'Nominee') return 'border-red-500';
+                        if (highestStatus.label === 'Renom') return 'border-orange-500';
+                    }
+                    return 'border-green-500';
+                };
                 
                 return (
                 <DialogTrigger key={hg.id} asChild onClick={() => setSelectedContestant(hg)}>
@@ -219,7 +232,10 @@ function ContestantsPage() {
                         alt={getContestantDisplayName(hg, 'full')}
                         width={64}
                         height={64}
-                        className={cn("rounded-full border-2", hg.status !== 'active' && 'grayscale')}
+                        className={cn(
+                            "rounded-full border-2", 
+                            hg.status !== 'active' ? 'grayscale border-muted-foreground' : getBorderColor()
+                        )}
                         data-ai-hint="portrait person"
                       />
                       <div className="flex-1">
