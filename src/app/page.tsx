@@ -31,7 +31,6 @@ import { WeeklyStatus } from "@/components/weekly-status";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 function DashboardPage() {
   const db = getFirestore(app);
@@ -312,8 +311,8 @@ function DashboardPage() {
                   <CardContent>
                       <div className="flex justify-between items-center px-4 mb-2">
                           <span className="text-xs font-medium text-muted-foreground">TEAM</span>
-                           <div className="flex items-center gap-8">
-                            <span className="text-xs font-medium text-muted-foreground text-right">POINTS</span>
+                           <div className="flex w-20 justify-center">
+                            <span className="text-xs font-medium text-muted-foreground">POINTS</span>
                            </div>
                       </div>
                       <div className="space-y-4">
@@ -347,7 +346,7 @@ function DashboardPage() {
                                             "w-20 justify-center text-base",
                                             (team.total_score || 0) > 0 && "bg-green-100 text-green-800 hover:bg-green-200",
                                             (team.total_score || 0) < 0 && "bg-red-100 text-red-800 hover:bg-red-200",
-                                            (team.total_score || 0) === 0 && "bg-gray-100 text-gray-800"
+                                            (team.total_score || 0) === 0 && "bg-gray-100 text-gray-800 hover:bg-gray-200"
                                          )}
                                       >
                                         <span>{team.total_score || 0}</span>
