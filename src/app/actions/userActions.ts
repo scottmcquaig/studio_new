@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, collection, addDoc } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
 
 // This function ensures the Firebase Admin SDK is initialized.
@@ -25,7 +25,7 @@ export async function inviteUser(data: { displayName: string, email: string }) {
     const db = getFirestore();
     
     // Create the user document in Firestore with 'pending' status
-    const userDocRef = await addDoc(collection(db, 'users'), {
+    const userDocRef = await db.collection('users').add({
       email: data.email,
       displayName: data.displayName,
       role: 'player', // Default role for new users
