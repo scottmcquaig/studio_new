@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle, Loader2 } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle, Loader2, DatabaseZap } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick, SeasonWeeklyStatusDisplay } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -983,7 +983,7 @@ function AdminPage() {
         try {
             const result = await inviteUser({ displayName: newUserData.displayName, email: newUserData.email });
             if (result.success) {
-                toast({ title: "User Added!", description: `${newUserData.displayName} has been added with a pending status.` });
+                toast({ title: "User Added!", description: `${newUserData.displayName} has been added with a pending status. Please send them a link to register.` });
                 setIsNewUserDialogOpen(false);
                 setNewUserData({ displayName: '', email: '' });
             } else {
@@ -1204,6 +1204,16 @@ function AdminPage() {
              {currentUser.role === 'site_admin' && (
                 <TooltipProvider>
                     <Tooltip>
+                        <TooltipTrigger asChild>
+                             <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                <Link href="/admin/data-model"><DatabaseZap className="h-4 w-4"/></Link>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Data Model</p>
+                        </TooltipContent>
+                    </Tooltip>
+                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button variant={activeTab === 'site' ? 'secondary' : 'outline'} size="icon" className="h-8 w-8" onClick={() => setActiveTab('site')}>
                                 <Shield className="h-4 w-4"/>
@@ -2093,7 +2103,7 @@ function AdminPage() {
                 <DialogHeader>
                     <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
-                        Create a new user with a temporary password.
+                        A user record will be created with a 'pending' status. They will need to complete registration via an email invite.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
@@ -2119,7 +2129,7 @@ function AdminPage() {
                     <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
                     <Button onClick={handleSendInvite} disabled={isSendingInvite}>
                         {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create User
+                        Add User
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -2568,6 +2578,7 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
 
 
