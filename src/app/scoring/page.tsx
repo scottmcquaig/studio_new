@@ -115,6 +115,7 @@ function ScoringPage() {
     eventLabel: string;
     eventCode: string;
     points: number;
+    timestamp: string;
   };
 
   const scoringEvents = useMemo(() => {
@@ -122,7 +123,6 @@ function ScoringPage() {
     if (!scoringRules?.rules) return events;
 
     competitions.forEach(comp => {
-      // 1. Process the main event based on its type
       const mainRule = scoringRules.rules.find(r => r.code === comp.type);
       if (mainRule) {
           if (comp.nominees && comp.nominees.length > 0) {
@@ -139,6 +139,7 @@ function ScoringPage() {
                       eventLabel: mainRule.label,
                       eventCode: mainRule.code,
                       points: mainRule.points,
+                      timestamp: comp.airDate,
                   });
               }
           } else {
@@ -157,13 +158,13 @@ function ScoringPage() {
                           eventLabel: mainRule.label,
                           eventCode: mainRule.code,
                           points: mainRule.points,
+                          timestamp: comp.airDate,
                       });
                   }
               }
           }
       }
 
-      // 2. Check for a Veto save in the same event
       if (comp.usedOnId) {
           const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
           if(vetoUsedRule) {
@@ -180,12 +181,12 @@ function ScoringPage() {
                     eventLabel: vetoUsedRule.label,
                     eventCode: 'VETO_USED',
                     points: vetoUsedRule.points,
+                    timestamp: comp.airDate,
                 });
             }
           }
       }
 
-      // 3. Check for a replacement nominee in the same event
       if (comp.replacementNomId) {
           const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
           if(finalNomRule) {
@@ -202,13 +203,14 @@ function ScoringPage() {
                     eventLabel: finalNomRule.label,
                     eventCode: 'FINAL_NOM',
                     points: finalNomRule.points,
+                    timestamp: comp.airDate,
                 });
             }
           }
       }
     });
     
-    return events.sort((a,b) => b.week - a.week);
+    return events.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [scoringRules, competitions, contestants, teams, picks]);
 
   const filteredEvents = useMemo(() => {
@@ -374,3 +376,5 @@ function ScoringPage() {
 }
 
 export default withAuth(ScoringPage);
+
+    

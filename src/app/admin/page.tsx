@@ -1519,7 +1519,7 @@ function AdminPage() {
                                                     <>
                                                         <Select value={weeklyEventData[eventKey]?.usedOnId || ''} onValueChange={val => handleEventChange(eventKey, 'usedOnId', val)}>
                                                             <SelectTrigger><SelectValue placeholder="Used on..."/></SelectTrigger>
-                                                            <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                                            <SelectContent>{allSeasonContestants.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                         </Select>
                                                         <Select value={weeklyEventData[eventKey]?.replacementNomId || ''} onValueChange={val => handleEventChange(eventKey, 'replacementNomId', val)}>
                                                             <SelectTrigger><SelectValue placeholder="Replacement..."/></SelectTrigger>
@@ -2587,5 +2587,7 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
 
 
 
+
+    
 
     

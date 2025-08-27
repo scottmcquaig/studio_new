@@ -245,7 +245,6 @@ function DashboardPage() {
     const activities: any[] = [];
     
     currentWeekEvents.forEach(event => {
-        // 1. Process the main event based on its type
         const mainRule = scoringRules.rules.find(r => r.code === event.type);
         if (mainRule) {
             if (event.nominees && event.nominees.length > 0) {
@@ -256,6 +255,7 @@ function DashboardPage() {
                         description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} were nominated.`,
                         points: mainRule.points,
                         type: mainRule.label,
+                        timestamp: event.airDate,
                     });
                 }
             } else {
@@ -268,13 +268,13 @@ function DashboardPage() {
                             description: `${getContestantDisplayName(player, 'full')} was ${mainRule.label.toLowerCase()}.`,
                             points: mainRule.points,
                             type: mainRule.label,
+                            timestamp: event.airDate,
                         });
                     }
                 }
             }
         }
 
-        // 2. Check for a Veto save in the same event
         if (event.usedOnId) {
             const savedPlayer = contestants.find(c => c.id === event.usedOnId);
             const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
@@ -284,11 +284,11 @@ function DashboardPage() {
                     description: `${getContestantDisplayName(savedPlayer, 'full')} was saved by the veto.`,
                     points: vetoUsedRule.points,
                     type: vetoUsedRule.label,
+                    timestamp: event.airDate,
                 });
             }
         }
         
-        // 3. Check for a replacement nominee in the same event
         if (event.replacementNomId) {
              const renomPlayer = contestants.find(c => c.id === event.replacementNomId);
              const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
@@ -298,11 +298,12 @@ function DashboardPage() {
                     description: `${getContestantDisplayName(renomPlayer, 'full')} was named the replacement nominee.`,
                     points: finalNomRule.points,
                     type: finalNomRule.label,
+                    timestamp: event.airDate,
                 });
              }
         }
     });
-    return activities;
+    return activities.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [currentWeekEvents, contestants, scoringRules]);
 
 
@@ -545,3 +546,5 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
+
+    
