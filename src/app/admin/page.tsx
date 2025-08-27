@@ -983,7 +983,7 @@ function AdminPage() {
         try {
             const result = await inviteUser({ displayName: newUserData.displayName, email: newUserData.email });
             if (result.success) {
-                toast({ title: "User Created!", description: `${newUserData.displayName} has been added.` });
+                toast({ title: "User Added!", description: `${newUserData.displayName} has been added with a pending status.` });
                 setIsNewUserDialogOpen(false);
                 setNewUserData({ displayName: '', email: '' });
             } else {
@@ -991,7 +991,7 @@ function AdminPage() {
             }
         } catch (error: any) {
             console.error("Error sending invite: ", error);
-            toast({ title: "Failed to Create User", description: error.message, variant: "destructive" });
+            toast({ title: "Failed to Add User", description: error.message, variant: "destructive" });
         } finally {
             setIsSendingInvite(false);
         }
@@ -2093,7 +2093,7 @@ function AdminPage() {
                 <DialogHeader>
                     <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
-                        Create a new user account with a temporary password.
+                        Create a new user with a temporary password.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
@@ -2568,6 +2568,7 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
 
 

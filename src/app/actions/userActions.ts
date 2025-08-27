@@ -1,21 +1,19 @@
 
 'use server';
 
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore, collection, addDoc } from 'firebase-admin/firestore';
+import { initializeApp, getApps } from 'firebase-admin/app';
 
 // This function ensures the Firebase Admin SDK is initialized.
 // It prevents re-initialization which can cause errors.
 if (getApps().length === 0) {
   // When deployed to a Google Cloud environment, the SDK can automatically
-  // discover the service account credentials. This is the standard way
-  // to initialize in serverless environments.
+  // discover the service account credentials.
   initializeApp();
 }
 
 /**
- * Creates a new user with a temporary password.
+ * Creates a new user document in Firestore with a 'pending' status.
  * This function is intended to be called from a secure environment (e.g., a server action).
  * @param {object} data - The user data.
  * @param {string} data.displayName - The user's display name.
@@ -24,44 +22,26 @@ if (getApps().length === 0) {
  */
 export async function inviteUser(data: { displayName: string, email: string }) {
   try {
-    const auth = getAuth();
     const db = getFirestore();
     
-    // 1. Generate a secure temporary password
-    const temporaryPassword = Math.random().toString(36).slice(-10);
-
-    // 2. Create the user in Firebase Authentication with the temporary password
-    const userRecord = await auth.createUser({
-      email: data.email,
-      displayName: data.displayName,
-      password: temporaryPassword,
-      emailVerified: true, // Or false, depending on desired flow
-    });
-
-    // 3. Create the corresponding user document in Firestore with 'active' status
-    const userDocRef = db.collection('users').doc(userRecord.uid);
-    await userDocRef.set({
-      uid: userRecord.uid,
+    // Create the user document in Firestore with 'pending' status
+    const userDocRef = await addDoc(collection(db, 'users'), {
       email: data.email,
       displayName: data.displayName,
       role: 'player', // Default role for new users
-      status: 'active', // User is active immediately
+      status: 'pending', // User is pending until they sign up
       createdAt: new Date().toISOString(),
     });
-    
-    // In a real app, you might want to log this temporary password securely or
-    // have a process for the user to reset it on first login. For now, we log it.
-    console.log(`Created user ${data.email} with temporary password: ${temporaryPassword}`);
-    // A follow-up action could be to send a password reset email from the admin UI.
 
-    return { success: true, uid: userRecord.uid };
+    // In a real app, you would now trigger an email send to this user
+    // with a link to the signup page. For now, we just create the record.
+    console.log(`Created pending user record for ${data.email} with ID: ${userDocRef.id}`);
+
+    return { success: true, uid: userDocRef.id };
 
   } catch (error: any) {
     console.error("Error in inviteUser action:", error);
-    // Provide a more user-friendly error message
-    const message = error.code === 'auth/email-already-exists'
-      ? 'A user with this email already exists.'
-      : error.message || 'An unexpected error occurred.';
+    const message = error.message || 'An unexpected error occurred.';
     return { success: false, error: message };
   }
 }
