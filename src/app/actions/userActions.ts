@@ -1,7 +1,7 @@
 
 'use server';
 
-import { getFirestore, collection, addDoc } from 'firebase-admin/firestore';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase-admin/app';
 
 // This function ensures the Firebase Admin SDK is initialized.
