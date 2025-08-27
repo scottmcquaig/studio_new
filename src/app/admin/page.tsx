@@ -1469,7 +1469,7 @@ function AdminPage() {
                                                 <Label className="font-semibold">{card.title}</Label>
                                                 <div className="space-y-2">
                                                     {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
-                                                        const nominee = activeContestantsInLeague.find(c => c.id === nomId);
+                                                        const nominee = allSeasonContestants.find(c => c.id === nomId);
                                                         return (
                                                             <div key={nomId} className="flex items-center justify-between text-sm p-1 bg-muted rounded-md">
                                                                 <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
@@ -1495,7 +1495,7 @@ function AdminPage() {
                                                     }}>
                                                     <SelectTrigger><SelectValue placeholder="Add nominee..."/></SelectTrigger>
                                                     <SelectContent>
-                                                        {activeContestantsInLeague
+                                                        {allSeasonContestants
                                                             .filter(c => !(weeklyEventData[eventKey]?.nominees || []).includes(c.id))
                                                             .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
                                                     </SelectContent>
