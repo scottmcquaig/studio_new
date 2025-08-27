@@ -7,13 +7,11 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 
 // This function ensures the Firebase Admin SDK is initialized.
 // It prevents re-initialization which can cause errors.
-function initializeAdmin() {
-  if (getApps().length === 0) {
-    // When deployed to a Google Cloud environment, the SDK can automatically
-    // discover the service account credentials. This is the standard way
-    // to initialize in serverless environments.
-    initializeApp();
-  }
+if (getApps().length === 0) {
+  // When deployed to a Google Cloud environment, the SDK can automatically
+  // discover the service account credentials. This is the standard way
+  // to initialize in serverless environments.
+  initializeApp();
 }
 
 /**
@@ -26,8 +24,6 @@ function initializeAdmin() {
  */
 export async function inviteUser(data: { displayName: string, email: string }) {
   try {
-    initializeAdmin();
-
     const auth = getAuth();
     const db = getFirestore();
     
