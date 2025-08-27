@@ -250,7 +250,7 @@ function DashboardPage() {
             if (nomineePlayers.length > 0) {
                  activities.push({
                     players: nomineePlayers,
-                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} were ${rule.label.toLowerCase()}.`,
+                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} were nominated.`,
                     points: rule.points,
                     type: rule.label,
                 });
@@ -280,21 +280,21 @@ function DashboardPage() {
             if (player && vetoUsedRule) {
                  activities.push({
                     players: [player],
-                    description: `${getContestantDisplayName(player, 'full')} was ${vetoUsedRule.label.toLowerCase()}.`,
+                    description: `${getContestantDisplayName(player, 'full')} was saved by the veto.`,
                     points: vetoUsedRule.points,
                     type: vetoUsedRule.label,
                 });
             }
         }
         
-        // Handle replacement nominee
+        // Handle replacement nominee - THIS IS THE FIX
         if (event.replacementNomId) {
              const player = contestants.find(c => c.id === event.replacementNomId);
              const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
              if (player && finalNomRule) {
                   activities.push({
                     players: [player],
-                    description: `${getContestantDisplayName(player, 'full')} was named the ${finalNomRule.label.toLowerCase()}.`,
+                    description: `${getContestantDisplayName(player, 'full')} was named the replacement nominee.`,
                     points: finalNomRule.points,
                     type: finalNomRule.label,
                 });
