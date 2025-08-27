@@ -241,60 +241,57 @@ function DashboardPage() {
 
     const activities: any[] = [];
     currentWeekEvents.forEach(event => {
-        const rule = scoringRules.rules.find(r => r.code === event.type);
-        if (!rule) return;
-
-        // Handle multi-player events like nominations
-        if (event.nominees && event.nominees.length > 0) {
-            const nomineePlayers = event.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
-            if (nomineePlayers.length > 0) {
-                 activities.push({
-                    players: nomineePlayers,
-                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} were nominated.`,
-                    points: rule.points,
-                    type: rule.label,
-                });
-            }
-        } else {
-            // Handle single-player events (winner, evicted)
-            const processPlayer = (playerId: string | undefined, customLabel?: string) => {
-                if (!playerId) return;
-                const player = contestants.find(c => c.id === playerId);
-                if (player) {
+        // Handle main event
+        const mainRule = scoringRules.rules.find(r => r.code === event.type);
+        if (mainRule) {
+            if (event.nominees && event.nominees.length > 0) {
+                const nomineePlayers = event.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
+                if (nomineePlayers.length > 0) {
                     activities.push({
-                        players: [player],
-                        description: `${getContestantDisplayName(player, 'full')} was ${customLabel || rule.label.toLowerCase()}.`,
-                        points: rule.points,
-                        type: rule.label,
+                        players: nomineePlayers,
+                        description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} were nominated.`,
+                        points: mainRule.points,
+                        type: mainRule.label,
                     });
                 }
-            };
-            processPlayer(event.winnerId);
-            processPlayer(event.evictedId);
+            } else {
+                const playerId = event.winnerId || event.evictedId;
+                if (playerId) {
+                    const player = contestants.find(c => c.id === playerId);
+                    if (player) {
+                        activities.push({
+                            players: [player],
+                            description: `${getContestantDisplayName(player, 'full')} was ${mainRule.label.toLowerCase()}.`,
+                            points: mainRule.points,
+                            type: mainRule.label,
+                        });
+                    }
+                }
+            }
         }
 
         // Handle veto save
         if (event.usedOnId) {
-            const player = contestants.find(c => c.id === event.usedOnId);
+            const savedPlayer = contestants.find(c => c.id === event.usedOnId);
             const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
-            if (player && vetoUsedRule) {
-                 activities.push({
-                    players: [player],
-                    description: `${getContestantDisplayName(player, 'full')} was saved by the veto.`,
+            if (savedPlayer && vetoUsedRule) {
+                activities.push({
+                    players: [savedPlayer],
+                    description: `${getContestantDisplayName(savedPlayer, 'full')} was saved by the veto.`,
                     points: vetoUsedRule.points,
                     type: vetoUsedRule.label,
                 });
             }
         }
         
-        // Handle replacement nominee - THIS IS THE FIX
+        // Handle replacement nominee
         if (event.replacementNomId) {
-             const player = contestants.find(c => c.id === event.replacementNomId);
+             const renomPlayer = contestants.find(c => c.id === event.replacementNomId);
              const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
-             if (player && finalNomRule) {
+             if (renomPlayer && finalNomRule) {
                   activities.push({
-                    players: [player],
-                    description: `${getContestantDisplayName(player, 'full')} was named the replacement nominee.`,
+                    players: [renomPlayer],
+                    description: `${getContestantDisplayName(renomPlayer, 'full')} was named the replacement nominee.`,
                     points: finalNomRule.points,
                     type: finalNomRule.label,
                 });
@@ -544,3 +541,5 @@ function DashboardPage() {
 }
 
 export default withAuth(DashboardPage);
+
+    
