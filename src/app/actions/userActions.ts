@@ -10,9 +10,8 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 function initializeAdmin() {
   if (getApps().length === 0) {
     // When deployed to a Google Cloud environment, the SDK can automatically
-    // discover the service account credentials. In other environments, you may
-    // need to provide credentials explicitly. The modern SDK handles this
-    // implicitly when a service like getAuth() or getFirestore() is called for the first time.
+    // discover the service account credentials. This is the standard way
+    // to initialize in serverless environments.
     initializeApp();
   }
 }
