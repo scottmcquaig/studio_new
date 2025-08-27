@@ -243,7 +243,9 @@ function DashboardPage() {
     if (!scoringRules?.rules || !contestants.length || !currentWeekEvents.length) return [];
 
     const activities: any[] = [];
+    
     currentWeekEvents.forEach(event => {
+        // 1. Process the main event based on its type
         const mainRule = scoringRules.rules.find(r => r.code === event.type);
         if (mainRule) {
             if (event.nominees && event.nominees.length > 0) {
@@ -272,7 +274,7 @@ function DashboardPage() {
             }
         }
 
-        // Handle veto save
+        // 2. Check for a Veto save in the same event
         if (event.usedOnId) {
             const savedPlayer = contestants.find(c => c.id === event.usedOnId);
             const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
@@ -286,7 +288,7 @@ function DashboardPage() {
             }
         }
         
-        // Handle replacement nominee
+        // 3. Check for a replacement nominee in the same event
         if (event.replacementNomId) {
              const renomPlayer = contestants.find(c => c.id === event.replacementNomId);
              const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');

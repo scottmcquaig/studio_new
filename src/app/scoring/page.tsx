@@ -122,8 +122,8 @@ function ScoringPage() {
     if (!scoringRules?.rules) return events;
 
     competitions.forEach(comp => {
+      // 1. Process the main event based on its type
       const mainRule = scoringRules.rules.find(r => r.code === comp.type);
-      
       if (mainRule) {
           if (comp.nominees && comp.nominees.length > 0) {
               const nominees = comp.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
@@ -163,6 +163,7 @@ function ScoringPage() {
           }
       }
 
+      // 2. Check for a Veto save in the same event
       if (comp.usedOnId) {
           const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
           if(vetoUsedRule) {
@@ -184,6 +185,7 @@ function ScoringPage() {
           }
       }
 
+      // 3. Check for a replacement nominee in the same event
       if (comp.replacementNomId) {
           const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
           if(finalNomRule) {
