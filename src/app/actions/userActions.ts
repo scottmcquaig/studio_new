@@ -12,7 +12,7 @@ function initializeAdmin() {
     // When deployed to a Google Cloud environment, the SDK can automatically
     // discover the service account credentials. In other environments, you may
     // need to provide credentials explicitly. The modern SDK handles this
-    // implicitly when getAuth() or getFirestore() is called.
+    // implicitly when a service like getAuth() or getFirestore() is called for the first time.
     initializeApp();
   }
 }
