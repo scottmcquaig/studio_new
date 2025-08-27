@@ -122,53 +122,47 @@ function ScoringPage() {
     if (!scoringRules?.rules) return events;
 
     competitions.forEach(comp => {
-      const rule = scoringRules.rules.find(r => r.code === comp.type);
-      if (!rule) return;
-
-      // Handle multi-player nomination events
-      if (comp.nominees && comp.nominees.length > 0) {
-        const nominees = comp.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
-        if (nominees.length > 0) {
-            const firstPick = picks.find(p => p.contestantId === nominees[0].id);
-            const team = teams.find(t => t.id === firstPick?.teamId);
-
-            events.push({
-                week: comp.week,
-                contestantIds: nominees.map(n => n.id),
-                contestantName: nominees.map(n => getContestantDisplayName(n, 'short')).join(', '),
-                teamId: team?.id,
-                teamName: team?.name,
-                eventLabel: rule.label,
-                eventCode: rule.code,
-                points: rule.points,
-            });
-        }
-      } else {
-        // Handle single-player events from the main event type
-        const processEvent = (contestantId: string | undefined, eventCode: string, points: number, label: string) => {
-            if (!contestantId) return;
-            const contestant = contestants.find(hg => hg.id === contestantId);
-            const pick = picks.find(p => p.contestantId === contestantId);
-            const team = teams.find(t => t.id === pick?.teamId);
-            
-            if (contestant) {
-                events.push({
-                    week: comp.week,
-                    contestantIds: [contestant.id],
-                    contestantName: getContestantDisplayName(contestant, 'full'),
-                    teamId: team?.id,
-                    teamName: team?.name,
-                    eventLabel: label,
-                    eventCode: eventCode,
-                    points: points,
-                });
-            }
-        };
-        processEvent(comp.winnerId, comp.type, rule.points, rule.label);
-        processEvent(comp.evictedId, comp.type, rule.points, rule.label);
+      const mainRule = scoringRules.rules.find(r => r.code === comp.type);
+      
+      if (mainRule) {
+          if (comp.nominees && comp.nominees.length > 0) {
+              const nominees = comp.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
+              if (nominees.length > 0) {
+                  const firstPick = picks.find(p => p.contestantId === nominees[0].id);
+                  const team = teams.find(t => t.id === firstPick?.teamId);
+                  events.push({
+                      week: comp.week,
+                      contestantIds: nominees.map(n => n.id),
+                      contestantName: nominees.map(n => getContestantDisplayName(n, 'short')).join(', '),
+                      teamId: team?.id,
+                      teamName: team?.name,
+                      eventLabel: mainRule.label,
+                      eventCode: mainRule.code,
+                      points: mainRule.points,
+                  });
+              }
+          } else {
+              const playerId = comp.winnerId || comp.evictedId;
+              if (playerId) {
+                  const contestant = contestants.find(hg => hg.id === playerId);
+                  const pick = picks.find(p => p.contestantId === playerId);
+                  const team = teams.find(t => t.id === pick?.teamId);
+                  if (contestant) {
+                      events.push({
+                          week: comp.week,
+                          contestantIds: [contestant.id],
+                          contestantName: getContestantDisplayName(contestant, 'full'),
+                          teamId: team?.id,
+                          teamName: team?.name,
+                          eventLabel: mainRule.label,
+                          eventCode: mainRule.code,
+                          points: mainRule.points,
+                      });
+                  }
+              }
+          }
       }
 
-       // Handle veto save as a separate event
       if (comp.usedOnId) {
           const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
           if(vetoUsedRule) {
@@ -182,7 +176,7 @@ function ScoringPage() {
                     contestantName: getContestantDisplayName(contestant, 'full'),
                     teamId: team?.id,
                     teamName: team?.name,
-                    eventLabel: "Saved by Veto",
+                    eventLabel: vetoUsedRule.label,
                     eventCode: 'VETO_USED',
                     points: vetoUsedRule.points,
                 });
@@ -190,7 +184,6 @@ function ScoringPage() {
           }
       }
 
-      // Handle replacement nominee as a separate event
       if (comp.replacementNomId) {
           const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
           if(finalNomRule) {
@@ -204,7 +197,7 @@ function ScoringPage() {
                     contestantName: getContestantDisplayName(contestant, 'full'),
                     teamId: team?.id,
                     teamName: team?.name,
-                    eventLabel: "Replacement Nominee",
+                    eventLabel: finalNomRule.label,
                     eventCode: 'FINAL_NOM',
                     points: finalNomRule.points,
                 });

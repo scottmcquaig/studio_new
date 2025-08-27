@@ -135,17 +135,14 @@ function DashboardPage() {
 
     relevantCompetitions.forEach(comp => {
         const rule = rules.find(r => r.code === comp.type);
-        if (!rule) return;
-
-        const processEvent = (contestantId: string) => {
-            if (teamContestantIds.includes(contestantId)) {
-                score += rule.points;
-            }
-        };
+        if (rule) {
+            if (comp.winnerId && teamContestantIds.includes(comp.winnerId)) score += rule.points;
+            if (comp.evictedId && teamContestantIds.includes(comp.evictedId)) score += rule.points;
+            if (comp.nominees) comp.nominees.forEach(nomId => {
+                if (teamContestantIds.includes(nomId)) score += rule.points;
+            });
+        }
         
-        if (comp.winnerId) processEvent(comp.winnerId);
-        if (comp.evictedId) processEvent(comp.evictedId);
-        if (comp.nominees) comp.nominees.forEach(processEvent);
         if (comp.usedOnId) {
             const vetoUsedRule = rules.find(r => r.code === 'VETO_USED');
             if (vetoUsedRule && teamContestantIds.includes(comp.usedOnId)) {
@@ -190,17 +187,23 @@ function DashboardPage() {
 
     currentWeekEvents.forEach(comp => {
         const rule = scoringRules.rules.find(r => r.code === comp.type);
-        if (!rule) return;
-
-        const processEvent = (contestantId: string) => {
-            if (weeklyScores[contestantId] !== undefined) {
-                weeklyScores[contestantId].score += rule.points;
-            }
-        };
+        if (rule) {
+            if(comp.winnerId && weeklyScores[comp.winnerId]) weeklyScores[comp.winnerId].score += rule.points;
+            if(comp.evictedId && weeklyScores[comp.evictedId]) weeklyScores[comp.evictedId].score += rule.points;
+            if(comp.nominees) comp.nominees.forEach(id => {
+                 if (weeklyScores[id]) weeklyScores[id].score += rule.points;
+            });
+        }
         
-        if(comp.winnerId) processEvent(comp.winnerId);
-        if(comp.evictedId) processEvent(comp.evictedId);
-        if(comp.nominees) comp.nominees.forEach(processEvent);
+        if (comp.usedOnId) {
+            const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
+            if (vetoUsedRule && weeklyScores[comp.usedOnId]) weeklyScores[comp.usedOnId].score += vetoUsedRule.points;
+        }
+
+        if (comp.replacementNomId) {
+            const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
+            if (finalNomRule && weeklyScores[comp.replacementNomId]) weeklyScores[comp.replacementNomId].score += finalNomRule.points;
+        }
     });
     
     const movers = Object.values(weeklyScores)
@@ -241,7 +244,6 @@ function DashboardPage() {
 
     const activities: any[] = [];
     currentWeekEvents.forEach(event => {
-        // Handle main event
         const mainRule = scoringRules.rules.find(r => r.code === event.type);
         if (mainRule) {
             if (event.nominees && event.nominees.length > 0) {
