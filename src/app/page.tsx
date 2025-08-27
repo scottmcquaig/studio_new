@@ -250,7 +250,7 @@ function DashboardPage() {
             if (nomineePlayers.length > 0) {
                  activities.push({
                     players: nomineePlayers,
-                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} ${rule.label}.`,
+                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} ${rule.label.toUpperCase()}.`,
                     points: rule.points,
                     type: rule.label,
                 });
@@ -263,7 +263,7 @@ function DashboardPage() {
                 if (player) {
                     activities.push({
                         players: [player],
-                        description: `${getContestantDisplayName(player, 'full')} ${customLabel || rule.label}.`,
+                        description: `${getContestantDisplayName(player, 'full')} ${customLabel || rule.label.toUpperCase()}.`,
                         points: rule.points,
                         type: rule.label,
                     });
@@ -280,7 +280,7 @@ function DashboardPage() {
             if (player && vetoUsedRule) {
                  activities.push({
                     players: [player],
-                    description: `${getContestantDisplayName(player, 'full')} was saved by the veto.`,
+                    description: `${getContestantDisplayName(player, 'full')} was ${vetoUsedRule.label.toUpperCase()}.`,
                     points: vetoUsedRule.points,
                     type: vetoUsedRule.label,
                 });
@@ -294,7 +294,7 @@ function DashboardPage() {
              if (player && finalNomRule) {
                   activities.push({
                     players: [player],
-                    description: `${getContestantDisplayName(player, 'full')} was named the replacement nominee.`,
+                    description: `${getContestantDisplayName(player, 'full')} was named the ${finalNomRule.label.toUpperCase()}.`,
                     points: finalNomRule.points,
                     type: finalNomRule.label,
                 });
