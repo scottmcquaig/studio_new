@@ -37,7 +37,6 @@ import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useSearchParams } from 'next/navigation';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { inviteUser } from '@/app/actions/userActions';
 import { Switch } from '@/components/ui/switch';
 import { BB_RULES_DEFAULT } from '@/lib/constants';
 
@@ -981,16 +980,20 @@ function AdminPage() {
         }
         setIsSendingInvite(true);
         try {
-            const result = await inviteUser({ displayName: newUserData.displayName, email: newUserData.email });
-            if (result.success) {
-                toast({ title: "User Added!", description: `${newUserData.displayName} has been added with a pending status. Please send them a link to register.` });
-                setIsNewUserDialogOpen(false);
-                setNewUserData({ displayName: '', email: '' });
-            } else {
-                throw new Error(result.error || "An unknown error occurred.");
-            }
+            const usersRef = collection(db, 'users');
+            await addDoc(usersRef, {
+                email: newUserData.email,
+                displayName: newUserData.displayName,
+                role: 'player', // Default role for new users
+                status: 'pending', // User is pending until they sign up
+                createdAt: new Date().toISOString(),
+            });
+            
+            toast({ title: "User Added!", description: `${newUserData.displayName} has been added with a pending status. Please send them a link to register.` });
+            setIsNewUserDialogOpen(false);
+            setNewUserData({ displayName: '', email: '' });
         } catch (error: any) {
-            console.error("Error sending invite: ", error);
+            console.error("Error adding user: ", error);
             toast({ title: "Failed to Add User", description: error.message, variant: "destructive" });
         } finally {
             setIsSendingInvite(false);
@@ -2583,3 +2586,6 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
 
 
 
+
+
+    
