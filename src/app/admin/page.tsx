@@ -520,31 +520,31 @@ function AdminPage() {
     });
     
     const unsubTeams = onSnapshot(collection(db, "teams"), (snap) => {
-        const teamsData = snap.docs.map(d => ({...d.data(), id: d.id} as Team));
+        const teamsData = snap.docs.map(d => ({...d.data(), id: d.id } as Team));
         setAllTeams(teamsData);
     });
     
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-        const usersData = snap.docs.map(d => ({...d.data(), id: d.id} as UserType));
+        const usersData = snap.docs.map(d => ({...d.data(), id: d.id } as UserType));
         setUsers(usersData);
     });
     
     const unsubPicks = onSnapshot(collection(db, "picks"), (snap) => {
-        const picksData = snap.docs.map(d => ({...d.data(), id: d.id} as Pick));
+        const picksData = snap.docs.map(d => ({...d.data(), id: d.id } as Pick));
         setPicks(picksData);
     });
     
     const unsubSeasons = onSnapshot(collection(db, "seasons"), (snap) => {
-        const seasonsData = snap.docs.map(d => ({...d.data(), id: d.id} as Season));
+        const seasonsData = snap.docs.map(d => ({...d.data(), id: d.id } as Season));
         setSeasons(seasonsData);
     });
 
     const unsubCompetitions = onSnapshot(collection(db, "competitions"), (snap) => {
-      setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id} as Competition)));
+      setCompetitions(snap.docs.map(d => ({...d.data(), id: d.id } as Competition)));
     });
 
     const unsubContestants = onSnapshot(collection(db, "contestants"), (snap) => {
-      setContestants(snap.docs.map(d => ({...d.data(), id: d.id} as Contestant)));
+      setContestants(snap.docs.map(d => ({...d.data(), id: d.id } as Contestant)));
     });
 
     return () => {
@@ -983,7 +983,7 @@ function AdminPage() {
         try {
             const result = await inviteUser({ displayName: newUserData.displayName, email: newUserData.email });
             if (result.success) {
-                toast({ title: "Invitation sent!", description: `An invite has been sent to ${newUserData.email}.` });
+                toast({ title: "User Created!", description: `${newUserData.displayName} has been added.` });
                 setIsNewUserDialogOpen(false);
                 setNewUserData({ displayName: '', email: '' });
             } else {
@@ -991,7 +991,7 @@ function AdminPage() {
             }
         } catch (error: any) {
             console.error("Error sending invite: ", error);
-            toast({ title: "Invite Failed", description: error.message, variant: "destructive" });
+            toast({ title: "Failed to Create User", description: error.message, variant: "destructive" });
         } finally {
             setIsSendingInvite(false);
         }
@@ -2091,9 +2091,9 @@ function AdminPage() {
         <Dialog open={isNewUserDialogOpen} onOpenChange={setIsNewUserDialogOpen}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Invite New User</DialogTitle>
+                    <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
-                        Enter user details to send a registration invite. They will receive an email to set their password.
+                        Create a new user account with a temporary password.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
@@ -2119,7 +2119,7 @@ function AdminPage() {
                     <Button variant="outline" onClick={() => setIsNewUserDialogOpen(false)}>Cancel</Button>
                     <Button onClick={handleSendInvite} disabled={isSendingInvite}>
                         {isSendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Send Invite
+                        Create User
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -2568,5 +2568,6 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
 
