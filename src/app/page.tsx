@@ -146,6 +146,18 @@ function DashboardPage() {
         if (comp.winnerId) processEvent(comp.winnerId);
         if (comp.evictedId) processEvent(comp.evictedId);
         if (comp.nominees) comp.nominees.forEach(processEvent);
+        if (comp.usedOnId) {
+            const vetoUsedRule = rules.find(r => r.code === 'VETO_USED');
+            if (vetoUsedRule && teamContestantIds.includes(comp.usedOnId)) {
+                score += vetoUsedRule.points;
+            }
+        }
+        if (comp.replacementNomId) {
+            const finalNomRule = rules.find(r => r.code === 'FINAL_NOM');
+            if (finalNomRule && teamContestantIds.includes(comp.replacementNomId)) {
+                score += finalNomRule.points;
+            }
+        }
     });
 
     return score;
@@ -226,12 +238,13 @@ function DashboardPage() {
   
   const weeklyActivity = useMemo(() => {
     if (!scoringRules?.rules || !contestants.length || !currentWeekEvents.length) return [];
-    
+
     const activities: any[] = [];
     currentWeekEvents.forEach(event => {
         const rule = scoringRules.rules.find(r => r.code === event.type);
         if (!rule) return;
 
+        // Handle multi-player events like nominations
         if (event.nominees && event.nominees.length > 0) {
             const nomineePlayers = event.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
             if (nomineePlayers.length > 0) {
@@ -243,13 +256,14 @@ function DashboardPage() {
                 });
             }
         } else {
-            const processPlayer = (playerId: string | undefined) => {
+            // Handle single-player events (winner, evicted)
+            const processPlayer = (playerId: string | undefined, customLabel?: string) => {
                 if (!playerId) return;
                 const player = contestants.find(c => c.id === playerId);
                 if (player) {
                     activities.push({
                         players: [player],
-                        description: `${getContestantDisplayName(player, 'full')} ${rule.label}.`,
+                        description: `${getContestantDisplayName(player, 'full')} ${customLabel || rule.label}.`,
                         points: rule.points,
                         type: rule.label,
                     });
@@ -257,6 +271,34 @@ function DashboardPage() {
             };
             processPlayer(event.winnerId);
             processPlayer(event.evictedId);
+        }
+
+        // Handle veto save
+        if (event.usedOnId) {
+            const player = contestants.find(c => c.id === event.usedOnId);
+            const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
+            if (player && vetoUsedRule) {
+                 activities.push({
+                    players: [player],
+                    description: `${getContestantDisplayName(player, 'full')} was saved by the veto.`,
+                    points: vetoUsedRule.points,
+                    type: vetoUsedRule.label,
+                });
+            }
+        }
+        
+        // Handle replacement nominee
+        if (event.replacementNomId) {
+             const player = contestants.find(c => c.id === event.replacementNomId);
+             const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
+             if (player && finalNomRule) {
+                  activities.push({
+                    players: [player],
+                    description: `${getContestantDisplayName(player, 'full')} was named the replacement nominee.`,
+                    points: finalNomRule.points,
+                    type: finalNomRule.label,
+                });
+             }
         }
     });
     return activities;
