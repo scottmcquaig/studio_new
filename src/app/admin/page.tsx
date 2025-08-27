@@ -453,6 +453,13 @@ function AdminPage() {
   const activeContestants = useMemo(() => contestants.filter(c => c.seasonId === activeSeason?.id && c.status === 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants, activeSeason]);
   const inactiveContestants = useMemo(() => contestants.filter(c => c.seasonId === activeSeason?.id && c.status !== 'active').sort((a,b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full'))), [contestants, activeSeason]);
 
+  const allSeasonContestants = useMemo(() => {
+    if (!activeSeason) return [];
+    return contestants
+      .filter(c => c.seasonId === activeSeason.id)
+      .sort((a, b) => getContestantDisplayName(a, 'full').localeCompare(getContestantDisplayName(b, 'full')));
+  }, [contestants, activeSeason]);
+
   const activeContestantsInLeague = useMemo(() => {
       if (!activeSeason) return [];
       return contestants.filter(c => c.seasonId === activeSeason.id && c.status === 'active');
@@ -1441,6 +1448,7 @@ function AdminPage() {
                                    const isEviction = card.ruleCode ? card.ruleCode.includes('EVICT') : false;
                                    const hasFollowUps = card.hasFollowUpFields;
                                    const eventKey = card.ruleCode;
+                                   const contestantList = isEviction ? allSeasonContestants : activeContestantsInLeague;
 
                                    if (isMultiPick) {
                                         return (
@@ -1516,7 +1524,7 @@ function AdminPage() {
                                             <Label className="font-semibold">{card.title}</Label>
                                             <Select value={weeklyEventData[eventKey]?.[field] || ''} onValueChange={val => handleEventChange(eventKey, field, val)}>
                                                 <SelectTrigger><SelectValue placeholder={`Select ${leagueSettings?.contestantTerm?.singular || 'Contestant'}...`}/></SelectTrigger>
-                                                <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                                <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                             </Select>
                                             <Button size="sm" onClick={() => handleLogEvent(eventKey)}>Log {card.title}</Button>
                                           </div>
@@ -2560,4 +2568,5 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
