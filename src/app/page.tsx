@@ -232,21 +232,32 @@ function DashboardPage() {
         const rule = scoringRules.rules.find(r => r.code === event.type);
         if (!rule) return;
 
-        const processPlayer = (playerId: string) => {
-            const player = contestants.find(c => c.id === playerId);
-            if (player) {
-                activities.push({
-                    player,
-                    description: `${getContestantDisplayName(player, 'full')} ${rule.label}.`,
+        if (event.nominees && event.nominees.length > 0) {
+            const nomineePlayers = event.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
+            if (nomineePlayers.length > 0) {
+                 activities.push({
+                    players: nomineePlayers,
+                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(' & ')} ${rule.label}.`,
                     points: rule.points,
                     type: rule.label,
                 });
             }
-        };
-
-        if (event.winnerId) processPlayer(event.winnerId);
-        if (event.evictedId) processPlayer(event.evictedId);
-        if (event.nominees) event.nominees.forEach(processPlayer);
+        } else {
+            const processPlayer = (playerId: string | undefined) => {
+                if (!playerId) return;
+                const player = contestants.find(c => c.id === playerId);
+                if (player) {
+                    activities.push({
+                        players: [player],
+                        description: `${getContestantDisplayName(player, 'full')} ${rule.label}.`,
+                        points: rule.points,
+                        type: rule.label,
+                    });
+                }
+            };
+            processPlayer(event.winnerId);
+            processPlayer(event.evictedId);
+        }
     });
     return activities;
   }, [currentWeekEvents, contestants, scoringRules]);
@@ -436,14 +447,30 @@ function DashboardPage() {
                         {weeklyActivity.length > 0 ? weeklyActivity.map((activity, index) => (
                             <div key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                             <div className="flex items-center gap-3">
-                                <Image
-                                src={activity.player.photoUrl || "https://placehold.co/100x100.png"}
-                                alt={getContestantDisplayName(activity.player, 'full')}
-                                width={40}
-                                height={40}
-                                className="rounded-full"
-                                data-ai-hint="portrait person"
-                                />
+                                {activity.players.length > 1 ? (
+                                    <div className="flex -space-x-2">
+                                        {activity.players.slice(0, 2).map((p: Contestant) => (
+                                             <Image
+                                                key={p.id}
+                                                src={p.photoUrl || "https://placehold.co/100x100.png"}
+                                                alt={getContestantDisplayName(p, 'full')}
+                                                width={40}
+                                                height={40}
+                                                className="rounded-full border-2 border-background"
+                                                data-ai-hint="portrait person"
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                     <Image
+                                        src={activity.players[0].photoUrl || "https://placehold.co/100x100.png"}
+                                        alt={getContestantDisplayName(activity.players[0], 'full')}
+                                        width={40}
+                                        height={40}
+                                        className="rounded-full"
+                                        data-ai-hint="portrait person"
+                                    />
+                                )}
                                 <div>
                                 <p className="text-sm">{activity.description}</p>
                                 </div>

@@ -108,7 +108,7 @@ function ScoringPage() {
   
   type ScoringEvent = {
     week: number;
-    contestantId: string;
+    contestantIds: string[];
     contestantName: string;
     teamId?: string;
     teamName?: string;
@@ -122,32 +122,51 @@ function ScoringPage() {
     if (!scoringRules?.rules) return events;
 
     competitions.forEach(comp => {
-      const processEvent = (contestantId: string, eventCode: string) => {
-        const rule = scoringRules.rules.find(r => r.code === eventCode);
-        const contestant = contestants.find(hg => hg.id === contestantId);
-        const pick = picks.find(p => p.contestantId === contestantId);
-        const team = teams.find(t => t.id === pick?.teamId);
-        
-        if (rule && contestant) {
-          events.push({
-            week: comp.week,
-            contestantId: contestant.id,
-            contestantName: getContestantDisplayName(contestant, 'full'),
-            teamId: team?.id,
-            teamName: team?.name,
-            eventLabel: rule.label,
-            eventCode: rule.code,
-            points: rule.points,
-          });
-        }
-      };
-
       const rule = scoringRules.rules.find(r => r.code === comp.type);
       if (!rule) return;
 
-      if (comp.winnerId) processEvent(comp.winnerId, comp.type);
-      if (comp.evictedId) processEvent(comp.evictedId, comp.type);
-      if (comp.nominees) comp.nominees.forEach(nomId => processEvent(nomId, comp.type));
+      if (comp.nominees && comp.nominees.length > 0) {
+        const nominees = comp.nominees.map(id => contestants.find(c => c.id === id)).filter(Boolean) as Contestant[];
+        if (nominees.length > 0) {
+            // Group nominees into a single event, but we need to resolve team info.
+            // For simplicity in the log, we can list multiple teams or just the first one.
+            const firstPick = picks.find(p => p.contestantId === nominees[0].id);
+            const team = teams.find(t => t.id === firstPick?.teamId);
+
+            events.push({
+                week: comp.week,
+                contestantIds: nominees.map(n => n.id),
+                contestantName: nominees.map(n => getContestantDisplayName(n, 'short')).join(', '),
+                teamId: team?.id,
+                teamName: team?.name,
+                eventLabel: rule.label,
+                eventCode: rule.code,
+                points: rule.points,
+            });
+        }
+      } else {
+        const processEvent = (contestantId: string | undefined, eventCode: string) => {
+            if (!contestantId) return;
+            const contestant = contestants.find(hg => hg.id === contestantId);
+            const pick = picks.find(p => p.contestantId === contestantId);
+            const team = teams.find(t => t.id === pick?.teamId);
+            
+            if (rule && contestant) {
+            events.push({
+                week: comp.week,
+                contestantIds: [contestant.id],
+                contestantName: getContestantDisplayName(contestant, 'full'),
+                teamId: team?.id,
+                teamName: team?.name,
+                eventLabel: rule.label,
+                eventCode: rule.code,
+                points: rule.points,
+            });
+            }
+        };
+        processEvent(comp.winnerId, comp.type);
+        processEvent(comp.evictedId, comp.type);
+      }
     });
     
     return events.sort((a,b) => b.week - a.week);
@@ -156,7 +175,7 @@ function ScoringPage() {
   const filteredEvents = useMemo(() => {
     return scoringEvents.filter(event => {
       const weekMatch = selectedWeek === 'all' || event.week === Number(selectedWeek);
-      const contestantMatch = selectedContestant === 'all' || event.contestantId === selectedContestant;
+      const contestantMatch = selectedContestant === 'all' || event.contestantIds.includes(selectedContestant);
       const teamMatch = selectedTeam === 'all' || event.teamId === selectedTeam;
       const eventMatch = selectedEvent === 'all' || event.eventCode === selectedEvent;
       return weekMatch && contestantMatch && teamMatch && eventMatch;
