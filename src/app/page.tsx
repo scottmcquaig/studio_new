@@ -250,7 +250,7 @@ function DashboardPage() {
             if (nomineePlayers.length > 0) {
                  activities.push({
                     players: nomineePlayers,
-                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(' & ')} ${rule.label}.`,
+                    description: `${nomineePlayers.map(p => getContestantDisplayName(p, 'short')).join(', ')} ${rule.label}.`,
                     points: rule.points,
                     type: rule.label,
                 });
@@ -491,7 +491,7 @@ function DashboardPage() {
                             <div className="flex items-center gap-3">
                                 {activity.players.length > 1 ? (
                                     <div className="flex -space-x-2">
-                                        {activity.players.slice(0, 2).map((p: Contestant) => (
+                                        {activity.players.slice(0, 3).map((p: Contestant) => (
                                              <Image
                                                 key={p.id}
                                                 src={p.photoUrl || "https://placehold.co/100x100.png"}
@@ -502,6 +502,11 @@ function DashboardPage() {
                                                 data-ai-hint="portrait person"
                                             />
                                         ))}
+                                        {activity.players.length > 3 && (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted border-2 border-background">
+                                              <span className="text-sm font-bold">+{activity.players.length - 3}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                      <Image
