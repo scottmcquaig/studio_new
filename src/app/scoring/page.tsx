@@ -374,5 +374,3 @@ function ScoringPage() {
 }
 
 export default withAuth(ScoringPage);
-
-    
