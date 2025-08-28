@@ -1467,7 +1467,7 @@ function AdminPage() {
                                    return (
                                         <div key={card._id} className="flex flex-col md:flex-row items-start gap-4 p-3 border rounded-lg bg-muted/50">
                                             {/* Left side: Display Settings */}
-                                            <div className="flex flex-row md:flex-col gap-2 items-center w-full md:w-28">
+                                            <div className="flex flex-wrap items-center gap-2 w-full md:w-28 md:flex-col">
                                                 <div className="flex items-center gap-1">
                                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                                     <Input
@@ -1477,7 +1477,7 @@ function AdminPage() {
                                                         className="h-7 w-12 text-center"
                                                     />
                                                 </div>
-                                                <div className="flex-grow flex items-center md:flex-col gap-2">
+                                                <div className="flex-grow flex items-center gap-2 md:flex-col">
                                                     <Popover>
                                                         <PopoverTrigger asChild>
                                                             <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
@@ -1509,7 +1509,7 @@ function AdminPage() {
                                                     <Input 
                                                         value={card.title} 
                                                         onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
-                                                        className="h-7 text-center font-medium flex-grow"
+                                                        className="h-7 text-center font-medium flex-grow min-w-0"
                                                     />
                                                 </div>
                                             </div>
@@ -1583,7 +1583,7 @@ function AdminPage() {
                                                             </Select>
                                                         </div>
                                                     ) : hasFollowUps ? (
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                        <div className="flex flex-col gap-2">
                                                             <Select value={weeklyEventData[eventKey]?.winnerId || ''} onValueChange={val => handleEventChange(eventKey, 'winnerId', val)}>
                                                                 <SelectTrigger className="h-8"><SelectValue placeholder="Select winner..."/></SelectTrigger>
                                                                 <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
@@ -2600,6 +2600,7 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
 
 
