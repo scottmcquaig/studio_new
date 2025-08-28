@@ -1713,8 +1713,8 @@ function AdminPage() {
                 )}
                 
                 <TabsContent value="events">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                        <Card className="lg:col-span-3">
+                    <div className="grid grid-cols-1 gap-4">
+                        <Card>
                             <CardHeader>
                                 <CardTitle>Log & Customize Weekly Events</CardTitle>
                                 <CardDescription>Log events for Week {viewingWeek} and customize how they appear on the dashboard.</CardDescription>
@@ -1796,7 +1796,7 @@ function AdminPage() {
                             </CardFooter>
                         </Card>
                         
-                        <Card className="lg:col-span-2">
+                        <Card>
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
                                     <CardTitle>Logged Scoring Events</CardTitle>
