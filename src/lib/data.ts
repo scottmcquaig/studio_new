@@ -1,4 +1,10 @@
 
+export type EventAction = 
+    | 'setWinner' 
+    | 'setEvictee' 
+    | 'setNominees' 
+    | 'setSavedByVeto' 
+    | 'setReplacementNom';
 
 export interface SeasonWeeklyStatusDisplay {
     _id?: string; // Temporary client-side ID
@@ -7,8 +13,8 @@ export interface SeasonWeeklyStatusDisplay {
     icon: string;
     order: number;
     color: string;
+    action: EventAction;
     hasFollowUp?: boolean;
-    isMultiPick?: boolean;
     followUp?: SeasonWeeklyStatusDisplay; // Nested follow-up event
 }
 

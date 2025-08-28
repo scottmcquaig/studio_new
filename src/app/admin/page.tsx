@@ -79,7 +79,7 @@ const EventEditorCard = ({
     contestantList: Contestant[],
     weeklyEventData: { [key: string]: Partial<Competition> },
     handleEventChange: (type: string, field: keyof Competition, value: any) => void,
-    handleLogEvent: (ruleCode: string) => void,
+    handleLogEvent: (ruleCode: string, extraData?: Partial<Competition>) => void,
     isSubCard?: boolean,
 }) => {
     const [localCard, setLocalCard] = useState(card);
@@ -98,10 +98,73 @@ const EventEditorCard = ({
         }
     };
     
-    const isMultiPick = localCard.isMultiPick;
-    const isEviction = localCard.ruleCode?.includes('EVICT');
-    const isVeto = localCard.ruleCode?.includes('VETO');
     const eventKey = localCard.ruleCode;
+    const action = localCard.action || 'setWinner'; // Default to setWinner if not specified
+    const isVetoPower = localCard.ruleCode?.includes('VETO');
+
+    const renderActionInput = () => {
+        switch (action) {
+            case 'setNominees':
+                return (
+                     <div className="space-y-2">
+                        <div className="flex flex-wrap gap-1">
+                            {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
+                                const nominee = contestantList.find(c => c.id === nomId);
+                                return (
+                                    <Badge key={nomId} variant="secondary" className="gap-1.5">
+                                        <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
+                                        <button onClick={() => {
+                                            const newNoms = (weeklyEventData[eventKey]?.nominees || []).filter((id: string) => id !== nomId);
+                                            handleEventChange(eventKey, 'nominees', newNoms);
+                                        }}>
+                                            <XCircle className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                        </button>
+                                    </Badge>
+                                );
+                            })}
+                        </div>
+                        <Select
+                            value=""
+                            onValueChange={val => {
+                                if (val) {
+                                    const currentNoms = weeklyEventData[eventKey]?.nominees || [];
+                                    if (!currentNoms.includes(val)) {
+                                        handleEventChange(eventKey, 'nominees', [...currentNoms, val]);
+                                    }
+                                }
+                            }}>
+                            <SelectTrigger className="h-8"><SelectValue placeholder="Add nominee..." /></SelectTrigger>
+                            <SelectContent>
+                                {contestantList
+                                    .filter(c => !(weeklyEventData[eventKey]?.nominees || []).includes(c.id))
+                                    .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                );
+            case 'setWinner':
+            case 'setEvictee':
+            case 'setSavedByVeto':
+            case 'setReplacementNom':
+                const fieldMap = {
+                    setWinner: 'winnerId',
+                    setEvictee: 'evictedId',
+                    setSavedByVeto: 'usedOnId',
+                    setReplacementNom: 'replacementNomId',
+                };
+                const field = fieldMap[action] as keyof Competition;
+                 return (
+                    <Select
+                        value={weeklyEventData[eventKey]?.[field] || ''}
+                        onValueChange={val => handleEventChange(eventKey, field, val)}>
+                        <SelectTrigger className="h-8"><SelectValue placeholder={`Select...`} /></SelectTrigger>
+                        <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                    </Select>
+                 );
+            default:
+                return null;
+        }
+    };
 
     return (
         <div className="relative">
@@ -114,7 +177,7 @@ const EventEditorCard = ({
             )}
             <div className={cn("p-3 border rounded-lg bg-muted/50", isSubCard && "ml-12 mt-2")}>
                 <div className='flex items-start gap-4 flex-col md:flex-row'>
-                    <div className="flex flex-col gap-2 w-full md:w-48">
+                    <div className="flex flex-col gap-2 w-full md:w-56">
                         <div className='flex items-center justify-between'>
                             <Select value={localCard.ruleCode} onValueChange={val => onUpdate(card._id, 'ruleCode', val)}>
                                 <SelectTrigger className="h-7 font-mono text-xs w-full"><SelectValue /></SelectTrigger>
@@ -122,17 +185,18 @@ const EventEditorCard = ({
                                     {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 pl-2">
-                                <div className="flex items-center gap-1.5">
-                                    <Switch id={`multipick-${card._id}`} checked={!!localCard.isMultiPick} onCheckedChange={val => onUpdate(card._id, 'isMultiPick', val)} />
-                                    <Label htmlFor={`multipick-${card._id}`} className='text-xs'>Multi?</Label>
-                                </div>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onRemove(card._id)}>
-                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                </Button>
-                            </div>
+                             <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => onRemove(card._id)}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
                         </div>
                         <div className="flex flex-col gap-2">
+                             <Input
+                                value={localCard.title}
+                                onChange={(e) => handleLocalChange('title', e.target.value)}
+                                onBlur={() => handleBlur('title')}
+                                className="h-8 text-sm font-medium"
+                                placeholder='Dashboard Title'
+                            />
                             <div className="flex items-center gap-2">
                                 <Popover>
                                     <PopoverTrigger asChild>
@@ -162,13 +226,16 @@ const EventEditorCard = ({
                                         </div>
                                     </PopoverContent>
                                 </Popover>
-                                <Input
-                                    value={localCard.title}
-                                    onChange={(e) => handleLocalChange('title', e.target.value)}
-                                    onBlur={() => handleBlur('title')}
-                                    className="h-8 text-sm font-medium flex-grow min-w-0"
-                                    placeholder='Dashboard Title'
-                                />
+                                <Select value={localCard.action} onValueChange={(val) => onUpdate(card._id, 'action', val)}>
+                                    <SelectTrigger className='h-8 text-xs'><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="setWinner">Set Winner</SelectItem>
+                                        <SelectItem value="setEvictee">Set Evictee</SelectItem>
+                                        <SelectItem value="setNominees">Set Nominees</SelectItem>
+                                        <SelectItem value="setSavedByVeto">Set 'Saved' Player</SelectItem>
+                                        <SelectItem value="setReplacementNom">Set Renom</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
                     </div>
@@ -176,61 +243,13 @@ const EventEditorCard = ({
                     <Separator orientation="horizontal" className="w-full md:hidden" />
                     <div className="flex-1 space-y-3 w-full">
                         <div className="p-2 border rounded-md bg-background min-h-[76px]">
-                            {isMultiPick ? (
-                                <div className="space-y-2">
-                                    <div className="flex flex-wrap gap-1">
-                                        {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
-                                            const nominee = contestantList.find(c => c.id === nomId);
-                                            return (
-                                                <Badge key={nomId} variant="secondary" className="gap-1.5">
-                                                    <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
-                                                    <button onClick={() => {
-                                                        const newNoms = (weeklyEventData[eventKey]?.nominees || []).filter((id: string) => id !== nomId);
-                                                        handleEventChange(eventKey, 'nominees', newNoms);
-                                                    }}>
-                                                        <XCircle className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                                    </button>
-                                                </Badge>
-                                            );
-                                        })}
-                                    </div>
-                                    <Select
-                                        value=""
-                                        onValueChange={val => {
-                                            if (val) {
-                                                const currentNoms = weeklyEventData[eventKey]?.nominees || [];
-                                                if (!currentNoms.includes(val)) {
-                                                    handleEventChange(eventKey, 'nominees', [...currentNoms, val]);
-                                                }
-                                            }
-                                        }}>
-                                        <SelectTrigger className="h-8"><SelectValue placeholder="Add nominee..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {contestantList
-                                                .filter(c => !(weeklyEventData[eventKey]?.nominees || []).includes(c.id))
-                                                .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            ) : (
-                                <Select
-                                    value={weeklyEventData[eventKey]?.[isEviction ? 'evictedId' : 'winnerId'] || ''}
-                                    onValueChange={val => handleEventChange(eventKey, isEviction ? 'evictedId' : 'winnerId', val)}>
-                                    <SelectTrigger className="h-8"><SelectValue placeholder={`Select...`} /></SelectTrigger>
-                                    <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
-                                </Select>
-                            )}
-                             {isVeto && (
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                                    <Switch
-                                        id={`veto-used-${card._id}`}
-                                        checked={weeklyEventData[eventKey]?.used === true}
-                                        onCheckedChange={val => handleEventChange(eventKey, 'used', val)}
-                                    />
-                                    <Label htmlFor={`veto-used-${card._id}`}>Veto Used?</Label>
-                                </div>
-                            )}
-                            <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="w-full mt-2">Log Event</Button>
+                           {renderActionInput()}
+                           <div className='flex gap-2 w-full mt-2'>
+                                <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="flex-grow">Log Event</Button>
+                                {isVetoPower && (
+                                    <Button variant="outline" size="sm" onClick={() => handleLogEvent(eventKey, { used: false })}>Log 'Not Used'</Button>
+                                )}
+                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
                             <Switch id={`followup-${card._id}`} checked={!!localCard.hasFollowUp} onCheckedChange={val => onUpdate(card._id, 'hasFollowUp', val)} />
@@ -463,32 +482,29 @@ function AdminPage() {
     }));
   };
 
-    const handleLogEvent = async (ruleCode: string) => {
+    const handleLogEvent = async (ruleCode: string, extraData: Partial<Competition> = {}) => {
         if (!activeSeason || !leagueSettings || !ruleCode) return;
 
         let eventToLog = weeklyEventData[ruleCode] || {};
-
         const isEviction = ruleCode.includes('EVICT');
-
         const existingEvent = weeklyCompetitions.find(c => c.type === ruleCode);
         
         const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string } = {
             seasonId: activeSeason.id,
             week: viewingWeek,
-            type: ruleCode, // Always save the original ruleCode as the type
+            type: ruleCode,
             airDate: new Date().toISOString(),
             ...eventToLog,
+            ...extraData
         };
         
-        // Handle eviction-specific side effects
         if (isEviction && dataToSave.evictedId) {
             const contestantRef = doc(db, 'contestants', dataToSave.evictedId);
             await updateDoc(contestantRef, {
                 status: 'evicted',
-                evictedDay: (viewingWeek * 7) - 1, // Approximate day
+                evictedDay: (viewingWeek * 7) - 1,
             });
         }
-
 
         try {
             if (existingEvent) {
@@ -773,14 +789,14 @@ function AdminPage() {
         setViewingWeek(activeSeason.currentWeek);
         const currentWeekKey = `week${activeSeason.currentWeek}`;
         const defaultDisplay = [
-            { ruleCode: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
-            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500', isMultiPick: true },
-            { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUp: true, 
-              followUp: { ruleCode: 'VETO_USED', title: 'Saved', icon: 'ShieldCheck', color: 'text-sky-500', 
-                followUp: { ruleCode: 'FINAL_NOM', title: 'Renom', icon: 'RotateCcw', color: 'text-orange-500' }
+            { ruleCode: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500', action: 'setWinner' },
+            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500', action: 'setNominees' },
+            { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUp: true, action: 'setWinner', 
+              followUp: { ruleCode: 'VETO_USED', title: 'Saved', icon: 'ShieldCheck', color: 'text-sky-500', action: 'setSavedByVeto',
+                followUp: { ruleCode: 'FINAL_NOM', title: 'Renom', icon: 'RotateCcw', color: 'text-orange-500', action: 'setReplacementNom' }
               } 
             },
-            { ruleCode: 'EVICT_PRE', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
+            { ruleCode: 'EVICT_PRE', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500', action: 'setEvictee' }
         ] as SeasonWeeklyStatusDisplay[];
 
         let displayData: SeasonWeeklyStatusDisplay[] = [];
@@ -1355,6 +1371,7 @@ function AdminPage() {
                                 icon: 'ShieldCheck',
                                 color: 'text-sky-500',
                                 order: 1, // Order within follow-up context
+                                action: 'setSavedByVeto',
                             };
                         } else if (!value) {
                            delete updatedItem.followUp;
