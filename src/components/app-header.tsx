@@ -85,10 +85,6 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
     }
   };
 
-  const isSiteAdmin = currentUser?.role === 'site_admin';
-  const isLeagueAdmin = currentUser?.role === 'league_admin';
-  const canManageLeague = isSiteAdmin || isLeagueAdmin;
-
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:px-6">
       <div className="flex items-center gap-2">
@@ -115,33 +111,6 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
       </div>
       
       <div className="ml-auto flex items-center gap-2">
-        <TooltipProvider>
-            {isSiteAdmin && (
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button asChild variant="ghost" size="icon">
-                            <Link href="/admin?view=site"><Shield className="h-5 w-5"/></Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>Site Administration</p>
-                    </TooltipContent>
-                </Tooltip>
-            )}
-            {canManageLeague && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button asChild variant="ghost" size="icon">
-                            <Link href="/admin?view=league"><Settings className="h-5 w-5"/></Link>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>League Admin</p>
-                    </TooltipContent>
-                </Tooltip>
-            )}
-        </TooltipProvider>
-
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -176,9 +145,6 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
                         <DropdownMenuItem onClick={() => router.push('/login')}>
                             <LogIn className="mr-2"/> Login
                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => router.push('/signup')}>
-                            <UserPlus className="mr-2"/> Sign Up
-                        </DropdownMenuItem>
                     </>
                 )}
 
@@ -188,5 +154,3 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
     </header>
   );
 }
-
-    

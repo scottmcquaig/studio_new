@@ -11,42 +11,27 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
 import { Loader2, ShieldCheck } from 'lucide-react';
-import { inviteUser } from '@/app/actions/userActions';
-import withAuth from '@/components/withAuth';
 
-function SignupPage() {
+export default function SignupPage() {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleInvite = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    try {
-      const result = await inviteUser({ displayName, email });
-
-      if (result.success && result.uid) {
+    // Placeholder for signup logic
+    console.log("Signup attempt with:", { displayName, email });
+    setTimeout(() => {
         toast({
-          title: "Invitation Sent",
-          description: `An invite to set a password has been sent to ${email}.`,
+            title: "Signup Not Implemented",
+            description: "This is a placeholder for the user signup flow.",
         });
-        // Optionally redirect or clear form
-        setDisplayName('');
-        setEmail('');
-      } else {
-        throw new Error(result.error || "An unknown error occurred.");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Invite Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
         setIsLoading(false);
-    }
+    }, 1000);
   };
 
   return (
@@ -59,21 +44,21 @@ function SignupPage() {
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl flex items-center gap-2">
-            <ShieldCheck /> Invite New User
+          <CardTitle className="text-2xl">
+            Sign Up
           </CardTitle>
           <CardDescription>
-            Enter user details to send a registration invite. This page is for administrators only.
+            Enter your information to create an account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleInvite} className="grid gap-4">
+          <form onSubmit={handleSignup} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="display-name">Display Name</Label>
               <Input
                 id="display-name"
                 type="text"
-                placeholder="User's Name"
+                placeholder="Your Name"
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -84,21 +69,31 @@ function SignupPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="user@example.com"
+                placeholder="you@example.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Send Invite
+              Create Account
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            Finished inviting users?{" "}
-            <Link href="/" className="underline">
-              Go to Dashboard
+            Already have an account?{" "}
+            <Link href="/login" className="underline">
+              Log in
             </Link>
           </div>
         </CardContent>
@@ -106,5 +101,3 @@ function SignupPage() {
     </div>
   );
 }
-
-export default withAuth(SignupPage, ['site_admin']);
