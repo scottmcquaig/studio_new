@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle, Loader2, DatabaseZap, Link as LinkIcon } from "lucide-react";
+import { Settings, UserPlus, Users, Pencil, CalendarClock, Crown, Shield, UserX, UserCheck, Save, PlusCircle, Trash2, ShieldCheck, UserCog, Upload, Mail, KeyRound, User, Lock, Building, MessageSquareQuote, ListChecks, RotateCcw, ArrowLeft, MoreHorizontal, Send, MailQuestion, UserPlus2, SortAsc, ShieldQuestion, ChevronsUpDown, Plus, BookCopy, Palette, Smile, Trophy, Star, TrendingUp, TrendingDown, Swords, Handshake, Angry, GripVertical, Home, Ban, Gem, Gift, HeartPulse, Medal, DollarSign, Rocket, Cctv, Skull, CloudSun, XCircle, ShieldPlus, Calendar as CalendarIcon, Package, Globe, UserSquare, Database, Search, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon, ShieldAlert, Tv, AlertTriangle, Loader2, DatabaseZap, Link as LinkIcon, History } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { User as UserType, Team, UserRole, Contestant, Competition, League, ScoringRule, UserStatus, Season, ScoringRuleSet, LeagueScoringBreakdownCategory, Pick, SeasonWeeklyStatusDisplay } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -1367,6 +1367,33 @@ function AdminPage() {
         }
     };
     
+    const handleGoBackOneWeek = async () => {
+        if (!activeSeason || activeSeason.currentWeek <= 1) return;
+
+        const batch = writeBatch(db);
+        
+        // 1. Delete competitions for the current week
+        const currentWeekCompetitionsQuery = query(
+            collection(db, 'competitions'), 
+            where('seasonId', '==', activeSeason.id),
+            where('week', '==', activeSeason.currentWeek)
+        );
+        const snapshot = await getDocs(currentWeekCompetitionsQuery);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+
+        // 2. Decrement the current week on the season
+        const seasonRef = doc(db, 'seasons', activeSeason.id);
+        batch.update(seasonRef, { currentWeek: activeSeason.currentWeek - 1 });
+
+        try {
+            await batch.commit();
+            toast({ title: "DeLorean successful!", description: `Reverted to Week ${activeSeason.currentWeek - 1}.` });
+        } catch (error) {
+            console.error("Error going back one week:", error);
+            toast({ title: "Error reverting week", variant: "destructive" });
+        }
+    };
+    
     const handleDeleteWeekEvents = async () => {
         if (!activeSeason) return;
         setIsDeletingWeekEvents(true);
@@ -1711,7 +1738,7 @@ function AdminPage() {
                                     <Button onClick={handleSaveWeeklyStatusDisplay} size="sm"><Save className="mr-2"/> Save Display Settings</Button>
                                 </div>
                             </CardContent>
-                             <CardFooter className="flex items-center justify-center gap-4 border-t pt-6">
+                             <CardFooter className="flex items-center justify-center flex-wrap gap-4 border-t pt-6">
                                 <Button variant="outline" size="icon" onClick={() => setViewingWeek(w => Math.max(1, w - 1))} disabled={viewingWeek === 1}>
                                     <ChevronLeftIcon className="h-4 w-4" />
                                 </Button>
@@ -1719,8 +1746,30 @@ function AdminPage() {
                                 <Button variant="outline" size="icon" onClick={() => setViewingWeek(w => Math.min(activeSeason?.currentWeek || 1, w + 1))} disabled={viewingWeek === activeSeason?.currentWeek}>
                                     <ChevronRightIcon className="h-4 w-4" />
                                 </Button>
+                                
                                 {viewingWeek === activeSeason?.currentWeek && (
-                                     <Button onClick={handleStartNewWeek}><PlusCircle className="mr-2"/> Start Next Week</Button>
+                                    <>
+                                        {activeSeason.currentWeek > 1 && (
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="outline" size="sm"><History className="mr-2"/> Go Back One Week</Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure you want to go back?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will revert the season to Week {activeSeason.currentWeek - 1}. All logged events for Week {activeSeason.currentWeek} will be permanently deleted. This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleGoBackOneWeek}>Confirm & Revert</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                        <Button onClick={handleStartNewWeek}><PlusCircle className="mr-2"/> Start Next Week</Button>
+                                    </>
                                 )}
                                  <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -2673,3 +2722,6 @@ function AdminPage() {
 }
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
+
+
+    
