@@ -1529,7 +1529,7 @@ function AdminPage() {
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 w-full sm:w-auto justify-between">
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 w-full sm:w-auto justify-between flex-wrap">
                                                         <div className="flex items-center gap-1.5">
                                                             <Switch id={`followup-${card._id}`} checked={card.hasFollowUpFields} onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUpFields', val)} />
                                                             <Label htmlFor={`followup-${card._id}`}>Follow-ups?</Label>
@@ -2600,6 +2600,7 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
 
 
