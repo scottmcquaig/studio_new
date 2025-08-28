@@ -85,6 +85,8 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
     }
   };
 
+  const isAdmin = currentUser?.role === 'site_admin' || currentUser?.role === 'league_admin';
+
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-background px-4 sm:px-6">
       <div className="flex items-center gap-2">
@@ -111,6 +113,12 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
       </div>
       
       <div className="ml-auto flex items-center gap-2">
+        {isAdmin && (
+             <Button variant="outline" size="sm" onClick={() => router.push('/admin')}>
+                <Shield className="mr-2 h-4 w-4" />
+                Admin
+            </Button>
+        )}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -145,6 +153,9 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
                         <DropdownMenuItem onClick={() => router.push('/login')}>
                             <LogIn className="mr-2"/> Login
                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => router.push('/signup')}>
+                            <UserPlus className="mr-2"/> Sign Up
+                        </DropdownMenuItem>
                     </>
                 )}
 
@@ -154,3 +165,5 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
     </header>
   );
 }
+
+    
