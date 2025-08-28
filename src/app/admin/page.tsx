@@ -61,6 +61,191 @@ const ITEMS_PER_PAGE = 5;
 // Define a type for editable status display items with a unique key
 type EditableSeasonWeeklyStatusDisplay = SeasonWeeklyStatusDisplay & { _id: string; followUp?: EditableSeasonWeeklyStatusDisplay };
 
+const EventEditorCard = ({
+    card,
+    onUpdate,
+    onRemove,
+    scoringRules,
+    contestantList,
+    weeklyEventData,
+    handleEventChange,
+    handleLogEvent,
+    isSubCard = false,
+}: {
+    card: EditableSeasonWeeklyStatusDisplay,
+    onUpdate: (cardId: string, field: keyof SeasonWeeklyStatusDisplay, value: any) => void,
+    onRemove: (cardId: string) => void,
+    scoringRules: ScoringRule[],
+    contestantList: Contestant[],
+    weeklyEventData: { [key: string]: Partial<Competition> },
+    handleEventChange: (type: string, field: keyof Competition, value: any) => void,
+    handleLogEvent: (ruleCode: string) => void,
+    isSubCard?: boolean,
+}) => {
+    const [localCard, setLocalCard] = useState(card);
+
+    useEffect(() => {
+        setLocalCard(card);
+    }, [card]);
+
+    const handleLocalChange = (field: keyof SeasonWeeklyStatusDisplay, value: any) => {
+        setLocalCard(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleBlur = (field: keyof SeasonWeeklyStatusDisplay) => {
+        if (localCard[field] !== card[field]) {
+            onUpdate(card._id, field, localCard[field]);
+        }
+    };
+    
+    const isMultiPick = localCard.isMultiPick;
+    const isEviction = localCard.ruleCode.includes('EVICT');
+    const eventKey = localCard.ruleCode;
+
+    return (
+        <div className="relative">
+            {isSubCard && (
+                <>
+                    <div className="absolute left-6 -top-2 h-4 w-px bg-border"></div>
+                    <div className="absolute left-6 top-2 h-px w-6 bg-border"></div>
+                    <Plus className="absolute left-[18px] top-2.5 h-4 w-4 text-muted-foreground bg-background rounded-full" />
+                </>
+            )}
+            <div className={cn("p-3 border rounded-lg bg-muted/50", isSubCard && "ml-12 mt-2")}>
+                <div className='flex items-start gap-4 flex-col md:flex-row'>
+                    <div className="flex flex-col gap-2 w-full md:w-48">
+                        <div className='flex items-center justify-between'>
+                            <Select value={localCard.ruleCode} onValueChange={val => onUpdate(card._id, 'ruleCode', val)}>
+                                <SelectTrigger className="h-7 font-mono text-xs w-full"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 pl-2">
+                                <div className="flex items-center gap-1.5">
+                                    <Switch id={`multipick-${card._id}`} checked={!!localCard.isMultiPick} onCheckedChange={val => onUpdate(card._id, 'isMultiPick', val)} />
+                                    <Label htmlFor={`multipick-${card._id}`} className='text-xs'>Multi?</Label>
+                                </div>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onRemove(card._id)}>
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                                            {createElement((LucideIcons as any)[localCard.icon] || Trophy, { className: cn("h-4 w-4", localCard.color) })}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-2">
+                                        <div className="grid grid-cols-5 gap-1">
+                                            {iconSelection.map(icon => (
+                                                <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => onUpdate(card._id, 'icon', icon)}>
+                                                    {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (localCard.color || '').replace('text-', 'bg-'))} />
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-2">
+                                        <div className="grid grid-cols-6 gap-1">
+                                            {colorSelection.map(color => (
+                                                <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => onUpdate(card._id, 'color', color.replace('bg-', 'text-'))} />
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                <Input
+                                    value={localCard.title}
+                                    onChange={(e) => handleLocalChange('title', e.target.value)}
+                                    onBlur={() => handleBlur('title')}
+                                    className="h-8 text-sm font-medium flex-grow min-w-0"
+                                    placeholder='Dashboard Title'
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <Separator orientation="vertical" className="h-auto hidden md:block" />
+                    <Separator orientation="horizontal" className="w-full md:hidden" />
+                    <div className="flex-1 space-y-3 w-full">
+                        <div className="p-2 border rounded-md bg-background min-h-[76px]">
+                            {isMultiPick ? (
+                                <div className="space-y-2">
+                                    <div className="flex flex-wrap gap-1">
+                                        {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
+                                            const nominee = contestantList.find(c => c.id === nomId);
+                                            return (
+                                                <Badge key={nomId} variant="secondary" className="gap-1.5">
+                                                    <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
+                                                    <button onClick={() => {
+                                                        const newNoms = (weeklyEventData[eventKey]?.nominees || []).filter((id: string) => id !== nomId);
+                                                        handleEventChange(eventKey, 'nominees', newNoms);
+                                                    }}>
+                                                        <XCircle className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                    </button>
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                    <Select
+                                        value=""
+                                        onValueChange={val => {
+                                            if (val) {
+                                                const currentNoms = weeklyEventData[eventKey]?.nominees || [];
+                                                if (!currentNoms.includes(val)) {
+                                                    handleEventChange(eventKey, 'nominees', [...currentNoms, val]);
+                                                }
+                                            }
+                                        }}>
+                                        <SelectTrigger className="h-8"><SelectValue placeholder="Add nominee..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {contestantList
+                                                .filter(c => !(weeklyEventData[eventKey]?.nominees || []).includes(c.id))
+                                                .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ) : (
+                                <Select
+                                    value={weeklyEventData[eventKey]?.[isEviction ? 'evictedId' : 'winnerId'] || ''}
+                                    onValueChange={val => handleEventChange(eventKey, isEviction ? 'evictedId' : 'winnerId', val)}>
+                                    <SelectTrigger className="h-8"><SelectValue placeholder={`Select...`} /></SelectTrigger>
+                                    <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
+                                </Select>
+                            )}
+                            <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="w-full mt-2">Log Event</Button>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
+                            <Switch id={`followup-${card._id}`} checked={!!localCard.hasFollowUp} onCheckedChange={val => onUpdate(card._id, 'hasFollowUp', val)} />
+                            <Label htmlFor={`followup-${card._id}`}>Follow-up Event?</Label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {localCard.hasFollowUp && localCard.followUp && (
+                <EventEditorCard
+                    card={localCard.followUp}
+                    onUpdate={onUpdate}
+                    onRemove={onRemove}
+                    scoringRules={scoringRules}
+                    contestantList={contestantList}
+                    weeklyEventData={weeklyEventData}
+                    handleEventChange={handleEventChange}
+                    handleLogEvent={handleLogEvent}
+                    isSubCard={true}
+                />
+            )}
+        </div>
+    );
+};
+
+
 // Component to manage a single rule row, preventing input focus loss
 const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index: number, onUpdate: (index: number, field: keyof ScoringRule, value: string | number) => void, onRemove: (code: string) => void }) => {
     const [localRule, setLocalRule] = useState(rule);
@@ -1508,156 +1693,19 @@ function AdminPage() {
                                 <CardDescription>Log events for Week {viewingWeek} and customize how they appear on the dashboard.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {weeklyStatusCards.map((card, cardIndex) => {
-                                   if (!card.ruleCode) return null;
-                                   
-                                   const EventCardRecursive = ({ card, path, isSubCard = false }: { card: EditableSeasonWeeklyStatusDisplay, path: (string | number)[], isSubCard?: boolean }) => {
-                                        const isMultiPick = card.isMultiPick;
-                                        const isEviction = card.ruleCode.includes('EVICT');
-                                        const eventKey = card.ruleCode;
-                                        const contestantList = isEviction ? allSeasonContestants : activeContestantsInLeague;
-
-                                        return (
-                                            <div className="relative">
-                                                {isSubCard && (
-                                                    <>
-                                                        <div className="absolute left-6 -top-2 h-4 w-px bg-border"></div>
-                                                        <div className="absolute left-6 top-2 h-px w-6 bg-border"></div>
-                                                        <Plus className="absolute left-[18px] top-2.5 h-4 w-4 text-muted-foreground bg-background rounded-full" />
-                                                    </>
-                                                )}
-                                                <div className={cn("p-3 border rounded-lg bg-muted/50", isSubCard && "ml-12 mt-2")}>
-                                                    <div className='flex items-start gap-4 flex-col md:flex-row'>
-                                                    {/* Left side: Display Settings */}
-                                                    <div className="flex flex-col gap-2 w-full md:w-48">
-                                                         <div className='flex items-center justify-between'>
-                                                          <Select value={card.ruleCode} onValueChange={val => handleStatusCardChange(card._id, 'ruleCode', val)}>
-                                                              <SelectTrigger className="h-7 font-mono text-xs w-full"><SelectValue /></SelectTrigger>
-                                                              <SelectContent>
-                                                                  {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
-                                                              </SelectContent>
-                                                          </Select>
-                                                           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 pl-2">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Switch id={`multipick-${card._id}`} checked={!!card.isMultiPick} onCheckedChange={val => handleStatusCardChange(card._id, 'isMultiPick', val)} />
-                                                                    <Label htmlFor={`multipick-${card._id}`} className='text-xs'>Multi?</Label>
-                                                                </div>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveStatusCard(card._id)}>
-                                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex flex-col gap-2">
-                                                          <div className="flex items-center gap-2">
-                                                              <Popover>
-                                                                  <PopoverTrigger asChild>
-                                                                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                                                                          {createElement((LucideIcons as any)[card.icon] || Trophy, { className: cn("h-4 w-4", card.color) })}
-                                                                      </Button>
-                                                                  </PopoverTrigger>
-                                                                  <PopoverContent className="w-auto p-2">
-                                                                      <div className="grid grid-cols-5 gap-1">
-                                                                          {iconSelection.map(icon => (
-                                                                              <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStatusCardChange(card._id, 'icon', icon)}>
-                                                                                  {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
-                                                                              </Button>
-                                                                          ))}
-                                                                      </div>
-                                                                  </PopoverContent>
-                                                              </Popover>
-                                                              <Popover>
-                                                                  <PopoverTrigger asChild>
-                                                                      <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
-                                                                  </PopoverTrigger>
-                                                                  <PopoverContent className="w-auto p-2">
-                                                                      <div className="grid grid-cols-6 gap-1">
-                                                                          {colorSelection.map(color => (
-                                                                              <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
-                                                                          ))}
-                                                                      </div>
-                                                                  </PopoverContent>
-                                                              </Popover>
-                                                              <Input 
-                                                                  value={card.title} 
-                                                                  onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
-                                                                  className="h-8 text-sm font-medium flex-grow min-w-0"
-                                                                  placeholder='Dashboard Title'
-                                                              />
-                                                          </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <Separator orientation="vertical" className="h-auto hidden md:block" />
-                                                    <Separator orientation="horizontal" className="w-full md:hidden" />
-
-                                                    {/* Right side: Event Logging */}
-                                                    <div className="flex-1 space-y-3 w-full">
-                                                        <div className="p-2 border rounded-md bg-background min-h-[76px]">
-                                                             {isMultiPick ? (
-                                                                <div className="space-y-2">
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
-                                                                            const nominee = allSeasonContestants.find(c => c.id === nomId);
-                                                                            return (
-                                                                                <Badge key={nomId} variant="secondary" className="gap-1.5">
-                                                                                    <span>{nominee ? getContestantDisplayName(nominee, 'short') : '...'}</span>
-                                                                                    <button onClick={() => {
-                                                                                        const newNoms = (weeklyEventData[eventKey]?.nominees || []).filter((id: string) => id !== nomId);
-                                                                                        handleEventChange(eventKey, 'nominees', newNoms);
-                                                                                    }}>
-                                                                                        <XCircle className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                                                                    </button>
-                                                                                </Badge>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                    <Select 
-                                                                        value=""
-                                                                        onValueChange={val => {
-                                                                            if (val) {
-                                                                                const currentNoms = weeklyEventData[eventKey]?.nominees || [];
-                                                                                if (!currentNoms.includes(val)) {
-                                                                                    handleEventChange(eventKey, 'nominees', [...currentNoms, val]);
-                                                                                }
-                                                                            }
-                                                                        }}>
-                                                                        <SelectTrigger className="h-8"><SelectValue placeholder="Add nominee..."/></SelectTrigger>
-                                                                        <SelectContent>
-                                                                            {allSeasonContestants
-                                                                                .filter(c => !(weeklyEventData[eventKey]?.nominees || []).includes(c.id))
-                                                                                .map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </div>
-                                                            ) : (
-                                                                <Select 
-                                                                    value={weeklyEventData[eventKey]?.[isEviction ? 'evictedId' : 'winnerId'] || ''} 
-                                                                    onValueChange={val => handleEventChange(eventKey, isEviction ? 'evictedId' : 'winnerId', val)}>
-                                                                    <SelectTrigger className="h-8"><SelectValue placeholder={`Select ${leagueSettings?.contestantTerm?.singular || 'Contestant'}...`}/></SelectTrigger>
-                                                                    <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
-                                                                </Select>
-                                                            )}
-                                                            <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="w-full mt-2">Log Event</Button>
-                                                        </div>
-                                                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
-                                                            <Switch id={`followup-${card._id}`} checked={!!card.hasFollowUp} onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUp', val)} />
-                                                            <Label htmlFor={`followup-${card._id}`}>Follow-up Event?</Label>
-                                                        </div>
-                                                    </div>
-                                                    </div>
-                                                </div>
-                                                {card.hasFollowUp && card.followUp && (
-                                                     <div className="relative">
-                                                        <EventCardRecursive card={card.followUp as EditableSeasonWeeklyStatusDisplay} path={[...path, 'followUp']} isSubCard={true} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                   }
-
-                                   return <EventCardRecursive key={card._id} card={card} path={[cardIndex]} />
-                                })}
+                                {weeklyStatusCards.map((card) => (
+                                     <EventEditorCard
+                                        key={card._id}
+                                        card={card}
+                                        onUpdate={handleStatusCardChange}
+                                        onRemove={handleRemoveStatusCard}
+                                        scoringRules={scoringRules}
+                                        contestantList={allSeasonContestants}
+                                        weeklyEventData={weeklyEventData}
+                                        handleEventChange={handleEventChange}
+                                        handleLogEvent={handleLogEvent}
+                                    />
+                                ))}
                                 <div className="flex gap-2 mt-4">
                                     <Button onClick={() => setIsAddStatusCardOpen(true)} size="sm" variant="outline"><PlusCircle className="mr-2"/> Add Event Card</Button>
                                     <Button onClick={handleSaveWeeklyStatusDisplay} size="sm"><Save className="mr-2"/> Save Display Settings</Button>
