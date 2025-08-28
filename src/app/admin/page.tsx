@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, GripVertical, Plus, PlusCircle, Square, CheckSquare, Palette, Wand2, ArrowRight, Save, Pilcrow, CaseUpper, CaseLower, ChevronsUpDown, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Trash2, GripVertical, Plus, PlusCircle, Square, CheckSquare, Palette, Wand2, ArrowRight, Save, Pilcrow, CaseUpper, CaseLower, ChevronsUpDown, AlertTriangle, ArrowLeft, Shield } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { AppHeader } from '@/components/app-header';
 import { getFirestore, collection, onSnapshot, query, doc, Unsubscribe, where, writeBatch, runTransaction, getDocs } from 'firebase/firestore';
@@ -78,57 +78,38 @@ function EventEditorCard({ card, onUpdate, onDelete, scoringRules, isFollowUp = 
 
     const handleFieldChange = (field: keyof SeasonWeeklyStatusDisplay, value: any) => {
         const newCard = { ...localCard, [field]: value };
-
-        if (field === 'hasFollowUp') {
-            if (value && !newCard.followUp) {
-                // When toggling ON, create a default follow-up object
-                newCard.followUp = {
-                    _id: `followup-${Date.now()}`,
-                    ruleCode: '',
-                    title: 'Follow-up Event',
-                    icon: 'Star',
-                    order: 1,
-                    color: 'text-gray-500',
-                    action: 'setWinner',
-                };
-            } else if (!value) {
-                // When toggling OFF, remove the follow-up object
-                delete newCard.followUp;
-            }
-        }
-
         setLocalCard(newCard);
     };
-
+    
     const handleBlur = () => {
         onUpdate(localCard);
     };
-    
+
+    const handleFollowUpToggle = (checked: boolean) => {
+        const newCard = { ...localCard, hasFollowUp: checked };
+        if (checked && !newCard.followUp) {
+            newCard.followUp = {
+                _id: `followup-${Date.now()}`, ruleCode: '', title: 'Follow-up Event',
+                icon: 'Star', order: 1, color: 'text-gray-500', action: 'setWinner',
+            };
+        } else if (!checked) {
+            delete newCard.followUp;
+        }
+        setLocalCard(newCard);
+        onUpdate(newCard);
+    };
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
     };
 
     const IconComponent = (LucideIcons as any)[localCard.icon] || Square;
-    const isMultiPick = localCard.isMultiPick;
-    const isEviction = localCard.ruleCode?.includes('EVICT');
-    const eventKey = localCard.ruleCode;
+    const isMultiPick = localCard.action === 'setNominees';
 
     return (
         <Card ref={setNodeRef} style={style} className={cn("relative", isFollowUp ? "ml-8 my-2 border-dashed" : "mb-4")}>
             <div className="absolute top-2 right-2 flex items-center gap-2">
-                 <div className="flex items-center space-x-2">
-                    <Label htmlFor={`multi-pick-${localCard._id}`} className="text-xs">Multi-pick?</Label>
-                    <Switch
-                        id={`multi-pick-${localCard._id}`}
-                        checked={localCard.isMultiPick}
-                        onCheckedChange={(checked) => {
-                            const updatedCard = { ...localCard, isMultiPick: checked };
-                            setLocalCard(updatedCard);
-                            onUpdate(updatedCard);
-                        }}
-                    />
-                </div>
                 <Button variant="ghost" size="icon" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button>
                 {!isFollowUp && <div {...listeners} {...attributes} className="cursor-grab"><GripVertical className="h-5 w-5 text-muted-foreground" /></div>}
             </div>
@@ -235,21 +216,8 @@ function EventEditorCard({ card, onUpdate, onDelete, scoringRules, isFollowUp = 
                 <div className="flex items-center space-x-2">
                     <Switch
                         id={`follow-up-${localCard._id}`}
-                        checked={localCard.hasFollowUp}
-                        onCheckedChange={(checked) => {
-                           handleFieldChange('hasFollowUp', checked);
-                           // Trigger immediate update for follow-up creation/deletion
-                           const newCard = { ...localCard, hasFollowUp: checked };
-                            if (checked && !newCard.followUp) {
-                                newCard.followUp = {
-                                    _id: `followup-${Date.now()}`, ruleCode: '', title: 'Follow-up Event',
-                                    icon: 'Star', order: 1, color: 'text-gray-500', action: 'setWinner',
-                                };
-                            } else if (!checked) {
-                                delete newCard.followUp;
-                            }
-                            onUpdate(newCard);
-                        }}
+                        checked={!!localCard.hasFollowUp}
+                        onCheckedChange={handleFollowUpToggle}
                     />
                     <Label htmlFor={`follow-up-${localCard._id}`}>Has Follow-up Event?</Label>
                 </div>
@@ -263,12 +231,7 @@ function EventEditorCard({ card, onUpdate, onDelete, scoringRules, isFollowUp = 
                                 setLocalCard(newCard);
                                 onUpdate(newCard);
                             }}
-                            onDelete={() => {
-                                const newCard = { ...localCard, hasFollowUp: false };
-                                delete newCard.followUp;
-                                setLocalCard(newCard);
-                                onUpdate(newCard);
-                            }}
+                            onDelete={() => handleFollowUpToggle(false)}
                             scoringRules={scoringRules}
                             isFollowUp={true}
                             path={`${path}.followUp`}
@@ -308,7 +271,7 @@ function AdminPage() {
     const handleLogEvent = async (card: SeasonWeeklyStatusDisplay) => {
         if (!activeSeason || !card.ruleCode) return;
 
-        const { action, isMultiPick, ruleCode } = card;
+        const { action, ruleCode } = card;
         const contestantValue = eventLog[ruleCode];
 
         try {
@@ -328,6 +291,7 @@ function AdminPage() {
                 const player = contestantValue; // This can be an ID, or an array of IDs
                 
                 if (player) {
+                    data.used = true; // Mark as used if a player is selected
                     switch (action) {
                         case 'setWinner': data.winnerId = player; break;
                         case 'setEvictee': data.evictedId = player; break;
@@ -337,6 +301,7 @@ function AdminPage() {
                     }
                 } else {
                      data.outcome = card.alternativeOutcomeText || 'Occurred';
+                     data.used = false;
                 }
 
                 if (existingCompDoc) {
@@ -358,7 +323,7 @@ function AdminPage() {
     useEffect(() => {
         const unsubLeagues = onSnapshot(collection(db, "leagues"), (snap) => {
             if (!snap.empty) {
-                const leagues = snap.docs.map(d => ({...d.data(), id: d.id} as League));
+                const leagues = snap.docs.map(d => ({...d.data(), id: d.id}as League));
                 setActiveLeague(leagues[0]);
             }
         });
@@ -748,5 +713,7 @@ function SiteAdminPanel() {
 
 export default withAuth(AdminPage, ['site_admin', 'league_admin']);
 
+
+    
 
     

@@ -274,7 +274,7 @@ function EventEditorCard({ card, onUpdate, onDelete, scoringRules, isFollowUp = 
                 <div className="flex items-center space-x-2">
                     <Switch
                         id={`follow-up-${localCard._id}`}
-                        checked={localCard.hasFollowUp}
+                        checked={!!localCard.hasFollowUp}
                         onCheckedChange={handleFollowUpToggle}
                     />
                     <Label htmlFor={`follow-up-${localCard._id}`}>Has Follow-up Event?</Label>
@@ -771,3 +771,5 @@ function SiteAdminPanel() {
 // Default export can be wrapped with withAuth for use in the app
 const AdminPageWithAuth = withAuth(AdminPage, ['site_admin', 'league_admin']);
 export default AdminPageWithAuth;
+
+    

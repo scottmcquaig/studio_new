@@ -170,3 +170,5 @@ export interface Pick {
     pick: number;
     createdAt: string;
 }
+
+    
