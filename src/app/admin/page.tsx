@@ -79,7 +79,7 @@ const EventEditorCard = ({
     contestantList: Contestant[],
     weeklyEventData: { [key: string]: Partial<Competition> },
     handleEventChange: (type: string, field: keyof Competition, value: any) => void,
-    handleLogEvent: (ruleCode: string) => void,
+    handleLogEvent: (ruleCode: string, outcome?: string) => void,
     isSubCard?: boolean,
 }) => {
     const [localCard, setLocalCard] = useState(card);
@@ -154,7 +154,7 @@ const EventEditorCard = ({
                 const field = fieldMap[action] as keyof Competition;
                  return (
                     <Select
-                        value={weeklyEventData[eventKey]?.[field] || ''}
+                        value={weeklyEventData[eventKey]?.[field] as string || ''}
                         onValueChange={val => handleEventChange(eventKey, field, val)}>
                         <SelectTrigger className="h-8"><SelectValue placeholder={`Select...`} /></SelectTrigger>
                         <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
@@ -244,12 +244,25 @@ const EventEditorCard = ({
                         <div className="p-2 border rounded-md bg-background min-h-[76px]">
                            {renderActionInput()}
                            <div className='flex gap-2 w-full mt-2'>
-                                <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="flex-grow">Log Event</Button>
+                                <Button size="sm" onClick={() => handleLogEvent(eventKey, localCard.alternativeOutcomeText)} className="flex-grow">Log Event</Button>
                            </div>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
-                            <Switch id={`followup-${card._id}`} checked={!!localCard.hasFollowUp} onCheckedChange={val => onUpdate(card._id, 'hasFollowUp', val)} />
-                            <Label htmlFor={`followup-${card._id}`}>Follow-up Event?</Label>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground justify-end">
+                             <div className="flex items-center gap-1.5">
+                                <Label htmlFor={`alt-outcome-${card._id}`} className="shrink-0">Alt Outcome Text:</Label>
+                                <Input
+                                    id={`alt-outcome-${card._id}`}
+                                    value={localCard.alternativeOutcomeText || ''}
+                                    onChange={(e) => handleLocalChange('alternativeOutcomeText', e.target.value)}
+                                    onBlur={() => handleBlur('alternativeOutcomeText')}
+                                    className="h-6 text-xs"
+                                    placeholder='e.g., Not Used'
+                                />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Switch id={`followup-${card._id}`} checked={!!localCard.hasFollowUp} onCheckedChange={val => onUpdate(card._id, 'hasFollowUp', val)} />
+                                <Label htmlFor={`followup-${card._id}`}>Follow-up?</Label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -478,11 +491,11 @@ function AdminPage() {
     }));
   };
 
-    const handleLogEvent = async (ruleCode: string) => {
+    const handleLogEvent = async (ruleCode: string, alternativeOutcomeText?: string) => {
         if (!activeSeason || !leagueSettings || !ruleCode) return;
 
         let eventToLog = weeklyEventData[ruleCode] || {};
-        const isEviction = ruleCode.includes('EVICT');
+        const isEviction = ruleCode?.includes('EVICT');
         const existingEvent = weeklyCompetitions.find(c => c.type === ruleCode);
         
         const dataToSave: Partial<Competition> & { seasonId: string; week: number; type: string; airDate: string } = {
@@ -493,6 +506,13 @@ function AdminPage() {
             ...eventToLog,
         };
         
+        // If no player is selected but there's outcome text, save it.
+        const playerIds = [dataToSave.winnerId, dataToSave.evictedId, dataToSave.usedOnId, dataToSave.replacementNomId];
+        const hasPlayer = playerIds.some(id => !!id) || (dataToSave.nominees && dataToSave.nominees.length > 0);
+        if (!hasPlayer && alternativeOutcomeText) {
+            dataToSave.outcome = alternativeOutcomeText;
+        }
+
         if (isEviction && dataToSave.evictedId) {
             const contestantRef = doc(db, 'contestants', dataToSave.evictedId);
             await updateDoc(contestantRef, {

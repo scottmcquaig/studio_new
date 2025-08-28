@@ -17,12 +17,13 @@ interface WeeklyStatusProps {
     displayWeek?: number;
 }
 
-const FollowUpEvent = ({ card, event, contestants }: { card: SeasonWeeklyStatusDisplay, event: Competition | undefined, contestants: Contestant[] }) => {
+const FollowUpEvent = ({ card, competitions, contestants }: { card: SeasonWeeklyStatusDisplay, competitions: Competition[], contestants: Contestant[] }) => {
     if (!card.ruleCode) return null;
 
     const IconComponent = (LucideIcons as any)[card.icon] || HelpCircle;
     const safeColor = card.color || 'text-gray-500';
     const action = card.action || 'setWinner';
+    const event = competitions.find(c => c.type === card.ruleCode);
 
     let player: Contestant | undefined;
     switch(action) {
@@ -89,45 +90,41 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
         );
     }
     
-    // Renders complex events with follow-ups (like Veto)
-    if (hasFollowUp) {
-        const winner = contestants.find(hg => hg.id === event?.winnerId);
+    let mainPlayer: Contestant | undefined;
+    switch(action) {
+        case 'setEvictee':
+            mainPlayer = contestants.find(c => c.id === event?.evictedId);
+            break;
+        case 'setWinner':
+        default:
+             mainPlayer = contestants.find(c => c.id === event?.winnerId);
+             break;
+    }
+
+    // Renders complex events with follow-ups
+    if (hasFollowUp && followUp) {
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
                 <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
                 <div className="flex items-center justify-center gap-4 w-full mt-2">
                     <div className="flex flex-col items-center justify-center w-28">
-                        {winner ? (
+                        {mainPlayer ? (
                             <>
-                                <Image src={winner.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(winner, 'full')} width={64} height={64} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
-                                <span className="text-sm mt-1">{getContestantDisplayName(winner, 'short')}</span>
+                                <Image src={mainPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(mainPlayer, 'full')} width={64} height={64} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
+                                <span className="text-sm mt-1">{getContestantDisplayName(mainPlayer, 'short')}</span>
                             </>
                         ) : (
                             <>
                                 <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
-                                <span className="text-sm text-muted-foreground mt-1">TBD</span>
+                                <span className="text-sm text-muted-foreground mt-1">{event?.outcome || 'TBD'}</span>
                             </>
                         )}
                     </div>
-                    {winner && <Separator orientation="vertical" className="h-auto self-stretch" />}
-                    {winner && (
+                    {(mainPlayer || event?.outcome) && <Separator orientation="vertical" className="h-auto self-stretch" />}
+                    {(mainPlayer || event?.outcome) && (
                         <div className="flex flex-col items-start justify-center flex-shrink-0 space-y-2 w-24">
-                           {event?.used === true && followUp ? (
-                                <>
-                                   <FollowUpEvent card={followUp} event={event} contestants={contestants} />
-                                   {followUp.followUp && <FollowUpEvent card={followUp.followUp} event={event} contestants={contestants} />}
-                                </>
-                           ) : (
-                                <div className="flex flex-col items-center justify-center w-full gap-1">
-                                    {event?.used === false
-                                        ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
-                                        : <HelpCircle className="h-8 w-8 text-muted-foreground" />
-                                    }
-                                    <span className="text-xs text-muted-foreground text-center">
-                                        {event?.used === false ? 'Not Used' : 'TBD'}
-                                    </span>
-                                </div>
-                           )}
+                           <FollowUpEvent card={followUp} competitions={competitions} contestants={contestants} />
+                           {followUp.followUp && <FollowUpEvent card={followUp.followUp} competitions={competitions} contestants={contestants} />}
                         </div>
                     )}
                 </div>
@@ -135,30 +132,19 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
         );
     }
 
-    // Renders simple, single-winner events
-    let contestant: Contestant | undefined;
-     switch(action) {
-        case 'setEvictee':
-            contestant = contestants.find(c => c.id === event?.evictedId);
-            break;
-        case 'setWinner':
-        default:
-             contestant = contestants.find(c => c.id === event?.winnerId);
-             break;
-    }
-        
+    // Renders simple, single-player events
     return (
         <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
             <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-            {contestant ? (
+            {mainPlayer ? (
                 <>
-                    <Image src={contestant.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(contestant, 'full')} width={64} height={64} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
-                    <span className="text-sm">{getContestantDisplayName(contestant, 'short')}</span>
+                    <Image src={mainPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(mainPlayer, 'full')} width={64} height={64} className={cn("rounded-full border-2", borderColor)} data-ai-hint="portrait person" />
+                    <span className="text-sm">{getContestantDisplayName(mainPlayer, 'short')}</span>
                 </>
             ) : (
                 <>
                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
-                    <span className="text-sm text-muted-foreground">TBD</span>
+                    <span className="text-sm text-muted-foreground">{event?.outcome || 'TBD'}</span>
                 </>
             )}
         </div>

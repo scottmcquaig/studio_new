@@ -16,6 +16,7 @@ export interface SeasonWeeklyStatusDisplay {
     action: EventAction;
     hasFollowUp?: boolean;
     followUp?: SeasonWeeklyStatusDisplay; // Nested follow-up event
+    alternativeOutcomeText?: string;
 }
 
 
@@ -75,6 +76,7 @@ export interface Competition {
     day?: number;
     nominees?: string[];
     grantedSafety?: boolean;
+    outcome?: string; // For special outcomes like "Not Used"
 }
 
 export interface LeagueScoringBreakdownCategory {
