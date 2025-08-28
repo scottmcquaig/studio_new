@@ -100,6 +100,7 @@ const EventEditorCard = ({
     
     const isMultiPick = localCard.isMultiPick;
     const isEviction = localCard.ruleCode?.includes('EVICT');
+    const isVeto = localCard.ruleCode?.includes('VETO');
     const eventKey = localCard.ruleCode;
 
     return (
@@ -218,6 +219,16 @@ const EventEditorCard = ({
                                     <SelectTrigger className="h-8"><SelectValue placeholder={`Select...`} /></SelectTrigger>
                                     <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                 </Select>
+                            )}
+                             {isVeto && (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                                    <Switch
+                                        id={`veto-used-${card._id}`}
+                                        checked={weeklyEventData[eventKey]?.used === true}
+                                        onCheckedChange={val => handleEventChange(eventKey, 'used', val)}
+                                    />
+                                    <Label htmlFor={`veto-used-${card._id}`}>Veto Used?</Label>
+                                </div>
                             )}
                             <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="w-full mt-2">Log Event</Button>
                         </div>
@@ -781,8 +792,17 @@ function AdminPage() {
         } else {
             displayData = defaultDisplay;
         }
-        // Add unique _id for stable keys in React
-        setWeeklyStatusDisplay(displayData.map((d, i) => ({ ...d, _id: `${Date.now()}-${i}` })));
+        
+        const addIdRecursively = (items: any[]): EditableSeasonWeeklyStatusDisplay[] => {
+            return items.map((item, index) => {
+                const newItem = { ...item, _id: `${Date.now()}-${index}` };
+                if (item.followUp) {
+                    newItem.followUp = addIdRecursively([item.followUp])[0];
+                }
+                return newItem;
+            });
+        };
+        setWeeklyStatusDisplay(addIdRecursively(displayData));
       }
   }, [activeSeason]);
   

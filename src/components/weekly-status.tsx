@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { Competition, Contestant, Season, SeasonWeeklyStatusDisplay } from '@/lib/data';
-import { Crown, HelpCircle, TriangleAlert, Ban, ShieldOff, UserCheck, RotateCcw, BrickWall, Skull } from "lucide-react";
+import { HelpCircle, ShieldOff } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import { cn, getContestantDisplayName } from '@/lib/utils';
 
@@ -17,9 +17,36 @@ interface WeeklyStatusProps {
     displayWeek?: number;
 }
 
+const FollowUpEvent = ({ card, event, contestants }: { card: SeasonWeeklyStatusDisplay, event: Competition | undefined, contestants: Contestant[] }) => {
+    if (!card.ruleCode) return null;
+
+    const IconComponent = (LucideIcons as any)[card.icon] || HelpCircle;
+    const safeColor = card.color || 'text-gray-500';
+
+    const isEviction = card.ruleCode.includes('EVICT');
+    const isSave = card.ruleCode.includes('USED');
+    const isRenom = card.ruleCode.includes('FINAL_NOM');
+    
+    let player: Contestant | undefined;
+    if (isEviction) player = contestants.find(c => c.id === event?.evictedId);
+    else if (isSave) player = contestants.find(c => c.id === event?.usedOnId);
+    else if (isRenom) player = contestants.find(c => c.id === event?.replacementNomId);
+    else player = contestants.find(c => c.id === event?.winnerId);
+    
+    return (
+        <div className="flex items-start gap-2">
+             {player ? <Image src={player.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(player, 'full')} width={24} height={24} className={cn("rounded-full border-2", safeColor.replace('text-','border-'))} data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
+            <div>
+                 <p className="text-xs font-semibold flex items-center gap-1"><IconComponent className={cn("h-3 w-3", safeColor)} /> {card.title}</p>
+                 <p className="text-xs text-muted-foreground">{player ? getContestantDisplayName(player, 'short') : 'TBD'}</p>
+            </div>
+        </div>
+    );
+};
+
 
 const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStatusDisplay, competitions: Competition[], contestants: Contestant[] }) => {
-    const { ruleCode, title, icon, color, hasFollowUpFields } = card;
+    const { ruleCode, title, icon, color, isMultiPick, hasFollowUp, followUp } = card;
     if (!ruleCode) return null;
 
     const IconComponent = (LucideIcons as any)[icon] || HelpCircle;
@@ -28,8 +55,8 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
 
     const event = competitions.find(c => c.type === ruleCode);
     
-    // Logic for single-winner events (HOH, Eviction, simple custom events)
-    if (!hasFollowUpFields && !ruleCode.toLowerCase().includes('nom')) {
+    // Renders simple, single-winner events
+    if (!isMultiPick && !hasFollowUp) {
         const isEviction = ruleCode.includes('EVICT');
         const winner = contestants.find(hg => hg.id === (isEviction ? event?.evictedId : event?.winnerId));
         
@@ -51,8 +78,8 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
         );
     }
     
-    // Logic for nomination-style events (multi-pick)
-    if (ruleCode.toLowerCase().includes('nom')) {
+    // Renders multi-pick events like nominations
+    if (isMultiPick) {
         const nominees = contestants.filter(hg => event?.nominees?.includes(hg.id));
         return (
              <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
@@ -77,11 +104,9 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
         );
     }
     
-    // Logic for complex events with follow-up fields (like Veto)
-    if (hasFollowUpFields) {
+    // Renders complex events with follow-ups (like Veto)
+    if (hasFollowUp) {
         const winner = contestants.find(hg => hg.id === event?.winnerId);
-        const savedPlayer = contestants.find(hg => hg.id === event?.usedOnId);
-        const renomPlayer = contestants.find(hg => hg.id === event?.replacementNomId);
 
         return (
             <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[240px]">
@@ -102,24 +127,13 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
                     </div>
                     {winner && <Separator orientation="vertical" className="h-auto self-stretch" />}
                     {winner && (
-                        <div className="flex flex-col items-center justify-center flex-shrink-0 space-y-2 w-24">
-                            {event?.used === true && (
-                                <div className="flex flex-col items-start gap-2">
-                                    <div className="flex items-center gap-2">
-                                        {savedPlayer ? <Image src={savedPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(savedPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-green-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
-                                        <div>
-                                            <p className="text-xs font-semibold flex items-center gap-1"><UserCheck className="h-3 w-3 text-green-500" /> Saved</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {renomPlayer ? <Image src={renomPlayer.photoUrl || "https://placehold.co/100x100.png"} alt={getContestantDisplayName(renomPlayer, 'full')} width={24} height={24} className="rounded-full border-2 border-red-500" data-ai-hint="portrait person" /> : <div className="w-6 h-6 rounded-full border border-dashed flex items-center justify-center"><HelpCircle className="w-3 h-3 text-muted-foreground" /></div>}
-                                        <div>
-                                            <p className="text-xs font-semibold flex items-center gap-1"><RotateCcw className="h-3 w-3 text-orange-500" /> Renom</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {(event?.used === false || event?.used === undefined) && (
+                        <div className="flex flex-col items-start justify-center flex-shrink-0 space-y-2 w-24">
+                           {event?.used === true && followUp ? (
+                                <>
+                                   <FollowUpEvent card={followUp} event={event} contestants={contestants} />
+                                   {followUp.followUp && <FollowUpEvent card={followUp.followUp} event={event} contestants={contestants} />}
+                                </>
+                           ) : (
                                 <div className="flex flex-col items-center justify-center w-full gap-1">
                                     {event?.used === false
                                         ? <ShieldOff className="h-8 w-8 text-muted-foreground" />
@@ -129,7 +143,7 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
                                         {event?.used === false ? 'Not Used' : 'TBD'}
                                     </span>
                                 </div>
-                            )}
+                           )}
                         </div>
                     )}
                 </div>
@@ -138,13 +152,7 @@ const EventCard = ({ card, competitions, contestants }: { card: SeasonWeeklyStat
     }
 
     // Fallback for any unhandled card types
-    return (
-        <div className="flex flex-col items-center text-center gap-2 p-4 rounded-lg bg-background flex-1 min-w-[160px]">
-            <h3 className={cn("font-semibold flex items-center gap-1", safeColor)}><IconComponent className="h-4 w-4" /> {title}</h3>
-            <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground flex items-center justify-center bg-muted/50"><HelpCircle className="w-8 h-8 text-muted-foreground" /></div>
-            <span className="text-sm text-muted-foreground">TBD</span>
-        </div>
-    );
+    return null;
 };
 
 
@@ -162,8 +170,8 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
         // Default config if none is set for the week
         return [
             { ruleCode: 'HOH_WIN', title: 'HOH', icon: 'Crown', order: 1, color: 'text-purple-500' },
-            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500' },
-            { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUpFields: true },
+            { ruleCode: 'NOMINATED', title: 'Nominations', icon: 'TriangleAlert', order: 2, color: 'text-red-500', isMultiPick: true },
+            { ruleCode: 'VETO_WIN', title: 'Power of Veto', icon: 'Ban', order: 3, color: 'text-amber-500', hasFollowUp: true },
             { ruleCode: 'EVICT_PRE', title: 'Evicted', icon: 'Skull', order: 4, color: 'text-gray-500' }
         ] as SeasonWeeklyStatusDisplay[];
     }, [activeSeason, week]);
@@ -181,7 +189,7 @@ export function WeeklyStatus({ competitions, contestants, activeSeason, displayW
             <CardContent className="flex flex-wrap justify-center gap-4">
                {displayConfig.map((item, index) => (
                    <EventCard 
-                        key={item.ruleCode ? `${item.ruleCode}-${index}`: index}
+                        key={item._id || item.ruleCode ? `${item.ruleCode}-${index}`: index}
                         card={item}
                         competitions={competitions}
                         contestants={contestants}
