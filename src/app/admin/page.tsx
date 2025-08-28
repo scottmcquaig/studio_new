@@ -99,7 +99,7 @@ const EventEditorCard = ({
     };
     
     const isMultiPick = localCard.isMultiPick;
-    const isEviction = localCard.ruleCode.includes('EVICT');
+    const isEviction = localCard.ruleCode?.includes('EVICT');
     const eventKey = localCard.ruleCode;
 
     return (
