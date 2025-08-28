@@ -1448,8 +1448,8 @@ function AdminPage() {
                 )}
                 
                 <TabsContent value="events">
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                        <Card className="lg:col-span-3">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <Card className="md:col-span-3">
                             <CardHeader>
                                 <CardTitle>Log & Customize Weekly Events</CardTitle>
                                 <CardDescription>Log events for Week {viewingWeek} and customize how they appear on the dashboard.</CardDescription>
@@ -1465,9 +1465,9 @@ function AdminPage() {
                                    const contestantList = isEviction ? allSeasonContestants : activeContestantsInLeague;
 
                                    return (
-                                        <div key={card._id} className="flex items-start gap-4 p-3 border rounded-lg bg-muted/50">
+                                        <div key={card._id} className="flex flex-col md:flex-row items-start gap-4 p-3 border rounded-lg bg-muted/50">
                                             {/* Left side: Display Settings */}
-                                            <div className="flex flex-col gap-2 items-center w-28">
+                                            <div className="flex flex-row md:flex-col gap-2 items-center w-full md:w-28">
                                                 <div className="flex items-center gap-1">
                                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                                     <Input
@@ -1477,56 +1477,59 @@ function AdminPage() {
                                                         className="h-7 w-12 text-center"
                                                     />
                                                 </div>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                                                            {createElement((LucideIcons as any)[card.icon] || Trophy, { className: cn("h-4 w-4", card.color) })}
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-2">
-                                                        <div className="grid grid-cols-5 gap-1">
-                                                            {iconSelection.map(icon => (
-                                                                <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStatusCardChange(card._id, 'icon', icon)}>
-                                                                    {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                         <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-2">
-                                                        <div className="grid grid-cols-6 gap-1">
-                                                            {colorSelection.map(color => (
-                                                                <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
-                                                            ))}
-                                                        </div>
-                                                    </PopoverContent>
-                                                </Popover>
-                                                <Input 
-                                                    value={card.title} 
-                                                    onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
-                                                    className="h-7 text-center font-medium"
-                                                />
+                                                <div className="flex-grow flex items-center md:flex-col gap-2">
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                                                                {createElement((LucideIcons as any)[card.icon] || Trophy, { className: cn("h-4 w-4", card.color) })}
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-2">
+                                                            <div className="grid grid-cols-5 gap-1">
+                                                                {iconSelection.map(icon => (
+                                                                    <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStatusCardChange(card._id, 'icon', icon)}>
+                                                                        {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
+                                                                    </Button>
+                                                                ))}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-2">
+                                                            <div className="grid grid-cols-6 gap-1">
+                                                                {colorSelection.map(color => (
+                                                                    <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
+                                                                ))}
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <Input 
+                                                        value={card.title} 
+                                                        onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
+                                                        className="h-7 text-center font-medium flex-grow"
+                                                    />
+                                                </div>
                                             </div>
 
-                                            <Separator orientation="vertical" className="h-auto" />
-                                            
+                                            <Separator orientation="vertical" className="h-auto hidden md:block" />
+                                            <Separator orientation="horizontal" className="w-full md:hidden" />
+
                                             {/* Right side: Event Logging */}
-                                            <div className="flex-1 space-y-3">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
+                                            <div className="flex-1 space-y-3 w-full">
+                                                <div className="flex flex-col sm:flex-row justify-between items-start">
+                                                    <div className="w-full sm:w-auto mb-2 sm:mb-0">
                                                         <Label className="font-semibold">{card.title}</Label>
                                                         <Select value={card.ruleCode} onValueChange={val => handleStatusCardChange(card._id, 'ruleCode', val)}>
-                                                            <SelectTrigger className="h-7 font-mono text-xs w-48 mt-1"><SelectValue /></SelectTrigger>
+                                                            <SelectTrigger className="h-7 font-mono text-xs w-full sm:w-48 mt-1"><SelectValue /></SelectTrigger>
                                                             <SelectContent>
                                                                 {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
-                                                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+                                                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 w-full sm:w-auto justify-between">
                                                         <div className="flex items-center gap-1.5">
                                                             <Switch id={`followup-${card._id}`} checked={card.hasFollowUpFields} onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUpFields', val)} />
                                                             <Label htmlFor={`followup-${card._id}`}>Follow-ups?</Label>
@@ -1580,7 +1583,7 @@ function AdminPage() {
                                                             </Select>
                                                         </div>
                                                     ) : hasFollowUps ? (
-                                                        <div className="grid grid-cols-2 gap-2">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                             <Select value={weeklyEventData[eventKey]?.winnerId || ''} onValueChange={val => handleEventChange(eventKey, 'winnerId', val)}>
                                                                 <SelectTrigger className="h-8"><SelectValue placeholder="Select winner..."/></SelectTrigger>
                                                                 <SelectContent>{activeContestantsInLeague.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
@@ -1657,7 +1660,7 @@ function AdminPage() {
                             </CardFooter>
                         </Card>
                         
-                        <Card className="lg:col-span-2">
+                        <Card className="md:col-span-2">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
                                     <CardTitle>Logged Scoring Events</CardTitle>
@@ -2597,5 +2600,6 @@ export default withAuth(AdminPage, ['site_admin', 'league_admin']);
     
 
     
+
 
 
