@@ -59,7 +59,7 @@ const USERS_PER_PAGE = 5;
 const ITEMS_PER_PAGE = 5;
 
 // Define a type for editable status display items with a unique key
-type EditableSeasonWeeklyStatusDisplay = SeasonWeeklyStatusDisplay & { _id: string };
+type EditableSeasonWeeklyStatusDisplay = SeasonWeeklyStatusDisplay & { _id: string; followUp?: EditableSeasonWeeklyStatusDisplay };
 
 // Component to manage a single rule row, preventing input focus loss
 const RuleRow = ({ rule, index, onUpdate, onRemove }: { rule: ScoringRule, index: number, onUpdate: (index: number, field: keyof ScoringRule, value: string | number) => void, onRemove: (code: string) => void }) => {
@@ -1078,8 +1078,20 @@ function AdminPage() {
         if (!activeSeason) return;
         const seasonRef = doc(db, 'seasons', activeSeason.id);
         const weekKey = `week${viewingWeek}`;
-        // Remove the temporary _id before saving
-        const dataToSave = weeklyStatusDisplay.map(({ _id, ...rest }) => rest);
+        
+        // Helper function to remove temporary _id recursively
+        const removeTemporaryIds = (data: any[]): any[] => {
+            return data.map(item => {
+                const { _id, ...rest } = item;
+                if (rest.followUp) {
+                    rest.followUp = removeTemporaryIds([rest.followUp])[0];
+                }
+                return rest;
+            });
+        };
+
+        const dataToSave = removeTemporaryIds(weeklyStatusDisplay);
+
         try {
             await updateDoc(seasonRef, {
                 [`weeklyStatusDisplay.${weekKey}`]: dataToSave,
@@ -1108,14 +1120,51 @@ function AdminPage() {
     };
 
     const handleRemoveStatusCard = (_id: string) => {
-        setWeeklyStatusDisplay(weeklyStatusDisplay.filter(card => card._id !== _id));
+        
+        const removeItem = (items: EditableSeasonWeeklyStatusDisplay[]): EditableSeasonWeeklyStatusDisplay[] => {
+            return items.filter(item => {
+                if (item._id === _id) {
+                    return false;
+                }
+                if (item.followUp) {
+                    item.followUp = removeItem([item.followUp])[0];
+                }
+                return true;
+            });
+        };
+        setWeeklyStatusDisplay(removeItem(weeklyStatusDisplay));
     };
 
     const handleStatusCardChange = (_id: string, field: keyof SeasonWeeklyStatusDisplay, value: any) => {
-        const updatedDisplay = weeklyStatusDisplay.map(card => 
-            card._id === _id ? { ...card, [field]: value } : card
-        );
-        setWeeklyStatusDisplay(updatedDisplay);
+        const updateItem = (items: EditableSeasonWeeklyStatusDisplay[]): EditableSeasonWeeklyStatusDisplay[] => {
+            return items.map(item => {
+                if (item._id === _id) {
+                    const updatedItem = { ...item, [field]: value };
+                    
+                    if (field === 'hasFollowUp') {
+                        if (value && !updatedItem.followUp) {
+                            updatedItem.followUp = {
+                                _id: `${Date.now()}-followup`,
+                                ruleCode: scoringRules[0]?.code || '',
+                                title: 'Follow-up',
+                                icon: 'ShieldCheck',
+                                color: 'text-sky-500',
+                                order: 1, // Order within follow-up context
+                            };
+                        } else if (!value) {
+                           delete updatedItem.followUp;
+                        }
+                    }
+
+                    return updatedItem;
+                }
+                if (item.followUp) {
+                    return { ...item, followUp: updateItem([item.followUp])[0] };
+                }
+                return item;
+            });
+        };
+        setWeeklyStatusDisplay(updateItem(weeklyStatusDisplay));
     };
     
     const handleStartNewWeek = async () => {
@@ -1462,65 +1511,80 @@ function AdminPage() {
                                 {weeklyStatusCards.map((card, cardIndex) => {
                                    if (!card.ruleCode) return null;
                                    
-                                   const EventCardRecursive = ({ card, path }: { card: EditableSeasonWeeklyStatusDisplay, path: number[] }) => {
+                                   const EventCardRecursive = ({ card, path, isSubCard = false }: { card: EditableSeasonWeeklyStatusDisplay, path: (string | number)[], isSubCard?: boolean }) => {
                                         const isMultiPick = card.isMultiPick;
                                         const isEviction = card.ruleCode.includes('EVICT');
                                         const eventKey = card.ruleCode;
                                         const contestantList = isEviction ? allSeasonContestants : activeContestantsInLeague;
-                                        const isSubCard = path.length > 1;
 
                                         return (
                                             <div className="relative">
                                                 {isSubCard && (
-                                                    <div className="absolute left-6 -top-3 bottom-0 w-px bg-border"></div>
+                                                    <>
+                                                        <div className="absolute left-6 -top-2 h-4 w-px bg-border"></div>
+                                                        <div className="absolute left-6 top-2 h-px w-6 bg-border"></div>
+                                                        <Plus className="absolute left-[18px] top-2.5 h-4 w-4 text-muted-foreground bg-background rounded-full" />
+                                                    </>
                                                 )}
-                                                <div className={cn("flex items-start gap-4 p-3 border rounded-lg bg-muted/50", isSubCard && "ml-12")}>
-                                                    {isSubCard && <div className="absolute left-0 top-6 h-px w-6 bg-border"></div>}
+                                                <div className={cn("p-3 border rounded-lg bg-muted/50", isSubCard && "ml-12 mt-2")}>
+                                                    <div className='flex items-start gap-4 flex-col md:flex-row'>
                                                     {/* Left side: Display Settings */}
-                                                    <div className="flex flex-wrap items-center gap-2 w-full md:w-28 md:flex-col">
-                                                        <div className="flex items-center gap-1">
-                                                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                                            <Input
-                                                                type="number"
-                                                                value={card.order}
-                                                                onChange={(e) => handleStatusCardChange(card._id, 'order', Number(e.target.value))}
-                                                                className="h-7 w-12 text-center"
-                                                            />
+                                                    <div className="flex flex-col gap-2 w-full md:w-48">
+                                                         <div className='flex items-center justify-between'>
+                                                          <Select value={card.ruleCode} onValueChange={val => handleStatusCardChange(card._id, 'ruleCode', val)}>
+                                                              <SelectTrigger className="h-7 font-mono text-xs w-full"><SelectValue /></SelectTrigger>
+                                                              <SelectContent>
+                                                                  {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
+                                                              </SelectContent>
+                                                          </Select>
+                                                           <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0 pl-2">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Switch id={`multipick-${card._id}`} checked={!!card.isMultiPick} onCheckedChange={val => handleStatusCardChange(card._id, 'isMultiPick', val)} />
+                                                                    <Label htmlFor={`multipick-${card._id}`} className='text-xs'>Multi?</Label>
+                                                                </div>
+                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveStatusCard(card._id)}>
+                                                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex-grow flex items-center gap-2 md:flex-col">
-                                                            <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-                                                                        {createElement((LucideIcons as any)[card.icon] || Trophy, { className: cn("h-4 w-4", card.color) })}
-                                                                    </Button>
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-auto p-2">
-                                                                    <div className="grid grid-cols-5 gap-1">
-                                                                        {iconSelection.map(icon => (
-                                                                            <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStatusCardChange(card._id, 'icon', icon)}>
-                                                                                {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
-                                                                            </Button>
-                                                                        ))}
-                                                                    </div>
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                            <Popover>
-                                                                <PopoverTrigger asChild>
-                                                                    <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
-                                                                </PopoverTrigger>
-                                                                <PopoverContent className="w-auto p-2">
-                                                                    <div className="grid grid-cols-6 gap-1">
-                                                                        {colorSelection.map(color => (
-                                                                            <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
-                                                                        ))}
-                                                                    </div>
-                                                                </PopoverContent>
-                                                            </Popover>
-                                                            <Input 
-                                                                value={card.title} 
-                                                                onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
-                                                                className="h-7 text-center font-medium flex-grow min-w-0"
-                                                            />
+
+                                                        <div className="flex flex-col gap-2">
+                                                          <div className="flex items-center gap-2">
+                                                              <Popover>
+                                                                  <PopoverTrigger asChild>
+                                                                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                                                                          {createElement((LucideIcons as any)[card.icon] || Trophy, { className: cn("h-4 w-4", card.color) })}
+                                                                      </Button>
+                                                                  </PopoverTrigger>
+                                                                  <PopoverContent className="w-auto p-2">
+                                                                      <div className="grid grid-cols-5 gap-1">
+                                                                          {iconSelection.map(icon => (
+                                                                              <Button key={icon} variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStatusCardChange(card._id, 'icon', icon)}>
+                                                                                  {createElement((LucideIcons as any)[icon], { className: "h-4 w-4" })}
+                                                                              </Button>
+                                                                          ))}
+                                                                      </div>
+                                                                  </PopoverContent>
+                                                              </Popover>
+                                                              <Popover>
+                                                                  <PopoverTrigger asChild>
+                                                                      <div className={cn("h-6 w-6 shrink-0 rounded-full cursor-pointer border", (card.color || '').replace('text-', 'bg-'))} />
+                                                                  </PopoverTrigger>
+                                                                  <PopoverContent className="w-auto p-2">
+                                                                      <div className="grid grid-cols-6 gap-1">
+                                                                          {colorSelection.map(color => (
+                                                                              <div key={color} className={cn("h-6 w-6 rounded-full cursor-pointer", color)} onClick={() => handleStatusCardChange(card._id, 'color', color.replace('bg-', 'text-'))} />
+                                                                          ))}
+                                                                      </div>
+                                                                  </PopoverContent>
+                                                              </Popover>
+                                                              <Input 
+                                                                  value={card.title} 
+                                                                  onChange={(e) => handleStatusCardChange(card._id, 'title', e.target.value)}
+                                                                  className="h-8 text-sm font-medium flex-grow min-w-0"
+                                                                  placeholder='Dashboard Title'
+                                                              />
+                                                          </div>
                                                         </div>
                                                     </div>
 
@@ -1529,31 +1593,8 @@ function AdminPage() {
 
                                                     {/* Right side: Event Logging */}
                                                     <div className="flex-1 space-y-3 w-full">
-                                                        <div className="flex flex-col sm:flex-row justify-between items-start">
-                                                            <Select value={card.ruleCode} onValueChange={val => handleStatusCardChange(card._id, 'ruleCode', val)}>
-                                                                <SelectTrigger className="h-7 font-mono text-xs w-full sm:w-48 mt-1"><SelectValue /></SelectTrigger>
-                                                                <SelectContent>
-                                                                    {scoringRules.map(r => <SelectItem key={r.code} value={r.code}>{r.label}</SelectItem>)}
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 w-full sm:w-auto justify-end flex-wrap">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Switch id={`followup-${card._id}`} checked={!!card.hasFollowUp} onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUp', val)} />
-                                                                    <Label htmlFor={`followup-${card._id}`}>Follow-up?</Label>
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <Switch id={`multipick-${card._id}`} checked={card.isMultiPick} onCheckedChange={val => handleStatusCardChange(card._id, 'isMultiPick', val)} />
-                                                                    <Label htmlFor={`multipick-${card._id}`}>Multi-pick?</Label>
-                                                                </div>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveStatusCard(card._id)}>
-                                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Logging Controls */}
-                                                        <div className="p-2 border rounded-md bg-background">
-                                                            {isMultiPick ? (
+                                                        <div className="p-2 border rounded-md bg-background min-h-[76px]">
+                                                             {isMultiPick ? (
                                                                 <div className="space-y-2">
                                                                     <div className="flex flex-wrap gap-1">
                                                                         {(weeklyEventData[eventKey]?.nominees || []).map((nomId: string) => {
@@ -1597,13 +1638,18 @@ function AdminPage() {
                                                                     <SelectContent>{contestantList.map(c => <SelectItem key={c.id} value={c.id}>{getContestantDisplayName(c, 'full')}</SelectItem>)}</SelectContent>
                                                                 </Select>
                                                             )}
-                                                            <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="w-full mt-2">Log {card.title}</Button>
+                                                            <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="w-full mt-2">Log Event</Button>
                                                         </div>
+                                                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
+                                                            <Switch id={`followup-${card._id}`} checked={!!card.hasFollowUp} onCheckedChange={val => handleStatusCardChange(card._id, 'hasFollowUp', val)} />
+                                                            <Label htmlFor={`followup-${card._id}`}>Follow-up Event?</Label>
+                                                        </div>
+                                                    </div>
                                                     </div>
                                                 </div>
                                                 {card.hasFollowUp && card.followUp && (
-                                                     <div className="relative mt-2">
-                                                        <EventCardRecursive card={card.followUp as EditableSeasonWeeklyStatusDisplay} path={[...path, 0]} />
+                                                     <div className="relative">
+                                                        <EventCardRecursive card={card.followUp as EditableSeasonWeeklyStatusDisplay} path={[...path, 'followUp']} isSubCard={true} />
                                                     </div>
                                                 )}
                                             </div>
@@ -1653,7 +1699,7 @@ function AdminPage() {
                             </CardFooter>
                         </Card>
                         
-                        <Card className="md:col-span-2">
+                        <Card className="lg:col-span-2">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div>
                                     <CardTitle>Logged Scoring Events</CardTitle>
