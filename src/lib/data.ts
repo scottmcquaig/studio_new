@@ -1,16 +1,17 @@
 
 
-
-
 export interface SeasonWeeklyStatusDisplay {
+    _id?: string; // Temporary client-side ID
     ruleCode: string;
     title: string;
     icon: string;
     order: number;
     color: string;
-    hasFollowUpFields?: boolean;
+    hasFollowUp?: boolean;
     isMultiPick?: boolean;
+    followUp?: SeasonWeeklyStatusDisplay; // Nested follow-up event
 }
+
 
 export interface Season {
   id: string;
@@ -161,5 +162,3 @@ export interface Pick {
     pick: number;
     createdAt: string;
 }
-
-    
