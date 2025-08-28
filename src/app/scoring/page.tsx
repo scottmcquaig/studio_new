@@ -123,6 +123,7 @@ function ScoringPage() {
     if (!scoringRules?.rules) return events;
 
     competitions.forEach(comp => {
+      // Main event
       const mainRule = scoringRules.rules.find(r => r.code === comp.type);
       if (mainRule) {
           if (comp.nominees && comp.nominees.length > 0) {
@@ -165,6 +166,7 @@ function ScoringPage() {
           }
       }
 
+      // Veto Save event
       if (comp.usedOnId) {
           const vetoUsedRule = scoringRules.rules.find(r => r.code === 'VETO_USED');
           if(vetoUsedRule) {
@@ -187,6 +189,7 @@ function ScoringPage() {
           }
       }
 
+      // Replacement Nominee event
       if (comp.replacementNomId) {
           const finalNomRule = scoringRules.rules.find(r => r.code === 'FINAL_NOM');
           if(finalNomRule) {
