@@ -79,7 +79,7 @@ const EventEditorCard = ({
     contestantList: Contestant[],
     weeklyEventData: { [key: string]: Partial<Competition> },
     handleEventChange: (type: string, field: keyof Competition, value: any) => void,
-    handleLogEvent: (ruleCode: string, extraData?: Partial<Competition>) => void,
+    handleLogEvent: (ruleCode: string) => void,
     isSubCard?: boolean,
 }) => {
     const [localCard, setLocalCard] = useState(card);
@@ -100,7 +100,6 @@ const EventEditorCard = ({
     
     const eventKey = localCard.ruleCode;
     const action = localCard.action || 'setWinner'; // Default to setWinner if not specified
-    const isVetoPower = localCard.ruleCode?.includes('VETO');
 
     const renderActionInput = () => {
         switch (action) {
@@ -246,9 +245,6 @@ const EventEditorCard = ({
                            {renderActionInput()}
                            <div className='flex gap-2 w-full mt-2'>
                                 <Button size="sm" onClick={() => handleLogEvent(eventKey)} className="flex-grow">Log Event</Button>
-                                {isVetoPower && (
-                                    <Button variant="outline" size="sm" onClick={() => handleLogEvent(eventKey, { used: false })}>Log 'Not Used'</Button>
-                                )}
                            </div>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground justify-end">
@@ -482,7 +478,7 @@ function AdminPage() {
     }));
   };
 
-    const handleLogEvent = async (ruleCode: string, extraData: Partial<Competition> = {}) => {
+    const handleLogEvent = async (ruleCode: string) => {
         if (!activeSeason || !leagueSettings || !ruleCode) return;
 
         let eventToLog = weeklyEventData[ruleCode] || {};
@@ -495,7 +491,6 @@ function AdminPage() {
             type: ruleCode,
             airDate: new Date().toISOString(),
             ...eventToLog,
-            ...extraData
         };
         
         if (isEviction && dataToSave.evictedId) {
