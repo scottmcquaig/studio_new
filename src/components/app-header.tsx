@@ -113,6 +113,20 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
       </div>
       
       <div className="ml-auto flex items-center gap-2">
+        {isAdmin && (
+           <TooltipProvider>
+              <Tooltip>
+                  <TooltipTrigger asChild>
+                       <Button asChild variant="ghost" size="icon">
+                          <Link href="/admin"><Shield /></Link>
+                       </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                      <p>Admin Panel</p>
+                  </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+        )}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
