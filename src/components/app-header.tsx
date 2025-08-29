@@ -113,12 +113,6 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
       </div>
       
       <div className="ml-auto flex items-center gap-2">
-        {isAdmin && (
-             <Button variant="outline" size="sm" onClick={() => router.push('/admin')}>
-                <Shield className="mr-2 h-4 w-4" />
-                Admin
-            </Button>
-        )}
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -165,5 +159,3 @@ export function AppHeader({ pageTitle, pageIcon }: AppHeaderProps) {
     </header>
   );
 }
-
-    
