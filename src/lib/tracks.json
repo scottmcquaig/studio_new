@@ -1,0 +1,128 @@
+{
+  "tracks": [
+    {
+      "id": "MONEY",
+      "slug": "money",
+      "display_name": "Money",
+      "full_name": "Money & Wealth",
+      "order": 1,
+      "color": "#16A34A",
+      "icon": "dollar-sign",
+      "description": "Master your relationship with money - from scarcity to abundance",
+      "category": "30-Day Stoic-AF Challenge",
+      "numberOfDays": 30,
+      "numberOfWeeks": 4,
+      "weeks": [
+        {
+          "week": 1,
+          "name": "Financial Foundation"
+        },
+        {
+          "week": 2,
+          "name": "Wealth Discipline"
+        },
+        {
+          "week": 3,
+          "name": "Abundance Wisdom"
+        },
+        {
+          "week": 4,
+          "name": "Money Mastery"
+        }
+      ]
+    },
+    {
+      "id": "RELATIONSHIPS",
+      "slug": "relationships",
+      "display_name": "Relationships",
+      "full_name": "Relationships & Connections",
+      "order": 2,
+      "color": "#DC2626",
+      "icon": "heart",
+      "description": "Stop trying to control others and start controlling yourself",
+      "category": "30-Day Stoic-AF Challenge",
+      "numberOfDays": 30,
+      "numberOfWeeks": 4,
+      "weeks": [
+        {
+          "week": 1,
+          "name": "Foundation"
+        },
+        {
+          "week": 2,
+          "name": "Discipline"
+        },
+        {
+          "week": 3,
+          "name": "Wisdom"
+        },
+        {
+          "week": 4,
+          "name": "Mastery"
+        }
+      ]
+    },
+    {
+      "id": "DISCIPLINE",
+      "slug": "discipline",
+      "display_name": "Discipline",
+      "full_name": "Discipline & Self-Mastery",
+      "order": 3,
+      "color": "#2563EB",
+      "icon": "target",
+      "description": "Build unbreakable habits and mental toughness",
+      "category": "30-Day Stoic-AF Challenge",
+      "numberOfDays": 30,
+      "numberOfWeeks": 4,
+      "weeks": [
+        {
+          "week": 1,
+          "name": "Willpower Foundation"
+        },
+        {
+          "week": 2,
+          "name": "Habit Discipline"
+        },
+        {
+          "week": 3,
+          "name": "Execution Wisdom"
+        },
+        {
+          "week": 4,
+          "name": "Self-Mastery"
+        }
+      ]
+    },
+    {
+      "id": "EGO",
+      "slug": "ego",
+      "display_name": "Ego",
+      "full_name": "Ego & Identity",
+      "order": 4,
+      "color": "#7C3AED",
+      "icon": "brain",
+      "description": "Kill the ego that's killing your potential",
+      "category": "30-Day Stoic-AF Challenge",
+      "numberOfDays": 30,
+      "numberOfWeeks": 4,
+      "weeks": [
+        {
+          "week": 1,
+          "name": "Identity Foundation"
+        },
+        {
+          "week": 2,
+          "name": "Ego Discipline"
+        },
+        {
+          "week": 3,
+          "name": "Self-Awareness Wisdom"
+        },
+        {
+          "week": 4,
+          "name": "Ego Mastery"
+        }
+      ]
+    }
+  ]
+}

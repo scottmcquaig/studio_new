@@ -1,29 +1,38 @@
+import { initializeApp, getApps, getApp, App } from "firebase/app";
+import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
 
-// Import the functions you need from the SDKs you need
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  "projectId": "yac-fantasy-league",
-  "appId": "1:495683435548:web:8786d0e791c7d9051c33d9",
-  "storageBucket": "yac-fantasy-league.firebasestorage.app",
-  "apiKey": "AIzaSyCNNCVA79p4gMT-AZ2s3KpV4_Cb4IImE3A",
-  "authDomain": "yac-fantasy-league.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "495683435548"
+  projectId: "stoic-af",
+  appId: "1:86800269179:web:8ea1e241b951c535e187de",
+  storageBucket: "stoic-af.firebasestorage.app",
+  apiKey: "AIzaSyDnfzl9ed_kg8F-OUegiheehEXHGiapdUo",
+  authDomain: "stoic-af.firebaseapp.com",
+  messagingSenderId: "86800269179",
 };
 
+let app: App;
+let db: Firestore;
+let auth: Auth;
 
-// Initialize Firebase
-let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+if (typeof window !== 'undefined') {
+  // Client-side initialization
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  db = getFirestore(app);
+  auth = getAuth(app);
+  enableIndexedDbPersistence(db)
+    .catch((err) => {
+      if (err.code == 'failed-precondition') {
+        console.warn('Firestore offline persistence failed: failed-precondition. Multiple tabs open?');
+      } else if (err.code == 'unimplemented') {
+        console.warn('Firestore offline persistence failed: unimplemented. Browser not supported.');
+      }
+    });
+} else {
+  // Server-side initialization
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  db = getFirestore(app);
+  auth = getAuth(app);
 }
 
-const auth = getAuth(app);
-
-export { app, auth };
+export { app, db, auth };
